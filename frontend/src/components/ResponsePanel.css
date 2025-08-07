@@ -1,0 +1,61 @@
+.response-panel {
+  flex: 1;
+  background-color: white;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.response-panel h2 {
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 1.2rem;
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.response-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.response-content {
+  background-color: #e8f5e9;
+  border-radius: 8px;
+  padding: 1.5rem;
+  color: #2c3e50;
+  line-height: 1.8;
+  font-size: 1rem;
+  animation: fadeIn 0.5s ease;
+  border: 1px solid #c8e6c9;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.response-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.response-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.response-container::-webkit-scrollbar-thumb {
+  background: #bdc3c7;
+  border-radius: 4px;
+}
+
+.response-container::-webkit-scrollbar-thumb:hover {
+  background: #95a5a6;
+}
