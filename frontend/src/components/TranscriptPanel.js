@@ -1,7 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './TranscriptPanel.css';
 import AudioRecorder from './AudioRecorder';
 import AudioLevelMeter from './AudioLevelMeter';
+import MicrophoneSelector from './MicrophoneSelector';
+import VADSettings from './VADSettings';
 
 const TranscriptPanel = ({ 
   conversation, 
@@ -25,9 +27,15 @@ const TranscriptPanel = ({
   // VAD props
   audioLevel,
   isVoiceActive,
-  vadStats
+  vadStats,
+  // Microphone props
+  selectedMicrophone,
+  onMicrophoneSelect,
+  // VAD sensitivity
+  onSensitivityChange
 }) => {
   const panelRef = useRef(null);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     if (autoScroll && panelRef.current) {
@@ -35,11 +43,65 @@ const TranscriptPanel = ({
     }
   }, [conversation, autoScroll]);
 
+  // Close settings when clicking ESC
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape' && showSettings) {
+        setShowSettings(false);
+      }
+    };
+    
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [showSettings]);
+
   return (
     <div className="transcript-panel">
       {/* Header Section */}
       <div className="transcript-header">
-        <h1>Voice Transcription App</h1>
+        <div className="header-title-row">
+          <h1>Voice Transcription App</h1>
+          <button 
+            className={`settings-btn ${showSettings ? 'active' : ''}`}
+            onClick={() => setShowSettings(!showSettings)}
+            title="Settings"
+          >
+            ⚙️
+          </button>
+        </div>
+        
+        {/* Settings Panel - Toggleable */}
+        {showSettings && (
+          <div className="settings-panel">
+            <div className="settings-panel-header">
+              <h3>⚙️ Settings</h3>
+              <button 
+                className="close-settings-btn"
+                onClick={() => setShowSettings(false)}
+                title="Close Settings (ESC)"
+              >
+                ✕
+              </button>
+            </div>
+            
+            {/* Microphone Selector */}
+            <MicrophoneSelector
+              selectedDeviceId={selectedMicrophone}
+              onDeviceSelect={onMicrophoneSelect}
+              disabled={isRecording}
+              showRefresh={true}
+            />
+            
+            {/* VAD Settings */}
+            <VADSettings
+              sensitivity={vadStats.sensitivity}
+              onSensitivityChange={onSensitivityChange}
+              vadStats={vadStats}
+              disabled={isRecording}
+            />
+          </div>
+        )}
+        
         <div className="controls">
           <AudioRecorder
             isRecording={isRecording}
@@ -47,13 +109,6 @@ const TranscriptPanel = ({
             onStop={onStopRecording}
             isProcessing={isProcessing}
           />
-          <button 
-            onClick={onClearConversation} 
-            className="btn btn-secondary"
-            disabled={isRecording}
-          >
-            Clear All
-          </button>
           <button 
             onClick={onToggleAutoScroll} 
             className={`btn ${autoScroll ? 'btn-primary' : 'btn-secondary'}`}
@@ -132,7 +187,15 @@ const TranscriptPanel = ({
       </div>
 
       {/* Transcript Content */}
-      <h2>Live Transcript</h2>
+      <div className="transcript-section-header">
+        <h2>Live Transcript</h2>
+        <button 
+          onClick={onClearConversation} 
+          className="btn btn-clear"
+        >
+          Clear All
+        </button>
+      </div>
       <div className="transcript-container" ref={panelRef}>
         {!conversation ? (
           <div className="empty-state">

@@ -12,11 +12,20 @@ class VoiceActivityDetector {
       minDecibels: options.minDecibels || -90,
       maxDecibels: options.maxDecibels || -10,
       
-      // Voice activity thresholds
-      voiceThreshold: options.voiceThreshold || 0.01, // Minimum energy level for voice
-      noiseFloor: options.noiseFloor || 0.005, // Background noise level
+      // Voice activity thresholds - STRICTER VALUES
+      voiceThreshold: options.voiceThreshold || 0.03, // Increased from 0.01
+      noiseFloor: options.noiseFloor || 0.015, // Increased from 0.005
+      absoluteMinThreshold: options.absoluteMinThreshold || 0.025, // New absolute minimum
       minSpeechDuration: options.minSpeechDuration || 1000, // Min speech duration in ms
       maxSilenceDuration: options.maxSilenceDuration || 3000, // Max silence before stopping in ms
+      
+      // Enhanced detection parameters
+      minSpeechPercentage: options.minSpeechPercentage || 0.4, // Increased from 0.2
+      minSignalToNoise: options.minSignalToNoise || 6, // Minimum SNR in dB
+      maxSilencePercentage: options.maxSilencePercentage || 0.7, // Max 70% silence allowed
+      
+      // Sensitivity levels: 'low', 'medium', 'high', 'very-high'
+      sensitivity: options.sensitivity || 'high',
       
       // Callback functions
       onVoiceStart: options.onVoiceStart || (() => {}),
@@ -33,7 +42,12 @@ class VoiceActivityDetector {
     
     // Audio level history for analysis
     this.audioLevels = [];
-    this.maxAudioHistory = 50; // Keep last 50 samples for analysis
+    this.maxAudioHistory = 150; // Increased for better 5-second chunk analysis
+    
+    // Additional metrics tracking
+    this.frequencyData = [];
+    this.zeroCrossingRates = [];
+    this.peakLevels = [];
     
     this.isAnalyzing = false;
   }
@@ -92,8 +106,14 @@ class VoiceActivityDetector {
     // Calculate RMS (Root Mean Square) energy level
     const rmsLevel = this.calculateRMS(this.dataArray);
     
+    // Calculate speech frequency energy (300-3400 Hz range)
+    const speechEnergy = this.calculateSpeechFrequencyEnergy();
+    
+    // Use weighted combination of overall RMS and speech frequency energy
+    const weightedLevel = (rmsLevel * 0.6) + (speechEnergy * 0.4);
+    
     // Update audio level history
-    this.audioLevels.push(rmsLevel);
+    this.audioLevels.push(weightedLevel);
     if (this.audioLevels.length > this.maxAudioHistory) {
       this.audioLevels.shift();
     }
@@ -142,6 +162,28 @@ class VoiceActivityDetector {
     return Math.sqrt(sum / dataArray.length);
   }
   
+  calculateSpeechFrequencyEnergy() {
+    // Calculate energy in speech frequency range (300-3400 Hz)
+    // Assuming 44100 Hz sample rate
+    const sampleRate = this.audioContext.sampleRate;
+    const binWidth = sampleRate / this.analyser.fftSize;
+    
+    // Calculate bin indices for speech range
+    const minBin = Math.floor(300 / binWidth);
+    const maxBin = Math.ceil(3400 / binWidth);
+    
+    let speechSum = 0;
+    let speechCount = 0;
+    
+    for (let i = minBin; i <= maxBin && i < this.dataArray.length; i++) {
+      const normalized = this.dataArray[i] / 255.0;
+      speechSum += normalized * normalized;
+      speechCount++;
+    }
+    
+    return speechCount > 0 ? Math.sqrt(speechSum / speechCount) : 0;
+  }
+  
   updateNoiseFloor(level) {
     // Add to noise floor samples if it's likely background noise
     if (!this.isVoiceActive && level > 0) {
@@ -161,9 +203,31 @@ class VoiceActivityDetector {
   }
   
   isVoiceDetected(level) {
+    // Apply sensitivity-based thresholds
+    let multiplier = 3; // Default for 'high' sensitivity
+    switch (this.options.sensitivity) {
+      case 'low':
+        multiplier = 2;
+        break;
+      case 'medium':
+        multiplier = 2.5;
+        break;
+      case 'high':
+        multiplier = 3;
+        break;
+      case 'very-high':
+        multiplier = 4;
+        break;
+    }
+    
     // Voice detected if level is above threshold and significantly above noise floor
-    const noiseMargin = this.options.noiseFloor * 2; // Require 2x noise floor
-    const threshold = Math.max(this.options.voiceThreshold, noiseMargin);
+    const noiseMargin = this.options.noiseFloor * multiplier;
+    const threshold = Math.max(
+      this.options.voiceThreshold, 
+      noiseMargin,
+      this.options.absoluteMinThreshold // Never go below absolute minimum
+    );
+    
     return level > threshold;
   }
   
@@ -197,14 +261,49 @@ class VoiceActivityDetector {
   }
   
   shouldProcessChunk() {
-    // Decision logic for whether to send chunk to backend
+    // Enhanced decision logic with multiple validation checks
     const speechPercentage = this.getSpeechPercentage();
     const averageLevel = this.getAverageAudioLevel();
+    const maxLevel = Math.max(...this.audioLevels);
     
-    // Require at least 20% of chunk to contain speech
-    // and average level above noise floor
-    return speechPercentage > 0.2 && 
-           averageLevel > this.options.noiseFloor * 1.5;
+    // Calculate signal-to-noise ratio
+    const snr = this.calculateSNR(averageLevel);
+    
+    // Calculate silence percentage
+    const silencePercentage = this.audioLevels.filter(level => 
+      level < this.options.noiseFloor * 1.2
+    ).length / this.audioLevels.length;
+    
+    // Multiple validation checks
+    const checks = {
+      hasSufficientSpeech: speechPercentage >= this.options.minSpeechPercentage,
+      hasGoodSNR: snr >= this.options.minSignalToNoise,
+      notTooMuchSilence: silencePercentage <= this.options.maxSilencePercentage,
+      hasMinimumLevel: averageLevel > this.options.absoluteMinThreshold,
+      hasPeaks: maxLevel > this.options.voiceThreshold * 2,
+      aboveNoiseFloor: averageLevel > this.options.noiseFloor * 2.5
+    };
+    
+    // Log detailed metrics for debugging
+    console.log('VAD Chunk Analysis:', {
+      speechPercentage: Math.round(speechPercentage * 100) + '%',
+      averageLevel: averageLevel.toFixed(4),
+      maxLevel: maxLevel.toFixed(4),
+      snr: snr.toFixed(1) + 'dB',
+      silencePercentage: Math.round(silencePercentage * 100) + '%',
+      checks,
+      willProcess: Object.values(checks).every(v => v)
+    });
+    
+    // All checks must pass
+    return Object.values(checks).every(check => check);
+  }
+  
+  calculateSNR(signal) {
+    // Calculate Signal-to-Noise Ratio in dB
+    if (this.options.noiseFloor === 0) return 0;
+    const ratio = signal / this.options.noiseFloor;
+    return 20 * Math.log10(Math.max(ratio, 0.001)); // Prevent log(0)
   }
   
   reset() {

@@ -33,11 +33,15 @@ function App() {
   const [audioLevel, setAudioLevel] = useState(0);
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [vadStats, setVadStats] = useState({
-    noiseFloor: 0.005,
-    voiceThreshold: 0.01,
+    noiseFloor: 0.015,
+    voiceThreshold: 0.03,
     chunksProcessed: 0,
-    chunksSkipped: 0
+    chunksSkipped: 0,
+    sensitivity: 'high' // 'low', 'medium', 'high', 'very-high'
   });
+  
+  // Microphone selection state
+  const [selectedMicrophone, setSelectedMicrophone] = useState(null);
 
   // Handle chunk processing interval
   const handleChunkInterval = () => {
@@ -106,7 +110,23 @@ function App() {
   const startRecording = async () => {
     try {
       setError('');
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Configure audio constraints with selected microphone
+      const audioConstraints = {
+        audio: selectedMicrophone ? {
+          deviceId: { exact: selectedMicrophone },
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        } : {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      };
+      
+      console.log('Starting recording with constraints:', audioConstraints);
+      const stream = await navigator.mediaDevices.getUserMedia(audioConstraints);
       streamRef.current = stream;
       
       // Test for supported formats in order of preference for Whisper API
@@ -170,12 +190,17 @@ function App() {
       
       console.log('🎙️ Recording started with format:', mimeType);
 
-      // Initialize Voice Activity Detector
+      // Initialize Voice Activity Detector with stricter settings
       vadRef.current = new VoiceActivityDetector({
         voiceThreshold: vadStats.voiceThreshold,
         noiseFloor: vadStats.noiseFloor,
-        minSpeechDuration: 800, // 0.8 seconds minimum speech
-        maxSilenceDuration: 2500, // 2.5 seconds max silence
+        absoluteMinThreshold: 0.025,
+        minSpeechDuration: 1000, // 1 second minimum speech
+        maxSilenceDuration: 2000, // 2 seconds max silence
+        minSpeechPercentage: 0.4, // 40% speech required
+        minSignalToNoise: 6, // 6dB minimum SNR
+        maxSilencePercentage: 0.7, // 70% max silence
+        sensitivity: vadStats.sensitivity,
         onVoiceStart: () => {
           console.log('🗣️ Voice activity started');
           setIsVoiceActive(true);
@@ -437,7 +462,7 @@ Question: ${userQuestion}`;
   // Clear conversation
   const clearConversation = () => {
     setConversation('');
-    setAiResponse('');
+    // Note: Not clearing aiResponse - only clearing transcript
     setError('');
     setCurrentChunk(0);
     chunkCounterRef.current = 0;
@@ -448,6 +473,32 @@ Question: ${userQuestion}`;
       chunksProcessed: 0,
       chunksSkipped: 0
     }));
+  };
+  
+  // Handle VAD sensitivity change
+  const handleSensitivityChange = (newSensitivity) => {
+    setVadStats(prev => ({
+      ...prev,
+      sensitivity: newSensitivity
+    }));
+    
+    // Update thresholds based on sensitivity
+    const thresholds = {
+      'low': { voiceThreshold: 0.015, noiseFloor: 0.008 },
+      'medium': { voiceThreshold: 0.025, noiseFloor: 0.012 },
+      'high': { voiceThreshold: 0.03, noiseFloor: 0.015 },
+      'very-high': { voiceThreshold: 0.04, noiseFloor: 0.02 }
+    };
+    
+    const newThresholds = thresholds[newSensitivity];
+    if (newThresholds) {
+      setVadStats(prev => ({
+        ...prev,
+        ...newThresholds
+      }));
+    }
+    
+    console.log(`VAD sensitivity changed to: ${newSensitivity}`);
   };
 
   // Cleanup on unmount
@@ -483,6 +534,11 @@ Question: ${userQuestion}`;
           audioLevel={audioLevel}
           isVoiceActive={isVoiceActive}
           vadStats={vadStats}
+          // Microphone props
+          selectedMicrophone={selectedMicrophone}
+          onMicrophoneSelect={setSelectedMicrophone}
+          // VAD sensitivity
+          onSensitivityChange={handleSensitivityChange}
         />
         <ResponsePanel 
           response={aiResponse}
