@@ -3,6 +3,8 @@ import './ResponsePanel.css';
 import FormattedResponse from './FormattedResponse';
 
 const ResponsePanel = ({ response, isLoading }) => {
+  console.log('ResponsePanel received - response:', response, 'isLoading:', isLoading);
+  
   return (
     <div className="response-panel">
       <h2>AI Response</h2>

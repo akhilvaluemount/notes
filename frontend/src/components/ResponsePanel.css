@@ -22,14 +22,7 @@
 }
 
 .response-content {
-  background-color: #e8f5e9;
-  border-radius: 8px;
-  padding: 1.5rem;
-  color: #2c3e50;
-  line-height: 1.8;
-  font-size: 1rem;
   animation: fadeIn 0.5s ease;
-  border: 1px solid #c8e6c9;
 }
 
 @keyframes fadeIn {

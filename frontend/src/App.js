@@ -4,6 +4,7 @@ import './App.css';
 import AudioRecorder from './components/AudioRecorder';
 import TranscriptPanel from './components/TranscriptPanel';
 import ResponsePanel from './components/ResponsePanel';
+import VoiceActivityDetector from './utils/VoiceActivityDetector';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
@@ -26,6 +27,17 @@ function App() {
   const recordingMimeTypeRef = useRef(null); // Store the MIME type for reuse
   const isRecordingRef = useRef(false); // Ref to avoid closure issues
   const chunkCounterRef = useRef(0); // Track chunks processed
+  const vadRef = useRef(null); // Voice Activity Detector instance
+  
+  // Voice activity detection state
+  const [audioLevel, setAudioLevel] = useState(0);
+  const [isVoiceActive, setIsVoiceActive] = useState(false);
+  const [vadStats, setVadStats] = useState({
+    noiseFloor: 0.005,
+    voiceThreshold: 0.01,
+    chunksProcessed: 0,
+    chunksSkipped: 0
+  });
 
   // Handle chunk processing interval
   const handleChunkInterval = () => {
@@ -158,6 +170,39 @@ function App() {
       
       console.log('🎙️ Recording started with format:', mimeType);
 
+      // Initialize Voice Activity Detector
+      vadRef.current = new VoiceActivityDetector({
+        voiceThreshold: vadStats.voiceThreshold,
+        noiseFloor: vadStats.noiseFloor,
+        minSpeechDuration: 800, // 0.8 seconds minimum speech
+        maxSilenceDuration: 2500, // 2.5 seconds max silence
+        onVoiceStart: () => {
+          console.log('🗣️ Voice activity started');
+          setIsVoiceActive(true);
+        },
+        onVoiceEnd: () => {
+          console.log('🤐 Voice activity ended');
+          setIsVoiceActive(false);
+        },
+        onAudioLevel: (level, isVoice) => {
+          setAudioLevel(level);
+          // Update stats with current noise floor
+          setVadStats(prev => ({
+            ...prev,
+            noiseFloor: vadRef.current?.options.noiseFloor || prev.noiseFloor
+          }));
+        }
+      });
+
+      // Initialize VAD with the stream
+      const vadInitialized = await vadRef.current.initialize(stream);
+      if (vadInitialized) {
+        vadRef.current.startAnalysis();
+        console.log('✅ Voice Activity Detector initialized');
+      } else {
+        console.warn('⚠️ Voice Activity Detector failed to initialize');
+      }
+
       // Set up interval to process chunks every 5 seconds
       intervalRef.current = setInterval(handleChunkInterval, 5000);
 
@@ -178,6 +223,27 @@ function App() {
     const chunkNum = chunkCounterRef.current;
     console.log(`🔄 Processing audio chunk #${chunkNum} with`, audioChunksRef.current.length, 'parts');
     setCurrentChunk(chunkNum);
+    
+    // Check if chunk should be processed using VAD
+    if (vadRef.current && !vadRef.current.shouldProcessChunk()) {
+      const speechPercentage = vadRef.current.getSpeechPercentage();
+      const averageLevel = vadRef.current.getAverageAudioLevel();
+      
+      console.log(`⏭️ Skipping chunk #${chunkNum} - Speech: ${Math.round(speechPercentage * 100)}%, Level: ${averageLevel.toFixed(3)}`);
+      
+      // Update stats
+      setVadStats(prev => ({
+        ...prev,
+        chunksSkipped: prev.chunksSkipped + 1
+      }));
+      
+      // Reset VAD for next chunk
+      vadRef.current.reset();
+      
+      // Clear audio chunks without processing
+      audioChunksRef.current = [];
+      return;
+    }
     
     setIsProcessing(true);
     setRecordingStatus('processing');
@@ -219,6 +285,12 @@ function App() {
         console.log(`✅ Chunk transcription successful:`, response.data.transcript);
         setRecordingStatus('listening');
         
+        // Update stats
+        setVadStats(prev => ({
+          ...prev,
+          chunksProcessed: prev.chunksProcessed + 1
+        }));
+        
         // Append transcript to conversation
         setConversation(prev => {
           const prevText = typeof prev === 'string' ? prev : '';
@@ -233,6 +305,11 @@ function App() {
       } else {
         console.log(`❌ No transcript received (empty or failed)`);
         setRecordingStatus('listening');
+      }
+      
+      // Reset VAD for next chunk
+      if (vadRef.current) {
+        vadRef.current.reset();
       }
     } catch (err) {
       console.error('Error processing audio:', err);
@@ -272,6 +349,17 @@ function App() {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
+    
+    // Cleanup Voice Activity Detector
+    if (vadRef.current) {
+      vadRef.current.destroy();
+      vadRef.current = null;
+      console.log('🧹 Voice Activity Detector cleaned up');
+    }
+    
+    // Reset VAD state
+    setAudioLevel(0);
+    setIsVoiceActive(false);
   };
 
   // Handle Ask AI
@@ -310,8 +398,16 @@ Question: ${userQuestion}`;
       
       const response = await axios.post(`${API_BASE_URL}/api/ask-ai`, { prompt: fullPrompt });
       
+      console.log('Full API response:', response);
+      console.log('Response data:', response.data);
+      console.log('Answer content:', response.data.answer);
+      
       if (response.data.success) {
+        console.log('Setting AI response:', response.data.answer);
         setAiResponse(response.data.answer);
+      } else {
+        console.log('API response not successful:', response.data);
+        setError('AI request was not successful');
       }
     } catch (err) {
       console.error('Error getting AI response:', err);
@@ -345,6 +441,13 @@ Question: ${userQuestion}`;
     setError('');
     setCurrentChunk(0);
     chunkCounterRef.current = 0;
+    
+    // Reset VAD stats
+    setVadStats(prev => ({
+      ...prev,
+      chunksProcessed: 0,
+      chunksSkipped: 0
+    }));
   };
 
   // Cleanup on unmount
@@ -356,78 +459,30 @@ Question: ${userQuestion}`;
 
   return (
     <div className="app">
-      <header className="app-header">
-        <h1>Voice Transcription App</h1>
-        <div className="controls">
-          <AudioRecorder
-            isRecording={isRecording}
-            onStart={startRecording}
-            onStop={stopRecording}
-            isProcessing={isProcessing}
-          />
-          <button 
-            onClick={clearConversation} 
-            className="btn btn-secondary"
-            disabled={isRecording}
-          >
-            Clear All
-          </button>
-          <button 
-            onClick={() => setAutoScroll(!autoScroll)} 
-            className={`btn ${autoScroll ? 'btn-primary' : 'btn-secondary'}`}
-          >
-            Auto-Scroll: {autoScroll ? 'ON' : 'OFF'}
-          </button>
-        </div>
-        
-        {/* Live Status Indicator */}
-        <div className="status-bar">
-          <div className="status-indicator">
-            {recordingStatus === 'idle' && <span>🎙️ Ready to record</span>}
-            {recordingStatus === 'listening' && (
-              <span className="listening">🔴 Listening... (Chunk #{chunkCounterRef.current})</span>
-            )}
-            {recordingStatus === 'processing' && (
-              <span className="processing">⚡ Transcribing speech...</span>
-            )}
-          </div>
-          {isProcessing && (
-            <div className="processing-dots">
-              <span>●</span><span>●</span><span>●</span>
-            </div>
-          )}
-        </div>
-        
-        {/* Text Input Section */}
-        <div className="text-input-section">
-          <form onSubmit={handleTextSubmit} className="text-input-form">
-            <input
-              type="text"
-              value={textInput}
-              onChange={(e) => setTextInput(e.target.value)}
-              placeholder="Type your question here (e.g., 'What are Angular pipes?')"
-              className="text-input-field"
-              disabled={isLoadingAI}
-            />
-            <button 
-              type="submit" 
-              className="btn btn-primary text-submit-btn"
-              disabled={!textInput.trim() || isLoadingAI}
-            >
-              {isLoadingAI ? 'Processing...' : 'Ask AI'}
-            </button>
-          </form>
-        </div>
-        
-        {error && <div className="error-message">{error}</div>}
-      </header>
-      
       <div className="main-content">
         <TranscriptPanel 
           conversation={conversation}
           autoScroll={autoScroll}
           isProcessing={isProcessing}
           onAskAI={handleAskAI}
+          // Header content props
+          isRecording={isRecording}
+          onStartRecording={startRecording}
+          onStopRecording={stopRecording}
+          onClearConversation={clearConversation}
+          onToggleAutoScroll={() => setAutoScroll(!autoScroll)}
+          recordingStatus={recordingStatus}
+          chunkCounterRef={chunkCounterRef}
+          // Text input props
+          textInput={textInput}
+          onTextInputChange={(e) => setTextInput(e.target.value)}
+          onTextSubmit={handleTextSubmit}
+          isLoadingAI={isLoadingAI}
+          error={error}
+          // VAD props
+          audioLevel={audioLevel}
+          isVoiceActive={isVoiceActive}
+          vadStats={vadStats}
         />
         <ResponsePanel 
           response={aiResponse}

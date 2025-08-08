@@ -2,8 +2,13 @@ import React from 'react';
 import './FormattedResponse.css';
 
 const FormattedResponse = ({ response }) => {
+  console.log('FormattedResponse received response:', response);
+  console.log('Response type:', typeof response);
+  console.log('Response length:', response?.length);
+  
   // Simple fallback if response is empty or just whitespace
   if (!response || !response.trim()) {
+    console.log('Response is empty or just whitespace');
     return (
       <div className="formatted-response">
         <div className="empty-state">No response received</div>
@@ -101,21 +106,33 @@ const FormattedResponse = ({ response }) => {
       // Skip empty lines
       if (!trimmedLine) continue;
       
-      // Detect sections based on headers (case insensitive)
-      if (trimmedLine.match(/^definition:?$/i)) {
+      // Detect sections based on headers (handle ### markdown, **bold** format and plain text)
+      if (trimmedLine.match(/^###\s+definition:?$/i) || 
+          trimmedLine.match(/^\*?\*?definition\*?\*?:?$/i) || 
+          trimmedLine.match(/^definition:?$/i)) {
         currentSection = 'definition';
+        console.log('Found Definition section:', trimmedLine);
         continue;
       }
-      else if (trimmedLine.match(/^explanation\s+(of\s+)?concepts?:?$/i)) {
+      else if (trimmedLine.match(/^###\s+explanation\s+(of\s+)?concepts?:?$/i) ||
+               trimmedLine.match(/^\*?\*?explanation\s+(of\s+)?concepts?\*?\*?:?$/i) || 
+               trimmedLine.match(/^explanation\s+(of\s+)?concepts?:?$/i)) {
         currentSection = 'explanation';
+        console.log('Found Explanation section:', trimmedLine);
         continue;
       }
-      else if (trimmedLine.match(/^examples?:?$/i)) {
+      else if (trimmedLine.match(/^###\s+examples?:?$/i) ||
+               trimmedLine.match(/^\*?\*?examples?\*?\*?:?$/i) || 
+               trimmedLine.match(/^examples?:?$/i)) {
         currentSection = 'examples';
+        console.log('Found Examples section:', trimmedLine);
         continue;
       }
-      else if (trimmedLine.match(/^key\s+points?:?$/i)) {
+      else if (trimmedLine.match(/^###\s+key\s+points?:?$/i) ||
+               trimmedLine.match(/^\*?\*?key\s+points?\*?\*?:?$/i) || 
+               trimmedLine.match(/^key\s+points?:?$/i)) {
         currentSection = 'keyPoints';
+        console.log('Found Key Points section:', trimmedLine);
         continue;
       }
       
@@ -125,14 +142,27 @@ const FormattedResponse = ({ response }) => {
       }
       else if (currentSection === 'explanation') {
         if (trimmedLine.startsWith('•') || trimmedLine.startsWith('-') || trimmedLine.startsWith('*')) {
-          sections.explanation.push({ type: 'bullet', content: trimmedLine.substring(1).trim() });
+          // Calculate indentation level based on original line (before trim)
+          const leadingSpaces = line.length - line.trimLeft().length;
+          const indentLevel = Math.floor(leadingSpaces / 2); // Every 2 spaces = 1 indent level
+          sections.explanation.push({ 
+            type: 'bullet', 
+            content: trimmedLine.substring(1).trim(),
+            indent: indentLevel
+          });
         } else {
           sections.explanation.push({ type: 'text', content: trimmedLine });
         }
       }
       else if (currentSection === 'examples') {
         if (trimmedLine.startsWith('•') || trimmedLine.startsWith('-')) {
-          sections.examples.push({ type: 'bullet', content: trimmedLine.substring(1).trim() });
+          const leadingSpaces = line.length - line.trimLeft().length;
+          const indentLevel = Math.floor(leadingSpaces / 2);
+          sections.examples.push({ 
+            type: 'bullet', 
+            content: trimmedLine.substring(1).trim(),
+            indent: indentLevel
+          });
         } else if (trimmedLine.match(/^[\w\s]+Example:?$/i)) {
           sections.examples.push({ type: 'example-header', content: trimmedLine });
         } else {
@@ -141,7 +171,13 @@ const FormattedResponse = ({ response }) => {
       }
       else if (currentSection === 'keyPoints') {
         if (trimmedLine.startsWith('•') || trimmedLine.startsWith('-')) {
-          sections.keyPoints.push({ type: 'bullet', content: trimmedLine.substring(1).trim() });
+          const leadingSpaces = line.length - line.trimLeft().length;
+          const indentLevel = Math.floor(leadingSpaces / 2);
+          sections.keyPoints.push({ 
+            type: 'bullet', 
+            content: trimmedLine.substring(1).trim(),
+            indent: indentLevel
+          });
         } else if (trimmedLine.match(/^[\w\s]+:$/)) {
           sections.keyPoints.push({ type: 'subheader', content: trimmedLine });
         } else {
@@ -156,42 +192,108 @@ const FormattedResponse = ({ response }) => {
   // Try to parse the response
   const sections = parseResponse(response);
   
-  // If parsing doesn't produce meaningful sections, display as plain text
-  const hasContent = sections.definition.length > 0 || sections.explanation.length > 0 || 
-                    sections.examples.length > 0 || sections.keyPoints.length > 0;
-  
-  if (!hasContent) {
-    // Fallback: Display the raw response with better formatting
-    const paragraphs = response.split('\n\n').filter(p => p.trim());
+  // Force parsing by manually extracting sections if parsing failed
+  if (sections.definition.length === 0 && sections.explanation.length === 0 && 
+      sections.examples.length === 0 && sections.keyPoints.length === 0) {
     
-    return (
-      <div className="formatted-response">
-        <div className="response-section fallback-section">
-          <div className="section-header">
-            <span className="section-icon">📄</span>
-            <h3>Response</h3>
-          </div>
-          <div className="response-raw">
-            {paragraphs.length > 1 ? (
-              paragraphs.map((paragraph, index) => (
-                <p key={index} className="response-paragraph">
-                  {parseFormattedText(paragraph.trim())}
-                </p>
-              ))
-            ) : (
-              response.split(/\.\s+/).filter(sentence => sentence.trim()).map((sentence, index) => (
-                <div key={index} className="response-sentence">
-                  • {parseFormattedText(sentence.trim())}
-                  {!sentence.endsWith('.') && '.'}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-    );
+    // Manual section extraction as fallback
+    const lines = response.split('\n');
+    let currentSection = '';
+    let definitionContent = [];
+    let explanationContent = [];
+    let examplesContent = [];
+    let keyPointsContent = [];
+    
+    for (let line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      
+      // Handle ### markdown, **bold** format and plain text
+      const cleanedLine = trimmed.replace(/^###\s+|^\*\*|\*\*$/g, '').toLowerCase();
+      
+      if (cleanedLine === 'definition' || cleanedLine === 'definition:') {
+        currentSection = 'definition';
+      } else if (cleanedLine === 'explanation of concepts' || cleanedLine === 'explanation of concepts:') {
+        currentSection = 'explanation';
+      } else if (cleanedLine === 'examples' || cleanedLine === 'examples:') {
+        currentSection = 'examples';
+      } else if (cleanedLine === 'key points' || cleanedLine === 'key points:') {
+        currentSection = 'keypoints';
+      } else {
+        // Add content to current section
+        if (currentSection === 'definition') {
+          definitionContent.push(trimmed);
+        } else if (currentSection === 'explanation') {
+          if (trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('*')) {
+            const leadingSpaces = line.length - line.trimLeft().length;
+            const indentLevel = Math.floor(leadingSpaces / 2);
+            explanationContent.push({
+              type: 'bullet',
+              content: trimmed.substring(1).trim(),
+              indent: indentLevel
+            });
+          } else {
+            explanationContent.push(trimmed);
+          }
+        } else if (currentSection === 'examples') {
+          if (trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('*')) {
+            const leadingSpaces = line.length - line.trimLeft().length;
+            const indentLevel = Math.floor(leadingSpaces / 2);
+            examplesContent.push({
+              type: 'bullet',
+              content: trimmed.substring(1).trim(),
+              indent: indentLevel
+            });
+          } else {
+            examplesContent.push(trimmed);
+          }
+        } else if (currentSection === 'keypoints') {
+          if (trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('*')) {
+            const leadingSpaces = line.length - line.trimLeft().length;
+            const indentLevel = Math.floor(leadingSpaces / 2);
+            keyPointsContent.push({
+              type: 'bullet',
+              content: trimmed.substring(1).trim(),
+              indent: indentLevel
+            });
+          } else {
+            keyPointsContent.push(trimmed);
+          }
+        }
+      }
+    }
+    
+    // Override sections with manual parsing
+    if (definitionContent.length > 0) {
+      sections.definition = definitionContent.map(content => ({ type: 'text', content }));
+    }
+    if (explanationContent.length > 0) {
+      sections.explanation = explanationContent.map(content => {
+        if (typeof content === 'object' && content.type === 'bullet') {
+          return content;
+        }
+        return { type: 'text', content };
+      });
+    }
+    if (examplesContent.length > 0) {
+      sections.examples = examplesContent.map(content => {
+        if (typeof content === 'object' && content.type === 'bullet') {
+          return content;
+        }
+        return { type: 'text', content };
+      });
+    }
+    if (keyPointsContent.length > 0) {
+      sections.keyPoints = keyPointsContent.map(content => {
+        if (typeof content === 'object' && content.type === 'bullet') {
+          return content;
+        }
+        return { type: 'text', content };
+      });
+    }
   }
 
+  // Always render something, even if sections are empty
   return (
     <div className="formatted-response">
       {sections.definition.length > 0 && (
@@ -219,8 +321,11 @@ const FormattedResponse = ({ response }) => {
           <div className="explanation-content">
             {sections.explanation.map((item, index) => {
               if (item.type === 'bullet') {
+                const indentStyle = {
+                  marginLeft: `${(item.indent || 0) * 1}rem`
+                };
                 return (
-                  <div key={index} className="explanation-bullet">
+                  <div key={index} className="explanation-bullet" style={indentStyle}>
                     • {parseFormattedText(item.content)}
                   </div>
                 );
@@ -251,8 +356,11 @@ const FormattedResponse = ({ response }) => {
                   </pre>
                 );
               } else if (example.type === 'bullet') {
+                const indentStyle = {
+                  marginLeft: `${(example.indent || 0) * 1}rem`
+                };
                 return (
-                  <div key={index} className="example-item">
+                  <div key={index} className="example-item" style={indentStyle}>
                     • {parseFormattedText(example.content)}
                   </div>
                 );
@@ -283,8 +391,11 @@ const FormattedResponse = ({ response }) => {
           <div className="keypoints-list">
             {sections.keyPoints.map((point, index) => {
               if (point.type === 'bullet') {
+                const indentStyle = {
+                  marginLeft: `${(point.indent || 0) * 1}rem`
+                };
                 return (
-                  <div key={index} className="keypoint-item">
+                  <div key={index} className="keypoint-item" style={indentStyle}>
                     • {parseFormattedText(point.content)}
                   </div>
                 );
@@ -302,6 +413,20 @@ const FormattedResponse = ({ response }) => {
                 );
               }
             })}
+          </div>
+        </div>
+      )}
+      
+      {/* If no sections found, show raw response */}
+      {sections.definition.length === 0 && sections.explanation.length === 0 && 
+       sections.examples.length === 0 && sections.keyPoints.length === 0 && (
+        <div className="response-section" style={{background: '#f8f9fa', border: '1px solid #e9ecef'}}>
+          <div className="section-header">
+            <span className="section-icon">📄</span>
+            <h3>Raw Response</h3>
+          </div>
+          <div style={{padding: '1rem', whiteSpace: 'pre-wrap', fontFamily: 'inherit'}}>
+            {response}
           </div>
         </div>
       )}
