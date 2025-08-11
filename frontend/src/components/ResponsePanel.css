@@ -6,13 +6,41 @@
   min-width: 0;
 }
 
-.response-panel h2 {
+.response-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   padding: 1rem;
   background-color: #f8f9fa;
   border-bottom: 1px solid #e0e0e0;
+}
+
+.response-header h2 {
   font-size: 1.2rem;
   color: #2c3e50;
   font-weight: 600;
+  margin: 0;
+}
+
+.btn-open-tab {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.btn-open-tab:hover {
+  background-color: #2980b9;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
 }
 
 .response-container {
@@ -51,4 +79,42 @@
 
 .response-container::-webkit-scrollbar-thumb:hover {
   background: #95a5a6;
+}
+
+.streaming-indicator {
+  font-size: 0.8rem;
+  color: #e74c3c;
+  font-weight: 500;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.streaming-cursor {
+  display: inline-block;
+  margin-left: 0.2rem;
+}
+
+.typing-cursor {
+  display: inline-block;
+  color: #3498db;
+  font-weight: bold;
+  font-size: 1.2rem;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
 }

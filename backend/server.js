@@ -4,14 +4,23 @@ const multer = require('multer');
 const OpenAI = require('openai');
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Initialize OpenAI
+// Create custom HTTPS agent with keep-alive
+const httpsAgent = new https.Agent({
+  keepAlive: true,
+  keepAliveMsecs: 3000,
+  maxSockets: 10,
+});
+
+// Initialize OpenAI with keep-alive agent
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  httpAgent: httpsAgent,
 });
 
 // Log API key status (first few chars only for security)
@@ -176,7 +185,7 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
   }
 });
 
-// Ask AI endpoint
+// Ask AI endpoint (non-streaming for backward compatibility)
 app.post('/api/ask-ai', async (req, res) => {
   try {
     const { prompt } = req.body;
@@ -185,9 +194,12 @@ app.post('/api/ask-ai', async (req, res) => {
       return res.status(400).json({ error: 'No prompt provided' });
     }
 
-    // Get response from ChatGPT with prompt from frontend
+    // Performance monitoring
+    console.time('Total AI Response Time');
+    console.time('OpenAI API Call');
+    
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       messages: [
         {
           role: 'user',
@@ -195,10 +207,15 @@ app.post('/api/ask-ai', async (req, res) => {
         }
       ],
       temperature: 0.7,
-      max_tokens: 1200,
+      max_tokens: 400,
+      stream: false,
     });
-
+    
+    console.timeEnd('OpenAI API Call');
     const answer = completion.choices[0].message.content.trim();
+    
+    console.timeEnd('Total AI Response Time');
+    console.log(`Response length: ${answer.length} chars, ${answer.split(' ').length} words`);
 
     res.json({ 
       success: true,
@@ -209,7 +226,6 @@ app.post('/api/ask-ai', async (req, res) => {
   } catch (error) {
     console.error('AI response error:', error);
     
-    // Handle specific OpenAI errors
     let errorMessage = 'Failed to get AI response';
     let statusCode = 500;
 
@@ -229,6 +245,114 @@ app.post('/api/ask-ai', async (req, res) => {
       message: error.message,
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
+  }
+});
+
+// Streaming AI endpoint using Server-Sent Events (SSE)
+app.post('/api/ask-ai-stream', async (req, res) => {
+  try {
+    const { prompt } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({ error: 'No prompt provided' });
+    }
+
+    // Set up SSE headers
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+    });
+
+    // Performance monitoring
+    console.time('Stream: Total Response Time');
+    console.time('Stream: First Token');
+    let firstToken = true;
+    let fullResponse = '';
+    let tokenCount = 0;
+
+    try {
+      // Create streaming completion
+      const stream = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 400,
+        stream: true,
+      });
+
+      // Process stream
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || '';
+        
+        if (content) {
+          if (firstToken) {
+            console.timeEnd('Stream: First Token');
+            firstToken = false;
+          }
+          
+          tokenCount++;
+          fullResponse += content;
+          
+          // Send chunk to client
+          res.write(`data: ${JSON.stringify({ 
+            type: 'chunk', 
+            content: content,
+            tokenCount: tokenCount
+          })}\n\n`);
+        }
+        
+        // Check if stream is finished
+        if (chunk.choices[0]?.finish_reason) {
+          console.timeEnd('Stream: Total Response Time');
+          console.log(`Stream complete: ${fullResponse.length} chars, ${fullResponse.split(' ').length} words, ${tokenCount} chunks`);
+          
+          // Send completion event
+          res.write(`data: ${JSON.stringify({ 
+            type: 'complete', 
+            fullResponse: fullResponse,
+            timestamp: new Date().toISOString(),
+            stats: {
+              chars: fullResponse.length,
+              words: fullResponse.split(' ').length,
+              chunks: tokenCount
+            }
+          })}\n\n`);
+          
+          res.end();
+        }
+      }
+    } catch (streamError) {
+      console.error('Stream error:', streamError);
+      res.write(`data: ${JSON.stringify({ 
+        type: 'error', 
+        error: streamError.message 
+      })}\n\n`);
+      res.end();
+    }
+
+  } catch (error) {
+    console.error('Stream setup error:', error);
+    
+    // If headers aren't sent yet, send error as JSON
+    if (!res.headersSent) {
+      res.status(500).json({ 
+        error: 'Failed to initialize stream',
+        message: error.message
+      });
+    } else {
+      res.write(`data: ${JSON.stringify({ 
+        type: 'error', 
+        error: error.message 
+      })}\n\n`);
+      res.end();
+    }
   }
 });
 
