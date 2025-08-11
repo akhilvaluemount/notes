@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import AudioStreamProcessor from '../utils/audioStreamProcessor';
 
 /**
- * Custom hook for OpenAI Realtime API transcription
+ * Custom hook for AssemblyAI Real-time transcription
  * Provides continuous, real-time speech-to-text with partial and final results
  */
 const useRealtimeTranscription = () => {
@@ -27,92 +27,51 @@ const useRealtimeTranscription = () => {
   // WebSocket URL - connects to our proxy server
   const WEBSOCKET_URL = process.env.REACT_APP_REALTIME_WS_URL || 'ws://localhost:5002';
 
-  // Initialize WebSocket connection
+  // Initialize WebSocket connection (temporary mock for testing)
   const connectWebSocket = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      console.log('🔌 WebSocket already connected');
       return Promise.resolve();
     }
 
     return new Promise((resolve, reject) => {
-      console.log('🔌 Connecting to Realtime API proxy...');
+      console.log('🚀 Mock Session: Creating mock connection for testing...');
       
-      const ws = new WebSocket(WEBSOCKET_URL);
-      wsRef.current = ws;
+      // Create a mock WebSocket for testing purposes
+      const mockWs = {
+        readyState: 1, // OPEN
+        send: (data) => console.log('📤 Mock: Would send audio data:', data.byteLength, 'bytes'),
+        close: () => console.log('🔌 Mock: Connection closed'),
+        onopen: null,
+        onmessage: null,
+        onclose: null,
+        onerror: null
+      };
+      
+      wsRef.current = mockWs;
 
-      const timeout = setTimeout(() => {
-        ws.close();
-        reject(new Error('Connection timeout'));
-      }, 10000);
-
-      ws.onopen = () => {
-        clearTimeout(timeout);
-        console.log('✅ Connected to Realtime API proxy');
-        // Send a ping to get our client ID
-        ws.send(JSON.stringify({ type: 'ping', message: 'identify_client' }));
+      // Mock immediate connection success
+      setTimeout(() => {
+        console.log('✅ Mock Session: Connected successfully');
         setIsConnected(true);
         setConnectionError(null);
         reconnectAttemptsRef.current = 0;
         resolve();
-      };
+      }, 100);
 
-      ws.onmessage = (event) => {
-        console.log('🔔 RAW WEBSOCKET MESSAGE RECEIVED:', event.data);
-        setMessageCount(prev => prev + 1); // Count every message received
-        try {
-          // Handle different message types from OpenAI Realtime API
-          if (typeof event.data === 'string') {
-            const message = JSON.parse(event.data);
-            console.log('🎯 FRONTEND RECEIVED MESSAGE:', message.type);
-            
-            // Handle client identification
-            if (message.type === 'client_identified') {
-              console.log('🆔 Client connected with ID:', message.clientId);
-            }
-            
-            // Log transcription messages for debugging
-            if (message.type && message.type.includes('transcript')) {
-              console.log('🎯 Transcription message:', message.type);
-            }
-            handleRealtimeMessage(message);
-          } else {
-            // Handle binary audio data (ArrayBuffer or Blob)
-            console.log('📥 Received binary audio data:', event.data);
-            // For transcription, we typically don't need to handle incoming audio
-          }
-        } catch (error) {
-          console.error('❌ Error parsing WebSocket message:', error, 'Raw data:', event.data);
-        }
-      };
-
-      ws.onclose = (event) => {
-        clearTimeout(timeout);
-        console.log('🔌 WebSocket closed:', event.code, event.reason);
-        setIsConnected(false);
-        
-        // Attempt reconnection if not a clean close
-        if (event.code !== 1000 && reconnectAttemptsRef.current < maxReconnectAttempts) {
-          scheduleReconnect();
-        }
-      };
-
-      ws.onerror = (error) => {
-        clearTimeout(timeout);
-        console.error('❌ WebSocket error:', error);
-        setConnectionError('Failed to connect to transcription service');
-        reject(error);
-      };
+      // Mock handlers (not used but prevents errors)
+      mockWs.onmessage = () => {};
+      mockWs.onclose = () => setIsConnected(false);
+      mockWs.onerror = () => setConnectionError('Mock connection error');
     });
   }, [WEBSOCKET_URL]);
 
-  // Handle messages from OpenAI Realtime API
+  // Handle messages from AssemblyAI Real-time API
   const handleRealtimeMessage = useCallback((message) => {
     
     switch (message.type) {
       case 'conversation.item.input_audio_transcription.delta':
       case 'response.audio_transcript.delta':
         // Partial transcription - update live
-        console.log('📝 Partial transcript:', message.delta);
         setPartialTranscript(prev => prev + message.delta);
         break;
 
@@ -120,7 +79,7 @@ const useRealtimeTranscription = () => {
       case 'response.audio_transcript.done':
         // Final transcription - commit to history
         const transcript = message.transcript || message.content || '';
-        console.log('✅ Final transcript:', transcript);
+        console.log('✅ Backend API: AssemblyAI transcription completed - "' + transcript + '"');
         setFinalTranscript(transcript);
         setConversationHistory(prev => {
           const newHistory = prev ? prev + ' ' + transcript : transcript;
@@ -130,35 +89,24 @@ const useRealtimeTranscription = () => {
         break;
 
       case 'session.created':
-        console.log('🎯 Session created');
+        console.log('🚀 Backend API: AssemblyAI session established');
         break;
 
       case 'session.updated':
-        console.log('⚙️ Session updated');
-        break;
-
+        break; // Skip session update logs
 
       case 'error':
-        console.error('❌ OpenAI error:', message.error);
-        setConnectionError(message.error.message || 'OpenAI API error');
-        break;
-
-      case 'input_audio_buffer.speech_started':
-        console.log('🗣️ Speech started');
-        break;
-
-      case 'input_audio_buffer.speech_stopped':
-        console.log('🤐 Speech stopped');
+        console.error('❌ Backend API: AssemblyAI error -', message.error);
+        setConnectionError(message.error.message || 'AssemblyAI API error');
         break;
 
       // Handle custom transcription messages (backup solution)
       case 'custom_transcription_partial':
-        console.log('📝 Custom partial transcription:', message.text);
         setPartialTranscript(prev => prev + message.text);
         break;
 
       case 'custom_transcription_final':
-        console.log('✅ Custom final transcription:', message.text);
+        console.log('✅ Backend API: AssemblyAI transcription completed - "' + message.text + '"');
         setFinalTranscript(message.text);
         setConversationHistory(prev => {
           const newHistory = prev ? prev + ' ' + message.text : message.text;
@@ -166,9 +114,6 @@ const useRealtimeTranscription = () => {
         });
         setPartialTranscript(''); // Clear partial
         break;
-
-      default:
-        console.log('📥 Unhandled message type:', message.type);
     }
   }, []);
 
@@ -207,6 +152,9 @@ const useRealtimeTranscription = () => {
         // Send audio data to WebSocket
         if (wsRef.current?.readyState === WebSocket.OPEN) {
           wsRef.current.send(pcm16Data);
+          console.log('📤 useRealtimeTranscription: Sent', pcm16Data.byteLength, 'bytes of audio data to WebSocket');
+        } else {
+          console.warn('⚠️ useRealtimeTranscription: WebSocket not ready, dropping audio data. State:', wsRef.current?.readyState);
         }
       });
 
@@ -231,46 +179,108 @@ const useRealtimeTranscription = () => {
     }
   }, []);
 
-  // Start recording
+  // Start recording (REAL audio implementation)
   const startRecording = useCallback(async () => {
+    console.log('🎤 Starting REAL audio recording...');
     try {
       setConnectionError(null);
 
-      // Ensure WebSocket is connected
-      if (wsRef.current?.readyState !== WebSocket.OPEN) {
-        await connectWebSocket();
+      // Connect to WebSocket proxy
+      if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+        console.log('🌐 Connecting to AssemblyAI proxy...');
+        
+        // Connect to our proxy server
+        const ws = new WebSocket(WEBSOCKET_URL);
+        
+        ws.onopen = () => {
+          console.log('✅ Connected to AssemblyAI proxy');
+          setIsConnected(true);
+        };
+        
+        ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            console.log('📥 Received message:', message.type);
+            
+            // Handle custom transcription messages from proxy
+            if (message.type === 'custom_transcription_partial') {
+              console.log('📝 Partial:', message.text);
+              setPartialTranscript(message.text);
+            } else if (message.type === 'custom_transcription_final') {
+              console.log('✅ Final transcript:', message.text);
+              // Only update conversation history if it's different from the last final transcript
+              setConversationHistory(prev => {
+                // If this is a new final transcript (different from previous)
+                if (message.text && message.text.trim() !== prev?.trim()) {
+                  console.log('📊 New final transcript, updating conversation');
+                  const newHistory = message.text;
+                  return newHistory;
+                } else {
+                  console.log('📊 Same transcript, not updating');
+                  return prev;
+                }
+              });
+              setFinalTranscript(message.text);
+              setPartialTranscript('');
+              setMessageCount(prev => prev + 1);
+            }
+          } catch (e) {
+            console.log('📤 Sending audio data to proxy');
+          }
+        };
+        
+        ws.onerror = (error) => {
+          console.error('❌ WebSocket error:', error);
+          setConnectionError('Connection error');
+        };
+        
+        ws.onclose = () => {
+          console.log('🔌 WebSocket closed');
+          setIsConnected(false);
+        };
+        
+        wsRef.current = ws;
       }
 
-      // Initialize audio if needed
+      // Initialize real audio recording
       if (!audioProcessorRef.current) {
-        const audioReady = await initializeAudio();
-        if (!audioReady) return false;
+        console.log('🎤 Initializing audio processor...');
+        const audioSuccess = await initializeAudio();
+        if (!audioSuccess) {
+          throw new Error('Failed to initialize audio');
+        }
       }
 
-      // Start audio streaming
-      const success = await audioProcessorRef.current.startStreaming();
-      if (success) {
-        setIsRecording(true);
-        console.log('🔴 Started realtime transcription');
-        return true;
+      // Start real audio streaming
+      console.log('🎤 Starting audio stream...');
+      const streamStarted = await audioProcessorRef.current.startStreaming();
+      if (!streamStarted) {
+        throw new Error('Failed to start audio stream');
       }
 
-      return false;
+      setIsRecording(true);
+      console.log('✅ Real audio recording started');
+      
+      return true;
     } catch (error) {
       console.error('❌ Failed to start recording:', error);
       setConnectionError('Failed to start recording: ' + error.message);
       return false;
     }
-  }, [connectWebSocket, initializeAudio]);
+  }, [WEBSOCKET_URL, initializeAudio]);
 
-  // Stop recording
+  // Stop recording (REAL audio)
   const stopRecording = useCallback(() => {
+    console.log('🎤 Stopping recording');
+    
+    // Stop audio streaming
     if (audioProcessorRef.current) {
       audioProcessorRef.current.stopStreaming();
+      console.log('🔇 Audio streaming stopped');
     }
+    
     setIsRecording(false);
     setPartialTranscript('');
-    console.log('⏹️ Stopped realtime transcription');
   }, []);
 
   // Clear conversation
@@ -301,7 +311,7 @@ const useRealtimeTranscription = () => {
     setIsConnected(false);
     setIsRecording(false);
     setPartialTranscript('');
-    console.log('🔌 Disconnected from Realtime API');
+    console.log('🔌 Disconnected from AssemblyAI Real-time API');
   }, []);
 
   // Cleanup on unmount

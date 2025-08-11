@@ -118,7 +118,6 @@ The app will open at http://localhost:3000
 ### Backend (http://localhost:5000)
 
 - `GET /health` - Health check
-- `POST /api/transcribe` - Transcribe audio (multipart/form-data)
 - `POST /api/ask-ai` - Get AI response (JSON body with `prompt`)
 
 ## Environment Variables

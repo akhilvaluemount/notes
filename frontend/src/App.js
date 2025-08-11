@@ -32,16 +32,6 @@ function App() {
     disconnect: disconnectRealtime
   } = useRealtimeTranscription();
 
-  // DEBUG: Log hook values in App.js to see if they're updating
-  console.log('🏠 APP.JS HOOK VALUES:', {
-    conversationHistory,
-    conversationLength: conversationHistory?.length,
-    partialTranscript,
-    partialLength: partialTranscript?.length,
-    isConnected,
-    isRecording,
-    timestamp: new Date().toISOString()
-  });
 
   const broadcastChannelRef = useRef(null); // BroadcastChannel for AI response sync
   
@@ -90,11 +80,9 @@ function App() {
       setError('');
       
       const userQuestion = customPrompt || conversationHistory;
-      console.log('handleAskAI called with:', { customPrompt, conversationHistory, userQuestion });
       
       // Ensure userQuestion is a string and not empty
       if (!userQuestion || typeof userQuestion !== 'string' || !userQuestion.trim()) {
-        console.log('No valid question found:', { userQuestion, type: typeof userQuestion });
         setError('No content to analyze. Please record speech or type a question.');
         return;
       }
@@ -120,13 +108,8 @@ Question: ${userQuestion}`;
       setAiResponse('');
       setIsLoadingAI(true);
       
-      // Performance monitoring
-      console.time('Frontend: Total Response Time');
-      
       if (useStreaming) {
-        // Use streaming endpoint
-        console.log('Using streaming mode...');
-        console.time('Frontend: First Chunk');
+        // Use streaming endpoint - OpenAI API call
         setIsStreaming(true);
         let firstChunk = true;
         
@@ -161,15 +144,10 @@ Question: ${userQuestion}`;
                   const data = JSON.parse(line.slice(6));
                   
                   if (data.type === 'chunk') {
-                    if (firstChunk) {
-                      console.timeEnd('Frontend: First Chunk');
-                      firstChunk = false;
-                    }
                     fullResponse += data.content;
                     
                     // Update AI response immediately for real-time display
                     setAiResponse(fullResponse);
-                    console.log('Streaming chunk received, response length:', fullResponse.length);
                     
                     // Broadcast updates during streaming
                     if (broadcastChannelRef.current) {
@@ -181,8 +159,6 @@ Question: ${userQuestion}`;
                       });
                     }
                   } else if (data.type === 'complete') {
-                    console.timeEnd('Frontend: Total Response Time');
-                    console.log('Stream stats:', data.stats);
                     setAiResponse(data.fullResponse);
                     setIsStreaming(false);
                     
@@ -210,17 +186,10 @@ Question: ${userQuestion}`;
           setIsStreaming(false);
         }
       } else {
-        // Use traditional non-streaming endpoint
-        console.log('Using non-streaming mode...');
+        // Use traditional non-streaming endpoint - OpenAI API call
         const response = await axios.post(`${API_BASE_URL}/api/ask-ai`, { prompt: fullPrompt });
         
-        console.timeEnd('Frontend: Total Response Time');
-        console.log('Full API response:', response);
-        console.log('Response data:', response.data);
-        console.log('Answer content:', response.data.answer);
-        
         if (response.data.success) {
-          console.log('Setting AI response:', response.data.answer);
           setAiResponse(response.data.answer);
           
           // Broadcast AI response update to other tabs
@@ -232,7 +201,6 @@ Question: ${userQuestion}`;
             });
           }
         } else {
-          console.log('API response not successful:', response.data);
           setError('AI request was not successful');
         }
       }
@@ -284,7 +252,6 @@ Question: ${userQuestion}`;
     // Listen for messages from other tabs
     const handleBroadcastMessage = (event) => {
       if (event.data.type === 'ai-response-update') {
-        console.log('Received AI response update from another tab:', event.data.response);
         setAiResponse(event.data.response);
       }
     };
@@ -298,6 +265,7 @@ Question: ${userQuestion}`;
       }
     };
   }, []);
+
 
   // Handle realtime connection errors
   useEffect(() => {
@@ -316,6 +284,7 @@ Question: ${userQuestion}`;
   return (
     <div className="app">
       <div className="main-content">
+        
         <TranscriptPanel 
           conversation={conversationHistory}
           partialTranscript={partialTranscript}

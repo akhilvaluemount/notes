@@ -24,7 +24,7 @@ const RealtimeTestPage = () => {
   return (
     <div className="realtime-test-page">
       <div className="test-header">
-        <h1>🚀 OpenAI Realtime API Transcription Test</h1>
+        <h1>🚀 AssemblyAI Realtime API Transcription Test</h1>
         <p>This demonstrates continuous speech-to-text with sub-second latency</p>
       </div>
 

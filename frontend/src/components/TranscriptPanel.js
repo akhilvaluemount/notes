@@ -30,18 +30,9 @@ const TranscriptPanel = ({
   selectedMicrophone,
   onMicrophoneSelect
 }) => {
-  // Log props changes for debugging
-  console.log('🎯 TranscriptPanel RENDER - Props:', {
-    conversation: conversation,
-    conversationLength: conversation?.length,
-    partialTranscript: partialTranscript,
-    partialLength: partialTranscript?.length,
-    isConnected,
-    isRecording,
-    timestamp: new Date().toISOString()
-  });
   const panelRef = useRef(null);
   const [showSettings, setShowSettings] = useState(false);
+  
 
   useEffect(() => {
     if (autoScroll && panelRef.current) {
@@ -99,7 +90,7 @@ const TranscriptPanel = ({
             />
             
             <div className="settings-info">
-              <p>💡 Using OpenAI Realtime API for continuous transcription</p>
+              <p>💡 Using AssemblyAI Realtime API for continuous transcription</p>
               <p>🎤 Default system microphone will be used</p>
             </div>
           </div>
@@ -183,20 +174,9 @@ const TranscriptPanel = ({
         </button>
       </div>
       <div className="transcript-container" ref={panelRef}>
-        {/* Debug info - ALWAYS VISIBLE for debugging */}
-        <div style={{background: '#ffeb3b', padding: '15px', fontSize: '14px', marginBottom: '10px', border: '2px solid #ff9800'}}>
-          <strong>🐛 DEBUG INFO (Should be visible):</strong><br/>
-          <strong>Conversation:</strong> "{conversation}" (length: {conversation?.length || 0})<br/>
-          <strong>Partial:</strong> "{partialTranscript}" (length: {partialTranscript?.length || 0})<br/>
-          <strong>Messages Received:</strong> {messageCount}<br/>
-          <strong>isConnected:</strong> {isConnected ? 'YES' : 'NO'}<br/>
-          <strong>isRecording:</strong> {isRecording ? 'YES' : 'NO'}<br/>
-          <strong>Timestamp:</strong> {new Date().toLocaleTimeString()}
-        </div>
-        
         {!conversation && !partialTranscript ? (
           <div className="empty-state">
-            <p>No transcripts yet. Click Record to start live transcription with OpenAI Realtime API.</p>
+            <p>No transcripts yet. Click Record to start live transcription with AssemblyAI Realtime API.</p>
           </div>
         ) : (
           <div className="conversation-block">

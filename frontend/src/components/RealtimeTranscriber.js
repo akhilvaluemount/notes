@@ -177,15 +177,23 @@ const RealtimeTranscriber = ({
         </div>
       )}
 
-      {/* Debug Info (development only) */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="debug-info">
-          <details>
-            <summary>Debug Info</summary>
-            <pre>{JSON.stringify(getStatus(), null, 2)}</pre>
-          </details>
-        </div>
-      )}
+      {/* Debug Info (always visible for troubleshooting) */}
+      <div className="debug-info">
+        <details open>
+          <summary>🔍 Debug Info (Click to minimize)</summary>
+          <div style={{background: '#f5f5f5', padding: '10px', borderRadius: '4px', fontSize: '12px'}}>
+            <div><strong>Connection:</strong> {isConnected ? '�﹢ YES' : '🔴 NO'}</div>
+            <div><strong>Recording:</strong> {isRecording ? '�﹢ YES' : '🔴 NO'}</div>
+            <div><strong>Partial:</strong> "{partialTranscript}" (length: {partialTranscript.length})</div>
+            <div><strong>Conversation:</strong> "{conversationHistory}" (length: {conversationHistory.length})</div>
+            <div><strong>Messages Received:</strong> {messageCount}</div>
+            <div><strong>Error:</strong> {connectionError || 'None'}</div>
+            <div><strong>Timestamp:</strong> {new Date().toLocaleTimeString()}</div>
+            <hr style={{margin: '8px 0'}}/>
+            <pre style={{fontSize: '10px', margin: 0}}>{JSON.stringify(getStatus(), null, 2)}</pre>
+          </div>
+        </details>
+      </div>
     </div>
   );
 };

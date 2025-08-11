@@ -4,7 +4,6 @@ import FormattedResponse from './FormattedResponse';
 import { parseResponseWithFallback, parseFormattedText, generateFormattedHTML } from '../utils/responseParser';
 
 const ResponsePanel = ({ response, isLoading, isStreaming = false }) => {
-  console.log('ResponsePanel received - response:', response, 'isLoading:', isLoading, 'isStreaming:', isStreaming);
   
   const openInNewTab = () => {
     if (!response) return;
@@ -663,6 +662,7 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false }) => {
           </button>
         )}
       </div>
+      
       <div className="response-container">
         {isLoading && !response ? (
           <div className="loading-state">
