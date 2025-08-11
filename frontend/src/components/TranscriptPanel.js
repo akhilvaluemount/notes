@@ -7,6 +7,8 @@ import VADSettings from './VADSettings';
 
 const TranscriptPanel = ({ 
   conversation, 
+  partialTranscript,
+  messageCount = 0,
   autoScroll, 
   isProcessing, 
   onAskAI,
@@ -17,23 +19,27 @@ const TranscriptPanel = ({
   onClearConversation,
   onToggleAutoScroll,
   recordingStatus,
-  chunkCounterRef,
+  isConnected,
   // Text input props
   textInput,
   onTextInputChange,
   onTextSubmit,
   isLoadingAI,
   error,
-  // VAD props
-  audioLevel,
-  isVoiceActive,
-  vadStats,
-  // Microphone props
+  // Microphone props (for compatibility)
   selectedMicrophone,
-  onMicrophoneSelect,
-  // VAD sensitivity
-  onSensitivityChange
+  onMicrophoneSelect
 }) => {
+  // Log props changes for debugging
+  console.log('🎯 TranscriptPanel RENDER - Props:', {
+    conversation: conversation,
+    conversationLength: conversation?.length,
+    partialTranscript: partialTranscript,
+    partialLength: partialTranscript?.length,
+    isConnected,
+    isRecording,
+    timestamp: new Date().toISOString()
+  });
   const panelRef = useRef(null);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -92,13 +98,10 @@ const TranscriptPanel = ({
               showRefresh={true}
             />
             
-            {/* VAD Settings */}
-            <VADSettings
-              sensitivity={vadStats.sensitivity}
-              onSensitivityChange={onSensitivityChange}
-              vadStats={vadStats}
-              disabled={isRecording}
-            />
+            <div className="settings-info">
+              <p>💡 Using OpenAI Realtime API for continuous transcription</p>
+              <p>🎤 Default system microphone will be used</p>
+            </div>
           </div>
         )}
         
@@ -120,40 +123,23 @@ const TranscriptPanel = ({
         {/* Live Status Indicator */}
         <div className="status-bar">
           <div className="status-indicator">
-            {recordingStatus === 'idle' && <span>🎙️ Ready to record</span>}
-            {recordingStatus === 'listening' && (
-              <span className="listening">🔴 Listening... (Chunk #{chunkCounterRef.current})</span>
+            {recordingStatus === 'disconnected' && (
+              <span className="disconnected">🔴 Connecting to Realtime API...</span>
             )}
-            {recordingStatus === 'processing' && (
-              <span className="processing">⚡ Transcribing speech...</span>
+            {recordingStatus === 'ready' && (
+              <span className="ready">🟢 Ready to record (Realtime API)</span>
+            )}
+            {recordingStatus === 'recording' && (
+              <span className="recording">🔴 Live transcription active</span>
             )}
           </div>
           
-          {/* Audio Level Meter - show when recording */}
-          {isRecording && (
-            <AudioLevelMeter 
-              level={audioLevel}
-              isVoiceActive={isVoiceActive}
-              noiseFloor={vadStats.noiseFloor}
-              voiceThreshold={vadStats.voiceThreshold}
-              showThresholds={true}
-            />
-          )}
-          
-          {/* VAD Stats - show when recording */}
-          {isRecording && (
-            <div className="vad-stats">
-              <span className="stat-item">
-                📊 Processed: {vadStats.chunksProcessed}
-              </span>
-              <span className="stat-item">
-                ⏭️ Skipped: {vadStats.chunksSkipped}
-              </span>
-              <span className="stat-item">
-                🤫 Noise: {Math.round(vadStats.noiseFloor * 1000)}
-              </span>
-            </div>
-          )}
+          {/* Show connection status */}
+          <div className="connection-status">
+            <span className={`connection-indicator ${isConnected ? 'connected' : 'disconnected'}`}>
+              {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
+            </span>
+          </div>
           
           {isProcessing && (
             <div className="processing-dots">
@@ -197,20 +183,41 @@ const TranscriptPanel = ({
         </button>
       </div>
       <div className="transcript-container" ref={panelRef}>
-        {!conversation ? (
+        {/* Debug info - ALWAYS VISIBLE for debugging */}
+        <div style={{background: '#ffeb3b', padding: '15px', fontSize: '14px', marginBottom: '10px', border: '2px solid #ff9800'}}>
+          <strong>🐛 DEBUG INFO (Should be visible):</strong><br/>
+          <strong>Conversation:</strong> "{conversation}" (length: {conversation?.length || 0})<br/>
+          <strong>Partial:</strong> "{partialTranscript}" (length: {partialTranscript?.length || 0})<br/>
+          <strong>Messages Received:</strong> {messageCount}<br/>
+          <strong>isConnected:</strong> {isConnected ? 'YES' : 'NO'}<br/>
+          <strong>isRecording:</strong> {isRecording ? 'YES' : 'NO'}<br/>
+          <strong>Timestamp:</strong> {new Date().toLocaleTimeString()}
+        </div>
+        
+        {!conversation && !partialTranscript ? (
           <div className="empty-state">
-            <p>No transcripts yet. Start recording to see live transcription.</p>
+            <p>No transcripts yet. Click Record to start live transcription with OpenAI Realtime API.</p>
           </div>
         ) : (
           <div className="conversation-block">
-            <div className="conversation-text">
-              {conversation}
-            </div>
+            {conversation && (
+              <div className="final-transcript">
+                {conversation}
+              </div>
+            )}
+            {partialTranscript && (
+              <div className="partial-transcript">
+                <span className="typing-indicator">
+                  {partialTranscript}
+                  <span className="live-cursor">|</span>
+                </span>
+              </div>
+            )}
             <div className="conversation-actions">
               <button 
                 onClick={() => onAskAI()}
                 className="btn btn-primary ask-ai-btn"
-                disabled={isProcessing || !conversation || !conversation.trim()}
+                disabled={isProcessing || (!conversation && !partialTranscript) || !(conversation?.trim() || partialTranscript?.trim())}
               >
                 Ask AI
               </button>

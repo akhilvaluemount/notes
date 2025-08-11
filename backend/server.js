@@ -39,22 +39,32 @@ const upload = multer({
     fileSize: 25 * 1024 * 1024, // 25MB limit (Whisper API limit)
   },
   fileFilter: (req, file, cb) => {
-    // Accept multiple audio formats that work with Whisper API
+    // Accept all audio formats supported by OpenAI Whisper API
     const supportedFormats = [
-      'audio/mpeg',     // MP3
+      'audio/mpeg',     // MP3, MPEG
       'audio/mp3',      // MP3 alternative
       'audio/wav',      // WAV
-      'audio/ogg',      // OGG
-      'audio/webm'      // WebM
+      'audio/ogg',      // OGG, OGA
+      'audio/webm',     // WebM
+      'audio/mp4',      // MP4, M4A
+      'audio/m4a',      // M4A
+      'audio/flac',     // FLAC
+      'audio/x-flac',   // FLAC alternative
+      'audio/mpga'      // MPGA
     ];
     
-    const supportedExtensions = ['.mp3', '.wav', '.ogg', '.webm'];
+    const supportedExtensions = ['.mp3', '.wav', '.ogg', '.webm', '.mp4', '.m4a', '.flac', '.mpeg', '.mpga', '.oga'];
+    
+    // Check if the MIME type or file extension is supported
+    // Handle codec specifications in MIME types (e.g., "audio/webm;codecs=opus")
+    const baseMimeType = file.mimetype.split(';')[0]; // Remove codec info
     
     if (supportedFormats.includes(file.mimetype) || 
+        supportedFormats.includes(baseMimeType) ||
         supportedExtensions.some(ext => file.originalname.endsWith(ext))) {
       cb(null, true);
     } else {
-      cb(new Error('Unsupported audio format. Please use MP3, WAV, OGG, or WebM format.'));
+      cb(new Error(`Unsupported audio format: ${file.mimetype}. Supported formats: MP3, WAV, OGG, WebM, M4A, MP4, FLAC, MPEG, MPGA, OGA.`));
     }
   }
 });
@@ -73,11 +83,19 @@ app.get('/health', (req, res) => {
 // Transcribe audio endpoint
 app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
   try {
+    // Performance monitoring
+    console.time('Total Transcription Time');
+    console.time('File Processing');
+    
     if (!req.file) {
       return res.status(400).json({ error: 'No audio file provided' });
     }
+    
+    // Extract conversation history from request for context
+    const conversationHistory = req.body.conversationHistory || '';
 
     console.log('Received audio file:', req.file.originalname, 'Size:', req.file.size, 'MIME:', req.file.mimetype);
+    console.log('Base MIME type (without codec):', req.file.mimetype.split(';')[0]);
     const audioPath = req.file.path;
     
     // Validate file size (Whisper has 25MB limit)
@@ -98,39 +116,109 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
       });
     }
 
-    // Transcribe audio using Whisper API
+    console.timeEnd('File Processing');
+    
+    // Transcribe audio using Whisper API with memory-based processing
+    console.time('Whisper API Call');
     console.log('Sending audio file to Whisper API...');
     
+    // Ensure proper file extension for OpenAI Whisper API
     let finalPath = audioPath;
+    let needsRename = false;
     
-    // If it's a WebM file, ensure proper extension for Whisper API
-    if (req.file.mimetype === 'audio/webm' || req.file.originalname.endsWith('.webm')) {
-      // Rename WebM files to have proper extension
-      const renamedPath = audioPath + '.webm';
-      fs.renameSync(audioPath, renamedPath);
-      finalPath = renamedPath;
-      console.log('Renamed file for Whisper compatibility:', renamedPath);
+    // Determine correct extension based on MIME type
+    const baseMimeType = req.file.mimetype.split(';')[0];
+    let correctExtension = '';
+    
+    switch (baseMimeType) {
+      case 'audio/webm':
+        correctExtension = '.webm';
+        break;
+      case 'audio/ogg':
+        correctExtension = '.ogg';
+        break;
+      case 'audio/wav':
+        correctExtension = '.wav';
+        break;
+      case 'audio/mpeg':
+      case 'audio/mp3':
+        correctExtension = '.mp3';
+        break;
+      case 'audio/mp4':
+      case 'audio/m4a':
+        correctExtension = '.m4a';
+        break;
+      case 'audio/flac':
+        correctExtension = '.flac';
+        break;
+      default:
+        correctExtension = '.webm'; // Default fallback
     }
     
-    // Verify file exists before creating stream
-    if (!fs.existsSync(finalPath)) {
-      throw new Error(`File not found: ${finalPath}`);
+    // Check if file needs proper extension for OpenAI
+    if (!audioPath.endsWith(correctExtension)) {
+      finalPath = audioPath + correctExtension;
+      fs.renameSync(audioPath, finalPath);
+      needsRename = true;
+      console.log(`Renamed file for OpenAI compatibility: ${audioPath} -> ${finalPath}`);
     }
 
+    // Build intelligent context prompt for better technical term recognition
+    const buildContextPrompt = (conversationHistory) => {
+      // Base technical context for frontend development
+      let prompt = "Frontend developer technical interview about HTML, CSS, JavaScript, TypeScript, React, Angular, web development, coding, programming, software engineering. Expected technical terms: useState, useEffect, components, props, state, hooks, DOM, API, REST, async, await, promises, functions, classes, objects, arrays, variables, const, let, var, import, export, modules.";
+      
+      // Add recent conversation history for continuity and context
+      if (conversationHistory && conversationHistory.trim()) {
+        const words = conversationHistory.trim().split(' ');
+        const recentWords = Math.min(words.length, 80); // Last 80 words for context
+        const recentContext = words.slice(-recentWords).join(' ');
+        
+        // Extract potential proper nouns and technical terms from history for consistency
+        const technicalTerms = recentContext.match(/\b[A-Z][a-z]*(?:[A-Z][a-z]*)*\b/g) || [];
+        const uniqueTerms = [...new Set(technicalTerms)].slice(0, 10); // Top 10 unique terms
+        
+        if (uniqueTerms.length > 0) {
+          prompt += ` Key terms mentioned: ${uniqueTerms.join(', ')}.`;
+        }
+        
+        prompt += ` Previous context: "${recentContext}"`;
+        console.log(`Context: ${recentWords} words, ${uniqueTerms.length} key terms`);
+      }
+      
+      return prompt;
+    };
+    
+    const contextPrompt = buildContextPrompt(conversationHistory);
+    
     const transcription = await openai.audio.transcriptions.create({
       file: fs.createReadStream(finalPath),
       model: 'whisper-1',
       language: 'en',
       response_format: 'text',
+      prompt: contextPrompt,
+      temperature: 0.2, // More consistent output for technical terms
     });
+    
+    console.timeEnd('Whisper API Call');
     
     console.log('Transcription received:', transcription);
 
-    // Clean up the final file
+    // Clean up the uploaded file(s)
+    console.time('File Cleanup');
     if (fs.existsSync(finalPath)) {
       fs.unlinkSync(finalPath);
       console.log('Cleaned up file:', finalPath);
     }
+    // Also clean up original file if it was renamed
+    if (needsRename && fs.existsSync(audioPath)) {
+      fs.unlinkSync(audioPath);
+      console.log('Cleaned up original file:', audioPath);
+    }
+    console.timeEnd('File Cleanup');
+    
+    console.timeEnd('Total Transcription Time');
+    console.log(`Transcription stats: ${transcription.length} chars, ${transcription.split(' ').length} words`);
 
     res.json({ 
       success: true,
@@ -144,7 +232,6 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
     // Clean up files if they exist (both original and potentially renamed)
     if (req.file) {
       const originalPath = req.file.path;
-      const webmPath = originalPath + '.webm';
       
       // Clean up original file if it still exists
       if (fs.existsSync(originalPath)) {
@@ -152,10 +239,14 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
         console.log('Cleaned up original file:', originalPath);
       }
       
-      // Clean up renamed WebM file if it exists
-      if (fs.existsSync(webmPath)) {
-        fs.unlinkSync(webmPath);
-        console.log('Cleaned up WebM file:', webmPath);
+      // Clean up potential renamed files with different extensions
+      const possibleExtensions = ['.webm', '.ogg', '.wav', '.mp3', '.m4a', '.flac'];
+      for (const ext of possibleExtensions) {
+        const renamedPath = originalPath + ext;
+        if (fs.existsSync(renamedPath)) {
+          fs.unlinkSync(renamedPath);
+          console.log('Cleaned up renamed file:', renamedPath);
+        }
       }
     }
 
@@ -173,7 +264,7 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
       errorMessage = 'Cannot connect to OpenAI API. Please check your internet connection';
       statusCode = 503;
     } else if (error.message?.includes('format')) {
-      errorMessage = 'Audio format not supported. Please try recording in MP3, WAV, or OGG format.';
+      errorMessage = 'Audio format not supported. Please try recording in MP3, WAV, OGG, or WebM format.';
       statusCode = 400;
     }
 

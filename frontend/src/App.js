@@ -4,393 +4,84 @@ import './App.css';
 import AudioRecorder from './components/AudioRecorder';
 import TranscriptPanel from './components/TranscriptPanel';
 import ResponsePanel from './components/ResponsePanel';
-import VoiceActivityDetector from './utils/VoiceActivityDetector';
+import useRealtimeTranscription from './hooks/useRealtimeTranscription';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 function App() {
-  const [conversation, setConversation] = useState('');
   const [textInput, setTextInput] = useState('');
   const [aiResponse, setAiResponse] = useState('');
   const [isLoadingAI, setIsLoadingAI] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [autoScroll, setAutoScroll] = useState(true);
   const [error, setError] = useState('');
-  const [recordingStatus, setRecordingStatus] = useState('idle'); // idle, listening, processing, transcribing
-  const [currentChunk, setCurrentChunk] = useState(0);
   
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
-  const streamRef = useRef(null);
-  const intervalRef = useRef(null);
-  const recordingMimeTypeRef = useRef(null); // Store the MIME type for reuse
-  const isRecordingRef = useRef(false); // Ref to avoid closure issues
-  const chunkCounterRef = useRef(0); // Track chunks processed
-  const vadRef = useRef(null); // Voice Activity Detector instance
+  // Realtime transcription hook
+  const {
+    isConnected,
+    isRecording,
+    connectionError,
+    partialTranscript,
+    finalTranscript,
+    conversationHistory,
+    messageCount,
+    startRecording,
+    stopRecording,
+    clearConversation: clearRealtimeConversation,
+    connect: connectRealtime,
+    disconnect: disconnectRealtime
+  } = useRealtimeTranscription();
+
+  // DEBUG: Log hook values in App.js to see if they're updating
+  console.log('🏠 APP.JS HOOK VALUES:', {
+    conversationHistory,
+    conversationLength: conversationHistory?.length,
+    partialTranscript,
+    partialLength: partialTranscript?.length,
+    isConnected,
+    isRecording,
+    timestamp: new Date().toISOString()
+  });
+
   const broadcastChannelRef = useRef(null); // BroadcastChannel for AI response sync
   
-  // Voice activity detection state
-  const [audioLevel, setAudioLevel] = useState(0);
-  const [isVoiceActive, setIsVoiceActive] = useState(false);
-  const [vadStats, setVadStats] = useState({
-    noiseFloor: 0.015,
-    voiceThreshold: 0.03,
-    chunksProcessed: 0,
-    chunksSkipped: 0,
-    sensitivity: 'high' // 'low', 'medium', 'high', 'very-high'
-  });
-  
-  // Microphone selection state
+  // Microphone selection state (for compatibility - realtime uses default)
   const [selectedMicrophone, setSelectedMicrophone] = useState(null);
 
-  // Handle chunk processing interval
-  const handleChunkInterval = () => {
-    console.log(`⏰ Chunk interval fired - isRecording: ${isRecordingRef.current}`);
-    
-    if (!isRecordingRef.current) {
-      console.log('❌ Not recording, skipping interval');
-      return;
-    }
-
-    const recorder = mediaRecorderRef.current;
-    if (!recorder) {
-      console.log('❌ No recorder available');
-      return;
-    }
-
-    if (recorder.state === 'recording') {
-      console.log('⏹️ Stopping recorder to process chunk');
-      recorder.stop(); // This will trigger the onstop event and processAudioChunk
-      
-      // Start a new recorder after a brief delay
-      setTimeout(startNewChunk, 150);
-    } else {
-      console.log(`❌ Recorder not in recording state: ${recorder.state}`);
-    }
-  };
-
-  // Start a new recording chunk
-  const startNewChunk = () => {
-    if (!isRecordingRef.current || !streamRef.current) {
-      console.log('❌ Cannot start new chunk - not recording or no stream');
-      return;
-    }
-
-    try {
-      const newRecorder = new MediaRecorder(streamRef.current, {
-        mimeType: recordingMimeTypeRef.current
-      });
-
-      newRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      newRecorder.onstop = async () => {
-        console.log(`🛑 Chunk stopped with ${audioChunksRef.current.length} parts`);
-        if (audioChunksRef.current.length > 0 && isRecordingRef.current) {
-          await processAudioChunk();
-        }
-      };
-
-      mediaRecorderRef.current = newRecorder;
-      audioChunksRef.current = [];
-      newRecorder.start();
-      
-      console.log('✅ Started new recording chunk');
-    } catch (error) {
-      console.error('❌ Failed to start new chunk:', error);
-      setError('Recording failed. Please try again.');
-      stopRecording();
-    }
-  };
-
-  // Start recording
-  const startRecording = async () => {
+  // Simple recording functions for realtime system
+  const handleStartRecording = async () => {
     try {
       setError('');
-      
-      // Configure audio constraints with selected microphone
-      const audioConstraints = {
-        audio: selectedMicrophone ? {
-          deviceId: { exact: selectedMicrophone },
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        } : {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      };
-      
-      console.log('Starting recording with constraints:', audioConstraints);
-      const stream = await navigator.mediaDevices.getUserMedia(audioConstraints);
-      streamRef.current = stream;
-      
-      // Test for supported formats in order of preference for Whisper API
-      let mimeType;
-      
-      console.log('Testing audio format support:');
-      console.log('MP3:', MediaRecorder.isTypeSupported('audio/mpeg'));
-      console.log('WAV:', MediaRecorder.isTypeSupported('audio/wav'));
-      console.log('OGG+Opus:', MediaRecorder.isTypeSupported('audio/ogg;codecs=opus'));
-      console.log('WebM+Opus:', MediaRecorder.isTypeSupported('audio/webm;codecs=opus'));
-      console.log('WebM:', MediaRecorder.isTypeSupported('audio/webm'));
-      
-      // Priority order: Simple WebM > OGG > Complex WebM (avoid codec issues)
-      if (MediaRecorder.isTypeSupported('audio/webm')) {
-        mimeType = 'audio/webm';
-      } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
-        mimeType = 'audio/ogg;codecs=opus';
-      } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
-        mimeType = 'audio/ogg';
-      } else if (MediaRecorder.isTypeSupported('audio/wav')) {
-        mimeType = 'audio/wav';
-      } else if (MediaRecorder.isTypeSupported('audio/mpeg')) {
-        mimeType = 'audio/mpeg';
-      } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-        mimeType = 'audio/webm;codecs=opus';
-      } else {
-        throw new Error('Your browser does not support any compatible audio recording formats. Please try Chrome, Firefox, or Safari.');
+      const success = await startRecording();
+      if (!success) {
+        setError('Failed to start recording. Please check your microphone permissions.');
       }
-      
-      console.log('Selected audio format:', mimeType);
-      
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: mimeType
-      });
-      console.log('Using audio format:', mimeType);
-      
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        if (audioChunksRef.current.length > 0) {
-          await processAudioChunk();
-        }
-      };
-
-      // Store the MIME type and recording state
-      recordingMimeTypeRef.current = mimeType;
-      isRecordingRef.current = true;
-      chunkCounterRef.current = 0; // Reset chunk counter
-      
-      mediaRecorder.start();
-      setIsRecording(true);
-      setRecordingStatus('listening');
-      setCurrentChunk(0);
-      
-      console.log('🎙️ Recording started with format:', mimeType);
-
-      // Initialize Voice Activity Detector with stricter settings
-      vadRef.current = new VoiceActivityDetector({
-        voiceThreshold: vadStats.voiceThreshold,
-        noiseFloor: vadStats.noiseFloor,
-        absoluteMinThreshold: 0.025,
-        minSpeechDuration: 1000, // 1 second minimum speech
-        maxSilenceDuration: 2000, // 2 seconds max silence
-        minSpeechPercentage: 0.4, // 40% speech required
-        minSignalToNoise: 6, // 6dB minimum SNR
-        maxSilencePercentage: 0.7, // 70% max silence
-        sensitivity: vadStats.sensitivity,
-        onVoiceStart: () => {
-          console.log('🗣️ Voice activity started');
-          setIsVoiceActive(true);
-        },
-        onVoiceEnd: () => {
-          console.log('🤐 Voice activity ended');
-          setIsVoiceActive(false);
-        },
-        onAudioLevel: (level, isVoice) => {
-          setAudioLevel(level);
-          // Update stats with current noise floor
-          setVadStats(prev => ({
-            ...prev,
-            noiseFloor: vadRef.current?.options.noiseFloor || prev.noiseFloor
-          }));
-        }
-      });
-
-      // Initialize VAD with the stream
-      const vadInitialized = await vadRef.current.initialize(stream);
-      if (vadInitialized) {
-        vadRef.current.startAnalysis();
-        console.log('✅ Voice Activity Detector initialized');
-      } else {
-        console.warn('⚠️ Voice Activity Detector failed to initialize');
-      }
-
-      // Set up interval to process chunks every 5 seconds
-      intervalRef.current = setInterval(handleChunkInterval, 5000);
-
     } catch (err) {
-      console.error('Error accessing microphone:', err);
-      setError('Failed to access microphone. Please check permissions.');
+      console.error('Error starting recording:', err);
+      setError('Failed to start recording: ' + err.message);
     }
   };
 
-  // Process audio chunk
-  const processAudioChunk = async () => {
-    if (audioChunksRef.current.length === 0) {
-      console.log('No audio chunks to process');
-      return;
-    }
-
-    chunkCounterRef.current += 1;
-    const chunkNum = chunkCounterRef.current;
-    console.log(`🔄 Processing audio chunk #${chunkNum} with`, audioChunksRef.current.length, 'parts');
-    setCurrentChunk(chunkNum);
-    
-    // Check if chunk should be processed using VAD
-    if (vadRef.current && !vadRef.current.shouldProcessChunk()) {
-      const speechPercentage = vadRef.current.getSpeechPercentage();
-      const averageLevel = vadRef.current.getAverageAudioLevel();
-      
-      console.log(`⏭️ Skipping chunk #${chunkNum} - Speech: ${Math.round(speechPercentage * 100)}%, Level: ${averageLevel.toFixed(3)}`);
-      
-      // Update stats
-      setVadStats(prev => ({
-        ...prev,
-        chunksSkipped: prev.chunksSkipped + 1
-      }));
-      
-      // Reset VAD for next chunk
-      vadRef.current.reset();
-      
-      // Clear audio chunks without processing
-      audioChunksRef.current = [];
-      return;
-    }
-    
-    setIsProcessing(true);
-    setRecordingStatus('processing');
-    
-    // Show processing indicator (handled by recordingStatus state)
-    
+  const handleStopRecording = () => {
     try {
-      // Get the MIME type used during recording
-      const recordingMimeType = recordingMimeTypeRef.current || 'audio/webm';
-      const audioBlob = new Blob(audioChunksRef.current, { type: recordingMimeType });
-      console.log('Created blob of size:', audioBlob.size, 'type:', recordingMimeType);
-      audioChunksRef.current = [];
-
-      // Determine file extension based on MIME type
-      let filename = 'audio.webm';
-      if (recordingMimeType.includes('mpeg') || recordingMimeType.includes('mp3')) {
-        filename = 'audio.mp3';
-      } else if (recordingMimeType.includes('wav')) {
-        filename = 'audio.wav';
-      } else if (recordingMimeType.includes('ogg')) {
-        filename = 'audio.ogg';
-      } else if (recordingMimeType.includes('webm')) {
-        filename = 'audio.webm';
-      }
-
-      const formData = new FormData();
-      formData.append('audio', audioBlob, filename);
-      console.log('Sending file as:', filename);
-
-      console.log('Sending audio to backend...');
-      const response = await axios.post(`${API_BASE_URL}/api/transcribe`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      console.log('Transcription response:', response.data);
-
-      if (response.data.success && response.data.transcript.trim()) {
-        console.log(`✅ Chunk transcription successful:`, response.data.transcript);
-        setRecordingStatus('listening');
-        
-        // Update stats
-        setVadStats(prev => ({
-          ...prev,
-          chunksProcessed: prev.chunksProcessed + 1
-        }));
-        
-        // Append transcript to conversation
-        setConversation(prev => {
-          const prevText = typeof prev === 'string' ? prev : '';
-          const newText = response.data.transcript ? response.data.transcript.trim() : '';
-          if (prevText && newText) {
-            return prevText + ' ' + newText;
-          }
-          return prevText || newText || '';
-        });
-        
-        console.log(`✅ Chunk transcription completed`);
-      } else {
-        console.log(`❌ No transcript received (empty or failed)`);
-        setRecordingStatus('listening');
-      }
-      
-      // Reset VAD for next chunk
-      if (vadRef.current) {
-        vadRef.current.reset();
-      }
+      stopRecording();
     } catch (err) {
-      console.error('Error processing audio:', err);
-      
-      // Error already handled
-      setRecordingStatus(isRecording ? 'listening' : 'idle');
-      
-      // Display specific error message from server
-      if (err.response?.data?.error) {
-        setError(err.response.data.error);
-      } else if (err.message) {
-        setError(`Transcription failed: ${err.message}`);
-      } else {
-        setError('Failed to transcribe audio. Please check your connection and API key.');
-      }
-    } finally {
-      setIsProcessing(false);
+      console.error('Error stopping recording:', err);
+      setError('Error stopping recording: ' + err.message);
     }
   };
 
-  // Stop recording
-  const stopRecording = () => {
-    setIsRecording(false);
-    setRecordingStatus('idle');
-    isRecordingRef.current = false; // Reset ref
-    
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
-    }
-
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    
-    // Cleanup Voice Activity Detector
-    if (vadRef.current) {
-      vadRef.current.destroy();
-      vadRef.current = null;
-      console.log('🧹 Voice Activity Detector cleaned up');
-    }
-    
-    // Reset VAD state
-    setAudioLevel(0);
-    setIsVoiceActive(false);
+  // Clear conversation wrapper
+  const handleClearConversation = () => {
+    clearRealtimeConversation();
+    setError('');
   };
+
+
+
 
   // State for streaming mode
   const [useStreaming] = useState(true);
-  const [streamingResponse, setStreamingResponse] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
 
   // Handle Ask AI (with streaming support)
@@ -398,8 +89,8 @@ function App() {
     try {
       setError('');
       
-      const userQuestion = customPrompt || conversation;
-      console.log('handleAskAI called with:', { customPrompt, conversation, userQuestion });
+      const userQuestion = customPrompt || conversationHistory;
+      console.log('handleAskAI called with:', { customPrompt, conversationHistory, userQuestion });
       
       // Ensure userQuestion is a string and not empty
       if (!userQuestion || typeof userQuestion !== 'string' || !userQuestion.trim()) {
@@ -423,9 +114,10 @@ This is for a frontend developer with knowledge of HTML, CSS, JavaScript, TypeSc
 
 Question: ${userQuestion}`;
       
+
+
       // Clear previous response and set loading state
       setAiResponse('');
-      setStreamingResponse('');
       setIsLoadingAI(true);
       
       // Performance monitoring
@@ -475,8 +167,7 @@ Question: ${userQuestion}`;
                     }
                     fullResponse += data.content;
                     
-                    // Update both streaming state and AI response immediately for real-time display
-                    setStreamingResponse(fullResponse);
+                    // Update AI response immediately for real-time display
                     setAiResponse(fullResponse);
                     console.log('Streaming chunk received, response length:', fullResponse.length);
                     
@@ -558,7 +249,6 @@ Question: ${userQuestion}`;
       }
     } finally {
       setIsLoadingAI(false);
-      setStreamingResponse('');
       setIsStreaming(false);
     }
   };
@@ -572,46 +262,18 @@ Question: ${userQuestion}`;
     }
   };
 
-  // Clear conversation
-  const clearConversation = () => {
-    setConversation('');
-    // Note: Not clearing aiResponse - only clearing transcript
-    setError('');
-    setCurrentChunk(0);
-    chunkCounterRef.current = 0;
-    
-    // Reset VAD stats
-    setVadStats(prev => ({
-      ...prev,
-      chunksProcessed: 0,
-      chunksSkipped: 0
-    }));
+  // Handle connection error display
+  const getDisplayError = () => {
+    if (connectionError) return connectionError;
+    if (error) return error;
+    return '';
   };
-  
-  // Handle VAD sensitivity change
-  const handleSensitivityChange = (newSensitivity) => {
-    setVadStats(prev => ({
-      ...prev,
-      sensitivity: newSensitivity
-    }));
-    
-    // Update thresholds based on sensitivity
-    const thresholds = {
-      'low': { voiceThreshold: 0.015, noiseFloor: 0.008 },
-      'medium': { voiceThreshold: 0.025, noiseFloor: 0.012 },
-      'high': { voiceThreshold: 0.03, noiseFloor: 0.015 },
-      'very-high': { voiceThreshold: 0.04, noiseFloor: 0.02 }
-    };
-    
-    const newThresholds = thresholds[newSensitivity];
-    if (newThresholds) {
-      setVadStats(prev => ({
-        ...prev,
-        ...newThresholds
-      }));
-    }
-    
-    console.log(`VAD sensitivity changed to: ${newSensitivity}`);
+
+  // Get recording status for display
+  const getRecordingStatus = () => {
+    if (!isConnected) return 'disconnected';
+    if (isRecording) return 'recording';
+    return 'ready';
   };
 
   // Initialize BroadcastChannel on mount
@@ -637,44 +299,47 @@ Question: ${userQuestion}`;
     };
   }, []);
 
+  // Handle realtime connection errors
+  useEffect(() => {
+    if (connectionError) {
+      setError(connectionError);
+    }
+  }, [connectionError]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      stopRecording();
+      disconnectRealtime();
     };
-  }, []);
+  }, [disconnectRealtime]);
 
   return (
     <div className="app">
       <div className="main-content">
         <TranscriptPanel 
-          conversation={conversation}
+          conversation={conversationHistory}
+          partialTranscript={partialTranscript}
+          messageCount={messageCount}
           autoScroll={autoScroll}
           isProcessing={isProcessing}
           onAskAI={handleAskAI}
           // Header content props
           isRecording={isRecording}
-          onStartRecording={startRecording}
-          onStopRecording={stopRecording}
-          onClearConversation={clearConversation}
+          onStartRecording={handleStartRecording}
+          onStopRecording={handleStopRecording}
+          onClearConversation={handleClearConversation}
           onToggleAutoScroll={() => setAutoScroll(!autoScroll)}
-          recordingStatus={recordingStatus}
-          chunkCounterRef={chunkCounterRef}
+          recordingStatus={getRecordingStatus()}
+          isConnected={isConnected}
           // Text input props
           textInput={textInput}
           onTextInputChange={(e) => setTextInput(e.target.value)}
           onTextSubmit={handleTextSubmit}
           isLoadingAI={isLoadingAI}
-          error={error}
-          // VAD props
-          audioLevel={audioLevel}
-          isVoiceActive={isVoiceActive}
-          vadStats={vadStats}
-          // Microphone props
+          error={getDisplayError()}
+          // Microphone props (for compatibility)
           selectedMicrophone={selectedMicrophone}
           onMicrophoneSelect={setSelectedMicrophone}
-          // VAD sensitivity
-          onSensitivityChange={handleSensitivityChange}
         />
         <ResponsePanel 
           response={aiResponse}

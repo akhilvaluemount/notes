@@ -5,14 +5,17 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "realtime": "node realtime-server.js",
+    "realtime-dev": "nodemon realtime-server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.1",
     "express": "^4.18.2",
     "multer": "^1.4.5-lts.1",
-    "openai": "^4.28.0"
+    "openai": "^4.28.0",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "nodemon": "^3.0.3"
