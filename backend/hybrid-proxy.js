@@ -152,6 +152,7 @@ class AssemblyAIRealtimeProxy {
         rt.on('open', () => {
           console.log(`🤖 Connected to AssemblyAI for client ${clientId}`);
           connectionEstablished = true;
+          clearTimeout(timeout);
           
           clientWs.send(JSON.stringify({
             type: 'session.created',
@@ -163,8 +164,30 @@ class AssemblyAIRealtimeProxy {
           resolve(rt);
         });
 
-        rt.on('transcript', (transcript) => {
-          this.handleAssemblyAITranscript(clientWs, transcript);
+        rt.on('turn', (turn) => {
+          if (turn.transcript && turn.transcript.trim()) {
+            if (turn.end_of_turn) {
+              // Final transcript
+              this.handleAssemblyAITranscript(clientWs, { 
+                message_type: 'FinalTranscript', 
+                text: turn.transcript 
+              });
+            } else {
+              // Partial transcript
+              this.handleAssemblyAITranscript(clientWs, { 
+                message_type: 'PartialTranscript', 
+                text: turn.transcript 
+              });
+            }
+          }
+        });
+
+        rt.on('begin', (event) => {
+          console.log(`🚀 AssemblyAI session begins for client ${clientId}`);
+        });
+
+        rt.on('termination', (event) => {
+          console.log(`🔚 AssemblyAI session terminated for client ${clientId}`);
         });
 
         rt.on('error', (error) => {
@@ -186,10 +209,6 @@ class AssemblyAIRealtimeProxy {
           }
         }, 10000);
 
-        rt.on('open', () => {
-          clearTimeout(timeout);
-        });
-
         rt.connect().then(() => {
           console.log(`🤖 AssemblyAI streaming connected for client ${clientId}`);
         }).catch(error => {
@@ -207,8 +226,6 @@ class AssemblyAIRealtimeProxy {
   // Handle AssemblyAI transcripts
   handleAssemblyAITranscript(clientWs, transcript) {
     if (transcript.message_type === 'PartialTranscript') {
-      console.log(`📝 Partial transcript: "${transcript.text}"`);
-      
       const message = {
         type: 'conversation.item.input_audio_transcription.delta',
         delta: transcript.text || ''
@@ -223,8 +240,6 @@ class AssemblyAIRealtimeProxy {
       clientWs.send(JSON.stringify(customMessage));
       
     } else if (transcript.message_type === 'FinalTranscript') {
-      console.log(`✅ Final transcript: "${transcript.text}"`);
-      
       const message = {
         type: 'conversation.item.input_audio_transcription.completed',
         transcript: transcript.text || ''

@@ -30,10 +30,8 @@ class AudioStreamProcessor {
 
   // Initialize audio processing
   async initialize(constraints = { audio: true }) {
-    console.log('🎤 AudioStreamProcessor: Starting initialization...');
     try {
       // Get user media
-      console.log('🎤 AudioStreamProcessor: Requesting microphone access...');
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
         audio: {
           sampleRate: this.sampleRate,
@@ -44,26 +42,15 @@ class AudioStreamProcessor {
           ...constraints.audio
         }
       });
-      console.log('✅ AudioStreamProcessor: Microphone access granted');
-      console.log('🎤 AudioStreamProcessor: Audio tracks:', this.mediaStream.getAudioTracks().length);
 
       // Create audio context
-      console.log('🎤 AudioStreamProcessor: Creating audio context...');
       this.audioContext = new (window.AudioContext || window.webkitAudioContext)({
         sampleRate: this.sampleRate
       });
-      console.log('✅ AudioStreamProcessor: Audio context created, state:', this.audioContext.state);
-      console.log('🎤 AudioStreamProcessor: Sample rate:', this.audioContext.sampleRate);
 
-      console.log('✅ AudioStreamProcessor: Initialization completed successfully');
       return true;
     } catch (error) {
-      console.error('❌ AudioStreamProcessor: Failed to initialize audio:', error);
-      console.error('❌ AudioStreamProcessor: Error details:', {
-        name: error.name,
-        message: error.message,
-        constraint: error.constraint
-      });
+      console.error('❌ AudioStreamProcessor: Failed to initialize audio:', error.message);
       if (this.onError) this.onError(error);
       return false;
     }
@@ -71,39 +58,26 @@ class AudioStreamProcessor {
 
   // Start continuous audio streaming
   async startStreaming() {
-    console.log('🎤 AudioStreamProcessor: Starting audio streaming...');
     if (!this.audioContext || !this.mediaStream) {
       const error = new Error('Audio not initialized. Call initialize() first.');
-      console.error('❌ AudioStreamProcessor:', error.message);
       throw error;
     }
 
     try {
       // Resume audio context if suspended
       if (this.audioContext.state === 'suspended') {
-        console.log('🎤 AudioStreamProcessor: Resuming suspended audio context...');
         await this.audioContext.resume();
-        console.log('✅ AudioStreamProcessor: Audio context resumed, state:', this.audioContext.state);
       }
 
       // Create media stream source
-      console.log('🎤 AudioStreamProcessor: Creating media stream source...');
       const source = this.audioContext.createMediaStreamSource(this.mediaStream);
-      console.log('✅ AudioStreamProcessor: Media stream source created');
       
       // Create script processor for audio data - optimized buffer size
       const bufferSize = 4096; // Balanced buffer size for better real-time performance
-      console.log('🎤 AudioStreamProcessor: Creating script processor with buffer size:', bufferSize);
       this.processor = this.audioContext.createScriptProcessor(bufferSize, 1, 1);
       
-      let audioProcessCount = 0;
       this.processor.onaudioprocess = (event) => {
         if (this.isRecording) {
-          audioProcessCount++;
-          if (audioProcessCount % 100 === 1) { // Log every 100th process call to avoid spam
-            console.log('🎤 AudioStreamProcessor: Processing audio chunk', audioProcessCount);
-          }
-          
           const inputBuffer = event.inputBuffer;
           const audioData = inputBuffer.getChannelData(0); // Get mono channel
           
@@ -116,32 +90,18 @@ class AudioStreamProcessor {
             
             // Add to buffer for optimized chunking
             this.addToChunkBuffer(pcm16Data);
-          } else if (audioProcessCount % 100 === 1) {
-            console.log('🎤 AudioStreamProcessor: Audio chunk skipped (VAD:', shouldStream, ', hasCallback:', !!this.onAudioData, ')');
           }
         }
       };
 
       // Connect audio nodes
-      console.log('🎤 AudioStreamProcessor: Connecting audio nodes...');
       source.connect(this.processor);
       this.processor.connect(this.audioContext.destination);
-      console.log('✅ AudioStreamProcessor: Audio nodes connected successfully');
 
       this.isRecording = true;
-      console.log('✅ AudioStreamProcessor: Started streaming successfully');
-      console.log('🎤 AudioStreamProcessor: VAD enabled:', this.vadEnabled);
-      console.log('🎤 AudioStreamProcessor: Audio callback set:', !!this.onAudioData);
-      
       return true;
     } catch (error) {
-      console.error('❌ AudioStreamProcessor: Failed to start streaming:', error);
-      console.error('❌ AudioStreamProcessor: Error details:', {
-        name: error.name,
-        message: error.message,
-        audioContextState: this.audioContext?.state,
-        hasMediaStream: !!this.mediaStream
-      });
+      console.error('❌ AudioStreamProcessor: Failed to start streaming:', error.message);
       if (this.onError) this.onError(error);
       return false;
     }
@@ -227,7 +187,6 @@ class AudioStreamProcessor {
     
     const currentTime = Date.now();
     if (currentTime - this.lastChunkSent >= this.maxBufferDuration) {
-      console.log('🎤 AudioStreamProcessor: Flushing buffer after', currentTime - this.lastChunkSent, 'ms');
       this.flushChunkBuffer();
     }
   }
@@ -249,7 +208,6 @@ class AudioStreamProcessor {
     // Send the combined chunk
     if (this.onAudioData) {
       this.onAudioData(combinedBuffer.buffer);
-      console.log(`📤 Backend API: Sent ${totalLength} bytes audio to AssemblyAI Realtime (${this.chunkBuffer.length} chunks)`);
     }
     
     // Clear buffer and update timing
@@ -273,7 +231,6 @@ class AudioStreamProcessor {
 
   // Set callback for audio data
   setAudioDataCallback(callback) {
-    console.log('🎤 AudioStreamProcessor: Setting audio data callback:', !!callback);
     this.onAudioData = callback;
   }
 
@@ -310,15 +267,7 @@ class AudioStreamProcessor {
   static isSupported() {
     const hasAudioContext = !!(window.AudioContext || window.webkitAudioContext);
     const hasGetUserMedia = !!navigator.mediaDevices?.getUserMedia;
-    const isSupported = hasAudioContext && hasGetUserMedia;
-    
-    console.log('🎤 AudioStreamProcessor: Browser support check:', {
-      hasAudioContext,
-      hasGetUserMedia,
-      isSupported
-    });
-    
-    return isSupported;
+    return hasAudioContext && hasGetUserMedia;
   }
 }
 

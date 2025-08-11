@@ -25,7 +25,7 @@ const useRealtimeTranscription = () => {
   const maxReconnectAttempts = 5;
 
   // WebSocket URL - connects to our proxy server
-  const WEBSOCKET_URL = process.env.REACT_APP_REALTIME_WS_URL || 'ws://localhost:5002';
+  const WEBSOCKET_URL = 'ws://localhost:5002';
 
   // Initialize WebSocket connection (temporary mock for testing)
   const connectWebSocket = useCallback(() => {
@@ -134,7 +134,6 @@ const useRealtimeTranscription = () => {
   // Initialize audio processor
   const initializeAudio = useCallback(async () => {
     if (audioProcessorRef.current) {
-      console.log('🎤 Audio processor already initialized');
       return true;
     }
 
@@ -152,9 +151,6 @@ const useRealtimeTranscription = () => {
         // Send audio data to WebSocket
         if (wsRef.current?.readyState === WebSocket.OPEN) {
           wsRef.current.send(pcm16Data);
-          console.log('📤 useRealtimeTranscription: Sent', pcm16Data.byteLength, 'bytes of audio data to WebSocket');
-        } else {
-          console.warn('⚠️ useRealtimeTranscription: WebSocket not ready, dropping audio data. State:', wsRef.current?.readyState);
         }
       });
 
@@ -170,10 +166,9 @@ const useRealtimeTranscription = () => {
         throw new Error('Failed to initialize audio processor');
       }
 
-      console.log('🎤 Audio processor initialized successfully');
       return true;
     } catch (error) {
-      console.error('❌ Failed to initialize audio:', error);
+      console.error('❌ Failed to initialize audio:', error.message);
       setConnectionError('Failed to access microphone: ' + error.message);
       return false;
     }
@@ -181,42 +176,33 @@ const useRealtimeTranscription = () => {
 
   // Start recording (REAL audio implementation)
   const startRecording = useCallback(async () => {
-    console.log('🎤 Starting REAL audio recording...');
     try {
       setConnectionError(null);
 
       // Connect to WebSocket proxy
       if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-        console.log('🌐 Connecting to AssemblyAI proxy...');
-        
         // Connect to our proxy server
         const ws = new WebSocket(WEBSOCKET_URL);
         
         ws.onopen = () => {
-          console.log('✅ Connected to AssemblyAI proxy');
           setIsConnected(true);
         };
         
         ws.onmessage = (event) => {
           try {
             const message = JSON.parse(event.data);
-            console.log('📥 Received message:', message.type);
             
             // Handle custom transcription messages from proxy
             if (message.type === 'custom_transcription_partial') {
-              console.log('📝 Partial:', message.text);
               setPartialTranscript(message.text);
             } else if (message.type === 'custom_transcription_final') {
-              console.log('✅ Final transcript:', message.text);
               // Only update conversation history if it's different from the last final transcript
               setConversationHistory(prev => {
                 // If this is a new final transcript (different from previous)
                 if (message.text && message.text.trim() !== prev?.trim()) {
-                  console.log('📊 New final transcript, updating conversation');
                   const newHistory = message.text;
                   return newHistory;
                 } else {
-                  console.log('📊 Same transcript, not updating');
                   return prev;
                 }
               });
@@ -225,7 +211,7 @@ const useRealtimeTranscription = () => {
               setMessageCount(prev => prev + 1);
             }
           } catch (e) {
-            console.log('📤 Sending audio data to proxy');
+            // Handle binary audio data - no logging needed
           }
         };
         
@@ -235,7 +221,6 @@ const useRealtimeTranscription = () => {
         };
         
         ws.onclose = () => {
-          console.log('🔌 WebSocket closed');
           setIsConnected(false);
         };
         
@@ -244,7 +229,6 @@ const useRealtimeTranscription = () => {
 
       // Initialize real audio recording
       if (!audioProcessorRef.current) {
-        console.log('🎤 Initializing audio processor...');
         const audioSuccess = await initializeAudio();
         if (!audioSuccess) {
           throw new Error('Failed to initialize audio');
@@ -252,18 +236,15 @@ const useRealtimeTranscription = () => {
       }
 
       // Start real audio streaming
-      console.log('🎤 Starting audio stream...');
       const streamStarted = await audioProcessorRef.current.startStreaming();
       if (!streamStarted) {
         throw new Error('Failed to start audio stream');
       }
 
       setIsRecording(true);
-      console.log('✅ Real audio recording started');
-      
       return true;
     } catch (error) {
-      console.error('❌ Failed to start recording:', error);
+      console.error('❌ Failed to start recording:', error.message);
       setConnectionError('Failed to start recording: ' + error.message);
       return false;
     }
@@ -271,12 +252,9 @@ const useRealtimeTranscription = () => {
 
   // Stop recording (REAL audio)
   const stopRecording = useCallback(() => {
-    console.log('🎤 Stopping recording');
-    
     // Stop audio streaming
     if (audioProcessorRef.current) {
       audioProcessorRef.current.stopStreaming();
-      console.log('🔇 Audio streaming stopped');
     }
     
     setIsRecording(false);
@@ -288,7 +266,6 @@ const useRealtimeTranscription = () => {
     setConversationHistory('');
     setFinalTranscript('');
     setPartialTranscript('');
-    console.log('🧹 Cleared conversation history');
   }, []);
 
   // Disconnect WebSocket
@@ -311,7 +288,6 @@ const useRealtimeTranscription = () => {
     setIsConnected(false);
     setIsRecording(false);
     setPartialTranscript('');
-    console.log('🔌 Disconnected from AssemblyAI Real-time API');
   }, []);
 
   // Cleanup on unmount
