@@ -25,9 +25,9 @@ class AudioStreamProcessor {
     this.isStreamingAudio = false;
     this.audioStreamingMode = 'idle'; // 'idle', 'speech', 'keep_alive'
     
-    // Audio optimization settings
+    // Audio optimization settings for throttle management
     this.chunkBuffer = [];
-    this.maxBufferDuration = 250; // ms - send chunks every 250ms to stay under 1000ms limit
+    this.maxBufferDuration = 500; // ms - send chunks every 500ms to stay under throttle limit
     this.lastChunkSent = 0;
   }
 

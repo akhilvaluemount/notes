@@ -60,14 +60,71 @@ const TranscriptPanel = ({
       {/* Header Section */}
       <div className="transcript-header">
         <div className="header-title-row">
-          <h1>Voice Transcription App</h1>
-          <button 
-            className={`settings-btn ${showSettings ? 'active' : ''}`}
-            onClick={() => setShowSettings(!showSettings)}
-            title="Settings"
-          >
-            ⚙️
-          </button>
+          <h1>MOKITA</h1>
+          <div className="header-controls">
+            {/* All control icons in header */}
+            <AudioRecorder
+              isRecording={isRecording}
+              onStart={onStartRecording}
+              onStop={onStopRecording}
+              isProcessing={isProcessing}
+            />
+            <button 
+              onClick={onToggleAutoScroll} 
+              className={`btn-icon ${autoScroll ? 'btn-icon-active' : 'btn-icon-inactive'}`}
+              title={`Auto-Scroll: ${autoScroll ? 'ON' : 'OFF'}`}
+            >
+              {autoScroll ? '⬇️' : '⏸️'}
+            </button>
+            
+            {/* Status indicators */}
+            <div className="header-status-icons">
+              {/* Recording Status */}
+              <span 
+                className={`status-icon ${recordingStatus === 'disconnected' ? 'status-disconnected' : recordingStatus === 'ready' ? 'status-ready' : 'status-recording'}`}
+                title={
+                  recordingStatus === 'disconnected' ? 'Connecting to Realtime API...' :
+                  recordingStatus === 'ready' ? 'Ready to record (Realtime API)' :
+                  'Live transcription active'
+                }
+              >
+                {recordingStatus === 'disconnected' && '🔗'}
+                {recordingStatus === 'ready' && '✅'}
+                {recordingStatus === 'recording' && '🔴'}
+              </span>
+
+              {/* Connection Status */}
+              <span 
+                className={`status-icon connection-${connectionState}`}
+                title={
+                  connectionState === 'connected' ? 'Connected & Streaming' :
+                  connectionState === 'silence_detected' ? 'Silence - Keep-alive chunks active' :
+                  connectionState === 'disconnected' ? 'Disconnected' :
+                  'Reconnecting...'
+                }
+              >
+                {connectionState === 'connected' && '🌐'}
+                {connectionState === 'silence_detected' && '⏸️'}
+                {connectionState === 'disconnected' && '❌'}
+                {connectionState === 'reconnecting' && '🔄'}
+              </span>
+
+              {/* Processing Indicator */}
+              {isProcessing && (
+                <span className="status-icon status-processing" title="Processing audio data">
+                  ⚡
+                </span>
+              )}
+            </div>
+            
+            <button 
+              className={`settings-btn ${showSettings ? 'active' : ''}`}
+              onClick={() => setShowSettings(!showSettings)}
+              title="Settings"
+            >
+              ⚙️
+            </button>
+          </div>
         </div>
         
         {/* Settings Panel - Toggleable */}
@@ -101,51 +158,6 @@ const TranscriptPanel = ({
           </div>
         )}
         
-        <div className="controls">
-          <AudioRecorder
-            isRecording={isRecording}
-            onStart={onStartRecording}
-            onStop={onStopRecording}
-            isProcessing={isProcessing}
-          />
-          <button 
-            onClick={onToggleAutoScroll} 
-            className={`btn ${autoScroll ? 'btn-primary' : 'btn-secondary'}`}
-          >
-            Auto-Scroll: {autoScroll ? 'ON' : 'OFF'}
-          </button>
-        </div>
-        
-        {/* Live Status Indicator */}
-        <div className="status-bar">
-          <div className="status-indicator">
-            {recordingStatus === 'disconnected' && (
-              <span className="disconnected">🔴 Connecting to Realtime API...</span>
-            )}
-            {recordingStatus === 'ready' && (
-              <span className="ready">🟢 Ready to record (Realtime API)</span>
-            )}
-            {recordingStatus === 'recording' && (
-              <span className="recording">🔴 Live transcription active</span>
-            )}
-          </div>
-          
-          {/* Show detailed connection status */}
-          <div className="connection-status">
-            <span className={`connection-indicator ${connectionState}`}>
-              {connectionState === 'connected' && '🟢 Connected & Streaming'}
-              {connectionState === 'silence_detected' && '🟡 Silence - Keep-alive chunks active'}
-              {connectionState === 'disconnected' && '🔴 Disconnected'}
-              {connectionState === 'reconnecting' && '🔄 Reconnecting...'}
-            </span>
-          </div>
-          
-          {isProcessing && (
-            <div className="processing-dots">
-              <span>●</span><span>●</span><span>●</span>
-            </div>
-          )}
-        </div>
         
         {/* Text Input Section */}
         <div className="text-input-section">
@@ -177,17 +189,18 @@ const TranscriptPanel = ({
         <div className="transcript-header-buttons">
           <button 
             onClick={onCreateNewMessage}
-            className="btn btn-secondary"
+            className="btn-icon btn-icon-secondary"
             disabled={!isRecording || !messageHistory.length}
             title="Start a new message block"
           >
-            📝 New Message
+            ➕
           </button>
           <button 
             onClick={onClearConversation} 
-            className="btn btn-clear"
+            className="btn-icon btn-icon-danger"
+            title="Clear all messages"
           >
-            Clear All
+            🧹
           </button>
         </div>
       </div>

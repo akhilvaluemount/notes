@@ -113,41 +113,62 @@ const useRealtimeTranscription = () => {
     // Only disconnect when user explicitly stops recording
   }, []);
 
-  // Initialize WebSocket connection (temporary mock for testing)
+  // Initialize WebSocket connection to proxy server
   const connectWebSocket = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       return Promise.resolve();
     }
 
     return new Promise((resolve, reject) => {
-      console.log('🚀 Mock Session: Creating mock connection for testing...');
+      console.log('🚀 Connecting to AssemblyAI proxy server...');
       
-      // Create a mock WebSocket for testing purposes
-      const mockWs = {
-        readyState: 1, // OPEN
-        send: (data) => console.log('📤 Mock: Would send audio data:', data.byteLength, 'bytes'),
-        close: () => console.log('🔌 Mock: Connection closed'),
-        onopen: null,
-        onmessage: null,
-        onclose: null,
-        onerror: null
-      };
-      
-      wsRef.current = mockWs;
+      try {
+        const ws = new WebSocket(WEBSOCKET_URL);
+        
+        const timeout = setTimeout(() => {
+          reject(new Error('WebSocket connection timeout'));
+        }, 10000);
 
-      // Mock immediate connection success
-      setTimeout(() => {
-        console.log('✅ Mock Session: Connected successfully');
-        setIsConnected(true);
-        setConnectionError(null);
-        reconnectAttemptsRef.current = 0;
-        resolve();
-      }, 100);
+        ws.onopen = () => {
+          clearTimeout(timeout);
+          console.log('✅ Connected to AssemblyAI proxy server');
+          wsRef.current = ws;
+          setIsConnected(true);
+          setConnectionError(null);
+          setConnectionState('connected');
+          reconnectAttemptsRef.current = 0;
+          resolve();
+        };
 
-      // Mock handlers (not used but prevents errors)
-      mockWs.onmessage = () => {};
-      mockWs.onclose = () => setIsConnected(false);
-      mockWs.onerror = () => setConnectionError('Mock connection error');
+        ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            handleTranscriptionMessage(message);
+          } catch (e) {
+            console.error('Error parsing WebSocket message:', e);
+          }
+        };
+
+        ws.onclose = (event) => {
+          console.log('🔌 WebSocket connection closed:', event.code, event.reason);
+          setIsConnected(false);
+          if (connectionState !== 'disconnected') {
+            setConnectionState('disconnected');
+          }
+        };
+
+        ws.onerror = (error) => {
+          clearTimeout(timeout);
+          console.error('❌ WebSocket error:', error);
+          setConnectionError('Failed to connect to transcription service');
+          reject(error);
+        };
+        
+      } catch (error) {
+        console.error('❌ Failed to create WebSocket:', error);
+        setConnectionError('Failed to create WebSocket connection');
+        reject(error);
+      }
     });
   }, [WEBSOCKET_URL]);
 

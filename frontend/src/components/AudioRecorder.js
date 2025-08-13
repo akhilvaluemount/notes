@@ -7,28 +7,20 @@ const AudioRecorder = ({ isRecording, onStart, onStop, isProcessing }) => {
       {!isRecording ? (
         <button 
           onClick={onStart} 
-          className="btn btn-success"
+          className="btn-icon btn-icon-success"
           disabled={isProcessing}
+          title="Start Recording"
         >
-          Start Recording
+          🎙️
         </button>
       ) : (
-        <>
-          <button 
-            onClick={onStop} 
-            className="btn btn-danger"
-          >
-            Stop Recording
-          </button>
-          <span className="recording-indicator">
-            Recording...
-          </span>
-        </>
-      )}
-      {isProcessing && (
-        <span className="processing-indicator">
-          Processing...
-        </span>
+        <button 
+          onClick={onStop} 
+          className="btn-icon btn-icon-danger recording-pulse"
+          title="Stop Recording"
+        >
+          🛑
+        </button>
       )}
     </div>
   );
