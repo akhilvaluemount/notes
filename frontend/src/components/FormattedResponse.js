@@ -1,6 +1,53 @@
 import React from 'react';
 import './FormattedResponse.css';
 
+// Dynamic color palette for sections
+const SECTION_COLORS = [
+  { background: '#f0f9f0', bullet: '#27ae60', accent: '#2ecc71', name: 'green' },     // Light green
+  { background: '#fff8f0', bullet: '#ff9800', accent: '#f39c12', name: 'orange' },    // Light orange  
+  { background: '#f0f8ff', bullet: '#2196f3', accent: '#3498db', name: 'blue' },      // Light blue
+  { background: '#fdf0f5', bullet: '#e91e63', accent: '#e74c3c', name: 'pink' },      // Light pink
+  { background: '#f5f3ff', bullet: '#7c3aed', accent: '#9b59b6', name: 'purple' },    // Light purple
+  { background: '#f0fdf4', bullet: '#16a34a', accent: '#27ae60', name: 'emerald' },   // Light emerald
+  { background: '#ecfeff', bullet: '#06b6d4', accent: '#17a2b8', name: 'cyan' },      // Light cyan
+  { background: '#fffbeb', bullet: '#f59e0b', accent: '#f39c12', name: 'amber' },     // Light amber
+  { background: '#fef2f2', bullet: '#ef4444', accent: '#e74c3c', name: 'red' },       // Light red
+  { background: '#eef2ff', bullet: '#6366f1', accent: '#6c5ce7', name: 'indigo' },    // Light indigo
+  { background: '#faf5ff', bullet: '#8b5cf6', accent: '#9b59b6', name: 'violet' },    // Light violet
+  { background: '#f9fafb', bullet: '#4b5563', accent: '#6b7280', name: 'gray' }       // Light gray
+];
+
+// Default icons for common section types
+const SECTION_ICONS = {
+  'definition': '📖',
+  'explanation': '💡',
+  'examples': '📌', 
+  'key points': '🔑',
+  'keypoints': '🔑',
+  'overview': '📚',
+  'introduction': '📚',
+  'solution': '✅',
+  'answer': '✅',
+  'implementation': '💻',
+  'code': '💻',
+  'coding': '💻',
+  'best practices': '🎯',
+  'comparison': '📊',
+  'analysis': '📊',
+  'warning': '⚠️',
+  'caution': '⚠️',
+  'important': '⚠️',
+  'note': '⚠️',
+  'tips': '💡',
+  'hints': '💡',
+  'advice': '💡',
+  'details': '🔍',
+  'deep dive': '🔍',
+  'conclusion': '📝',
+  'summary': '📝',
+  'default': '📄'
+};
+
 const FormattedResponse = ({ response }) => {
   console.log('FormattedResponse received response:', response);
   console.log('Response type:', typeof response);
@@ -10,7 +57,7 @@ const FormattedResponse = ({ response }) => {
   if (!response || !response.trim()) {
     console.log('Response is empty or just whitespace');
     return (
-      <div className="formatted-response">
+      <div className="formatted-response ai-response-content">
         <div className="empty-state">No response received</div>
       </div>
     );
@@ -56,21 +103,47 @@ const FormattedResponse = ({ response }) => {
     }).flat();
   };
 
-  // Parse the response to extract different sections
+  // Parse the response to extract sections dynamically
   const parseResponse = (text) => {
-    const sections = {
-      definition: [],
-      explanation: [],
-      examples: [],
-      keyPoints: []
-    };
+    const dynamicSections = []; // Array of {title, content, colorIndex, icon}
 
     // Split by lines and process
     const lines = text.split('\n');
-    let currentSection = '';
+    let currentSectionIndex = -1;
     let codeBlock = false;
     let codeContent = [];
     let codeLanguage = '';
+    
+    // Helper function to get icon for section title
+    const getSectionIcon = (title) => {
+      const lowerTitle = title.toLowerCase().trim();
+      return SECTION_ICONS[lowerTitle] || SECTION_ICONS['default'];
+    };
+    
+    // Helper function to detect if line is a section header
+    const detectSectionHeader = (line) => {
+      const trimmed = line.trim();
+      
+      // ### Markdown headers
+      const markdownMatch = trimmed.match(/^###\s+(.+?)(:)?$/i);
+      if (markdownMatch) {
+        return markdownMatch[1].trim();
+      }
+      
+      // **Bold** headers  
+      const boldMatch = trimmed.match(/^\*\*(.+?)\*\*(:)?$/i);
+      if (boldMatch) {
+        return boldMatch[1].trim();
+      }
+      
+      // Plain text headers ending with colon (must be substantial text)
+      const colonMatch = trimmed.match(/^([a-zA-Z][a-zA-Z\s]{3,}):$/);
+      if (colonMatch) {
+        return colonMatch[1].trim();
+      }
+      
+      return null;
+    };
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -80,8 +153,8 @@ const FormattedResponse = ({ response }) => {
       if (trimmedLine.startsWith('```')) {
         if (codeBlock) {
           // End of code block
-          if (currentSection === 'examples') {
-            sections.examples.push({
+          if (currentSectionIndex >= 0 && codeContent.length > 0) {
+            dynamicSections[currentSectionIndex].content.push({
               type: 'code',
               content: codeContent.join('\n'),
               language: codeLanguage || 'javascript'
@@ -106,327 +179,339 @@ const FormattedResponse = ({ response }) => {
       // Skip empty lines
       if (!trimmedLine) continue;
       
-      // Detect sections based on headers (handle ### markdown, **bold** format and plain text)
-      if (trimmedLine.match(/^###\s+definition:?$/i) || 
-          trimmedLine.match(/^\*?\*?definition\*?\*?:?$/i) || 
-          trimmedLine.match(/^definition:?$/i)) {
-        currentSection = 'definition';
-        console.log('Found Definition section:', trimmedLine);
-        continue;
-      }
-      else if (trimmedLine.match(/^###\s+explanation\s+(of\s+)?concepts?:?$/i) ||
-               trimmedLine.match(/^\*?\*?explanation\s+(of\s+)?concepts?\*?\*?:?$/i) || 
-               trimmedLine.match(/^explanation\s+(of\s+)?concepts?:?$/i)) {
-        currentSection = 'explanation';
-        console.log('Found Explanation section:', trimmedLine);
-        continue;
-      }
-      else if (trimmedLine.match(/^###\s+examples?:?$/i) ||
-               trimmedLine.match(/^\*?\*?examples?\*?\*?:?$/i) || 
-               trimmedLine.match(/^examples?:?$/i)) {
-        currentSection = 'examples';
-        console.log('Found Examples section:', trimmedLine);
-        continue;
-      }
-      else if (trimmedLine.match(/^###\s+key\s+points?:?$/i) ||
-               trimmedLine.match(/^\*?\*?key\s+points?\*?\*?:?$/i) || 
-               trimmedLine.match(/^key\s+points?:?$/i)) {
-        currentSection = 'keyPoints';
-        console.log('Found Key Points section:', trimmedLine);
+      // Check if this line is a section header
+      const sectionTitle = detectSectionHeader(trimmedLine);
+      if (sectionTitle) {
+        // Create new section
+        const colorIndex = dynamicSections.length % SECTION_COLORS.length;
+        const icon = getSectionIcon(sectionTitle);
+        
+        dynamicSections.push({
+          title: sectionTitle,
+          content: [],
+          colorIndex: colorIndex,
+          icon: icon
+        });
+        
+        currentSectionIndex = dynamicSections.length - 1;
+        console.log(`Found section: "${sectionTitle}" with color index ${colorIndex}`);
         continue;
       }
       
-      // Handle content based on current section
-      if (currentSection === 'definition') {
-        sections.definition.push({ type: 'text', content: trimmedLine });
-      }
-      else if (currentSection === 'explanation') {
+      // Add content to current section if we have one
+      if (currentSectionIndex >= 0) {
+        let contentItem;
+        
         if (trimmedLine.startsWith('•') || trimmedLine.startsWith('-') || trimmedLine.startsWith('*')) {
-          // Calculate indentation level based on original line (before trim)
-          const leadingSpaces = line.length - line.trimLeft().length;
-          const indentLevel = Math.floor(leadingSpaces / 2); // Every 2 spaces = 1 indent level
-          sections.explanation.push({ 
-            type: 'bullet', 
-            content: trimmedLine.substring(1).trim(),
-            indent: indentLevel
-          });
-        } else {
-          sections.explanation.push({ type: 'text', content: trimmedLine });
-        }
-      }
-      else if (currentSection === 'examples') {
-        if (trimmedLine.startsWith('•') || trimmedLine.startsWith('-')) {
+          // Bullet points
           const leadingSpaces = line.length - line.trimLeft().length;
           const indentLevel = Math.floor(leadingSpaces / 2);
-          sections.examples.push({ 
+          contentItem = { 
             type: 'bullet', 
             content: trimmedLine.substring(1).trim(),
             indent: indentLevel
-          });
+          };
+        } else if (trimmedLine.match(/^\d+\.\s+/)) {
+          // Numbered lists
+          const content = trimmedLine.replace(/^\d+\.\s+/, '');
+          contentItem = { type: 'numbered', content: content };
         } else if (trimmedLine.match(/^[\w\s]+Example:?$/i)) {
-          sections.examples.push({ type: 'example-header', content: trimmedLine });
-        } else {
-          sections.examples.push({ type: 'text', content: trimmedLine });
-        }
-      }
-      else if (currentSection === 'keyPoints') {
-        if (trimmedLine.startsWith('•') || trimmedLine.startsWith('-')) {
-          const leadingSpaces = line.length - line.trimLeft().length;
-          const indentLevel = Math.floor(leadingSpaces / 2);
-          sections.keyPoints.push({ 
-            type: 'bullet', 
-            content: trimmedLine.substring(1).trim(),
-            indent: indentLevel
-          });
+          // Example headers
+          contentItem = { type: 'example-header', content: trimmedLine };
         } else if (trimmedLine.match(/^[\w\s]+:$/)) {
-          sections.keyPoints.push({ type: 'subheader', content: trimmedLine });
+          // Subheaders (ending with colon but not section headers)
+          contentItem = { type: 'subheader', content: trimmedLine };
         } else {
-          sections.keyPoints.push({ type: 'text', content: trimmedLine });
+          // Regular text
+          contentItem = { type: 'text', content: trimmedLine };
         }
+        
+        dynamicSections[currentSectionIndex].content.push(contentItem);
       }
     }
 
-    return sections;
+    return dynamicSections;
   };
 
-  // Try to parse the response
-  const sections = parseResponse(response);
-  
-  // Force parsing by manually extracting sections if parsing failed
-  if (sections.definition.length === 0 && sections.explanation.length === 0 && 
-      sections.examples.length === 0 && sections.keyPoints.length === 0) {
+  // Helper function to render section items dynamically
+  const renderSectionItem = (item, index, colorData) => {
+    const bulletStyle = {
+      marginLeft: `${(item.indent || 0) * 1}rem`,
+      position: 'relative',
+      paddingLeft: '1rem',
+      marginBottom: '0.1rem',
+      color: '#2c3e50'
+    };
     
-    // Manual section extraction as fallback
-    const lines = response.split('\n');
-    let currentSection = '';
-    let definitionContent = [];
-    let explanationContent = [];
-    let examplesContent = [];
-    let keyPointsContent = [];
+    const bulletBeforeStyle = {
+      content: '"•"',
+      position: 'absolute',
+      left: '0.5rem',
+      color: colorData.bullet,
+      fontWeight: 'bold'
+    };
+
+    if (item.type === 'bullet') {
+      return (
+        <div key={index} className="dynamic-bullet" style={bulletStyle}>
+          <span style={bulletBeforeStyle}>•</span>
+          {parseFormattedText(item.content)}
+        </div>
+      );
+    } else if (item.type === 'numbered') {
+      return (
+        <div key={index} className="dynamic-numbered" style={{
+          paddingLeft: '1.5rem',
+          margin: '0.1rem 0',
+          counterIncrement: 'list-counter',
+          position: 'relative'
+        }}>
+          {parseFormattedText(item.content)}
+        </div>
+      );
+    } else if (item.type === 'code') {
+      return (
+        <pre key={index} className="code-block">
+          <code className={`language-${item.language}`}>{item.content}</code>
+        </pre>
+      );
+    } else if (item.type === 'subheader') {
+      return (
+        <h4 key={index} className="dynamic-subheader" style={{
+          color: colorData.accent,
+          fontSize: '1rem',
+          fontWeight: 600,
+          margin: '0.3rem 0 0.2rem 0'
+        }}>
+          {parseFormattedText(item.content)}
+        </h4>
+      );
+    } else if (item.type === 'example-header') {
+      return (
+        <h4 key={index} className="dynamic-example-header" style={{
+          color: colorData.accent,
+          fontSize: '1rem',
+          fontWeight: 600,
+          margin: '0.3rem 0 0.2rem 0'
+        }}>
+          {parseFormattedText(item.content)}
+        </h4>
+      );
+    } else {
+      return (
+        <p key={index} className="dynamic-text" style={{
+          fontSize: '1rem',
+          color: '#2c3e50',
+          margin: '0.1rem 0',
+          lineHeight: '1.4',
+          padding: '0.1rem'
+        }}>
+          {parseFormattedText(item.content)}
+        </p>
+      );
+    }
+  };
+
+  // Helper function to render fallback content
+  const renderFallbackContent = (text) => {
+    const lines = text.split('\n');
+    const elements = [];
+    let currentParagraph = [];
     
-    for (let line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       const trimmed = line.trim();
-      if (!trimmed) continue;
       
-      // Handle ### markdown, **bold** format and plain text
-      const cleanedLine = trimmed.replace(/^###\s+|^\*\*|\*\*$/g, '').toLowerCase();
-      
-      if (cleanedLine === 'definition' || cleanedLine === 'definition:') {
-        currentSection = 'definition';
-      } else if (cleanedLine === 'explanation of concepts' || cleanedLine === 'explanation of concepts:') {
-        currentSection = 'explanation';
-      } else if (cleanedLine === 'examples' || cleanedLine === 'examples:') {
-        currentSection = 'examples';
-      } else if (cleanedLine === 'key points' || cleanedLine === 'key points:') {
-        currentSection = 'keypoints';
-      } else {
-        // Add content to current section
-        if (currentSection === 'definition') {
-          definitionContent.push(trimmed);
-        } else if (currentSection === 'explanation') {
-          if (trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('*')) {
-            const leadingSpaces = line.length - line.trimLeft().length;
-            const indentLevel = Math.floor(leadingSpaces / 2);
-            explanationContent.push({
-              type: 'bullet',
-              content: trimmed.substring(1).trim(),
-              indent: indentLevel
-            });
-          } else {
-            explanationContent.push(trimmed);
-          }
-        } else if (currentSection === 'examples') {
-          if (trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('*')) {
-            const leadingSpaces = line.length - line.trimLeft().length;
-            const indentLevel = Math.floor(leadingSpaces / 2);
-            examplesContent.push({
-              type: 'bullet',
-              content: trimmed.substring(1).trim(),
-              indent: indentLevel
-            });
-          } else {
-            examplesContent.push(trimmed);
-          }
-        } else if (currentSection === 'keypoints') {
-          if (trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('*')) {
-            const leadingSpaces = line.length - line.trimLeft().length;
-            const indentLevel = Math.floor(leadingSpaces / 2);
-            keyPointsContent.push({
-              type: 'bullet',
-              content: trimmed.substring(1).trim(),
-              indent: indentLevel
-            });
-          } else {
-            keyPointsContent.push(trimmed);
-          }
+      if (!trimmed) {
+        // Empty line - end current paragraph
+        if (currentParagraph.length > 0) {
+          elements.push(
+            <p key={`para-${elements.length}`} className="fallback-paragraph">
+              {parseFormattedText(currentParagraph.join(' '))}
+            </p>
+          );
+          currentParagraph = [];
         }
+      } else if (trimmed.match(/^[-•*]\s+/) || trimmed.startsWith('• •')) {
+        // Bullet point - handle nested bullets and clean up
+        if (currentParagraph.length > 0) {
+          elements.push(
+            <p key={`para-${elements.length}`} className="fallback-paragraph">
+              {parseFormattedText(currentParagraph.join(' '))}
+            </p>
+          );
+          currentParagraph = [];
+        }
+        
+        // Clean up the bullet content - remove multiple bullet symbols
+        let content = trimmed.replace(/^[-•*]\s+/, '').replace(/^•\s+/, '');
+        const indentLevel = (line.length - line.trimLeft().length) / 2;
+        
+        elements.push(
+          <div key={`bullet-${elements.length}`} 
+               className="fallback-bullet" 
+               style={{marginLeft: `${indentLevel * 1}rem`}}>
+            {parseFormattedText(content)}
+          </div>
+        );
+      } else if (trimmed.match(/^\d+\.\s+/)) {
+        // Numbered list
+        if (currentParagraph.length > 0) {
+          elements.push(
+            <p key={`para-${elements.length}`} className="fallback-paragraph">
+              {parseFormattedText(currentParagraph.join(' '))}
+            </p>
+          );
+          currentParagraph = [];
+        }
+        const content = trimmed.replace(/^\d+\.\s+/, '');
+        elements.push(
+          <div key={`num-${elements.length}`} className="fallback-numbered">
+            {parseFormattedText(content)}
+          </div>
+        );
+      } else if (trimmed.startsWith('```')) {
+        // Code block start/end - handle code blocks
+        const codeLines = [];
+        i++; // Move to next line
+        while (i < lines.length && !lines[i].trim().startsWith('```')) {
+          codeLines.push(lines[i]);
+          i++;
+        }
+        if (codeLines.length > 0) {
+          elements.push(
+            <pre key={`code-${elements.length}`} className="code-block">
+              <code>{codeLines.join('\n')}</code>
+            </pre>
+          );
+        }
+      } else if (trimmed.match(/^#+\s+/) || trimmed.match(/^\*\*.*\*\*:?\s*$/) || trimmed.endsWith(':')) {
+        // Headers - markdown headers, bold headers, or lines ending with colon
+        if (currentParagraph.length > 0) {
+          elements.push(
+            <p key={`para-${elements.length}`} className="fallback-paragraph">
+              {parseFormattedText(currentParagraph.join(' '))}
+            </p>
+          );
+          currentParagraph = [];
+        }
+        
+        const headerText = trimmed
+          .replace(/^#+\s+/, '')  // Remove markdown #
+          .replace(/^\*\*|\*\*$/g, '')  // Remove bold markers
+          .replace(/:$/, '');  // Remove trailing colon
+          
+        elements.push(
+          <h4 key={`header-${elements.length}`} className="fallback-header">
+            {parseFormattedText(headerText)}
+          </h4>
+        );
+      } else {
+        // Regular text - add to current paragraph
+        currentParagraph.push(trimmed);
       }
     }
     
-    // Override sections with manual parsing
-    if (definitionContent.length > 0) {
-      sections.definition = definitionContent.map(content => ({ type: 'text', content }));
+    // Add any remaining paragraph
+    if (currentParagraph.length > 0) {
+      elements.push(
+        <p key={`para-${elements.length}`} className="fallback-paragraph">
+          {parseFormattedText(currentParagraph.join(' '))}
+        </p>
+      );
     }
-    if (explanationContent.length > 0) {
-      sections.explanation = explanationContent.map(content => {
-        if (typeof content === 'object' && content.type === 'bullet') {
-          return content;
-        }
-        return { type: 'text', content };
-      });
-    }
-    if (examplesContent.length > 0) {
-      sections.examples = examplesContent.map(content => {
-        if (typeof content === 'object' && content.type === 'bullet') {
-          return content;
-        }
-        return { type: 'text', content };
-      });
-    }
-    if (keyPointsContent.length > 0) {
-      sections.keyPoints = keyPointsContent.map(content => {
-        if (typeof content === 'object' && content.type === 'bullet') {
-          return content;
-        }
-        return { type: 'text', content };
-      });
-    }
-  }
+    
+    return elements.length > 0 ? elements : (
+      <div className="fallback-raw">
+        {parseFormattedText(text)}
+      </div>
+    );
+  };
 
-  // Always render something, even if sections are empty
+  // Parse the response using dynamic section detection
+  const dynamicSections = parseResponse(response);
+
+  // Render dynamic sections or fallback content
   return (
-    <div className="formatted-response">
-      {sections.definition.length > 0 && (
-        <div className="response-section definition-section">
-          <div className="section-header">
-            <span className="section-icon">📖</span>
-            <h3>Definition</h3>
+    <div className="formatted-response ai-response-content">
+      {dynamicSections.length > 0 ? (
+        // Render all detected sections dynamically
+        dynamicSections.map((section, sectionIndex) => {
+          const colorData = SECTION_COLORS[section.colorIndex];
+          
+          return (
+            <div 
+              key={`section-${sectionIndex}`} 
+              className="response-section dynamic-section"
+              style={{
+                marginBottom: '0.75rem',
+                background: colorData.background,
+                borderRadius: '8px',
+                padding: '0.75rem',
+                position: 'relative',
+                overflow: 'hidden',
+                counterReset: 'list-counter'
+              }}
+            >
+              <div className="section-header" style={{
+                display: 'flex',
+                alignItems: 'center',
+                marginBottom: '0.3rem',
+                gap: '0.3rem',
+                paddingBottom: '0.2rem',
+                borderBottom: '1px solid rgba(0, 0, 0, 0.1)'
+              }}>
+                <span className="section-icon" style={{ fontSize: '1.2rem' }}>
+                  {section.icon}
+                </span>
+                <h3 style={{
+                  fontSize: '1.1rem',
+                  fontWeight: 600,
+                  color: '#2c3e50',
+                  margin: 0
+                }}>
+                  {section.title}
+                </h3>
+              </div>
+              
+              <div className="section-content" style={{ paddingLeft: '0.5rem' }}>
+                {section.content.map((item, itemIndex) => 
+                  renderSectionItem(item, itemIndex, colorData)
+                )}
+              </div>
+            </div>
+          );
+        })
+      ) : (
+        // Enhanced fallback for unstructured responses
+        <div className="response-section fallback-section" style={{
+          marginBottom: '0.75rem',
+          background: '#fafafa',
+          borderRadius: '8px',
+          padding: '0.75rem',
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          <div className="section-header" style={{
+            display: 'flex',
+            alignItems: 'center',
+            marginBottom: '0.3rem',
+            gap: '0.3rem',
+            paddingBottom: '0.2rem',
+            borderBottom: '1px solid rgba(0, 0, 0, 0.1)'
+          }}>
+            <span className="section-icon" style={{ fontSize: '1.2rem' }}>💬</span>
+            <h3 style={{
+              fontSize: '1.1rem',
+              fontWeight: 600,
+              color: '#2c3e50',
+              margin: 0
+            }}>
+              Response
+            </h3>
           </div>
-          <div className="definition-content">
-            {sections.definition.map((item, index) => (
-              <p key={index} className="definition-text">
-                {parseFormattedText(item.content)}
-              </p>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {sections.explanation.length > 0 && (
-        <div className="response-section explanation-section">
-          <div className="section-header">
-            <span className="section-icon">💡</span>
-            <h3>Explanation of Concepts</h3>
-          </div>
-          <div className="explanation-content">
-            {sections.explanation.map((item, index) => {
-              if (item.type === 'bullet') {
-                const indentStyle = {
-                  marginLeft: `${(item.indent || 0) * 1}rem`
-                };
-                return (
-                  <div key={index} className="explanation-bullet" style={indentStyle}>
-                    • {parseFormattedText(item.content)}
-                  </div>
-                );
-              } else {
-                return (
-                  <p key={index} className="explanation-text">
-                    {parseFormattedText(item.content)}
-                  </p>
-                );
-              }
-            })}
-          </div>
-        </div>
-      )}
-
-      {sections.examples.length > 0 && (
-        <div className="response-section examples-section">
-          <div className="section-header">
-            <span className="section-icon">📌</span>
-            <h3>Examples</h3>
-          </div>
-          <div className="examples-list">
-            {sections.examples.map((example, index) => {
-              if (example.type === 'code') {
-                return (
-                  <pre key={index} className="code-block">
-                    <code className={`language-${example.language}`}>{example.content}</code>
-                  </pre>
-                );
-              } else if (example.type === 'bullet') {
-                const indentStyle = {
-                  marginLeft: `${(example.indent || 0) * 1}rem`
-                };
-                return (
-                  <div key={index} className="example-item" style={indentStyle}>
-                    • {parseFormattedText(example.content)}
-                  </div>
-                );
-              } else if (example.type === 'example-header') {
-                return (
-                  <h4 key={index} className="example-header">
-                    {parseFormattedText(example.content)}
-                  </h4>
-                );
-              } else {
-                return (
-                  <div key={index} className="example-text">
-                    {parseFormattedText(example.content)}
-                  </div>
-                );
-              }
-            })}
-          </div>
-        </div>
-      )}
-
-      {sections.keyPoints.length > 0 && (
-        <div className="response-section keypoints-section">
-          <div className="section-header">
-            <span className="section-icon">🔑</span>
-            <h3>Key Points</h3>
-          </div>
-          <div className="keypoints-list">
-            {sections.keyPoints.map((point, index) => {
-              if (point.type === 'bullet') {
-                const indentStyle = {
-                  marginLeft: `${(point.indent || 0) * 1}rem`
-                };
-                return (
-                  <div key={index} className="keypoint-item" style={indentStyle}>
-                    • {parseFormattedText(point.content)}
-                  </div>
-                );
-              } else if (point.type === 'subheader') {
-                return (
-                  <h4 key={index} className="keypoint-subheader">
-                    {parseFormattedText(point.content)}
-                  </h4>
-                );
-              } else {
-                return (
-                  <p key={index} className="keypoint-text">
-                    {parseFormattedText(point.content)}
-                  </p>
-                );
-              }
-            })}
-          </div>
-        </div>
-      )}
-      
-      {/* If no sections found, show raw response */}
-      {sections.definition.length === 0 && sections.explanation.length === 0 && 
-       sections.examples.length === 0 && sections.keyPoints.length === 0 && (
-        <div className="response-section" style={{background: '#f8f9fa', border: '1px solid #e9ecef'}}>
-          <div className="section-header">
-            <span className="section-icon">📄</span>
-            <h3>Raw Response</h3>
-          </div>
-          <div style={{padding: '1rem', whiteSpace: 'pre-wrap', fontFamily: 'inherit'}}>
-            {response}
+          <div className="fallback-content" style={{ padding: '0.75rem', counterReset: 'list-counter' }}>
+            {renderFallbackContent(response)}
           </div>
         </div>
       )}

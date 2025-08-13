@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './TranscriptPanel.css';
 import AudioRecorder from './AudioRecorder';
-import AudioLevelMeter from './AudioLevelMeter';
 import MicrophoneSelector from './MicrophoneSelector';
-import VADSettings from './VADSettings';
+import buttonConfig from '../config/buttonConfig';
 
 const TranscriptPanel = ({ 
   conversation, 
@@ -194,13 +193,26 @@ const TranscriptPanel = ({
               </div>
             )}
             <div className="conversation-actions">
-              <button 
-                onClick={() => onAskAI()}
-                className="btn btn-primary ask-ai-btn"
-                disabled={isProcessing || (!conversation && !partialTranscript) || !(conversation?.trim() || partialTranscript?.trim())}
-              >
-                Ask AI
-              </button>
+              {buttonConfig.map((button) => {
+                const handleButtonClick = () => {
+                  const currentTranscript = conversation || partialTranscript || '';
+                  const customPrompt = button.prompt.replace('{transcript}', currentTranscript);
+                  onAskAI(customPrompt);
+                };
+
+                return (
+                  <button 
+                    key={button.id}
+                    onClick={handleButtonClick}
+                    className={`btn ${button.id === 'ask-ai' ? 'btn-primary' : 'btn-secondary'} action-btn`}
+                    disabled={isProcessing || (!conversation && !partialTranscript) || !(conversation?.trim() || partialTranscript?.trim())}
+                    title={button.description}
+                  >
+                    <span className="btn-icon">{button.icon}</span>
+                    {button.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

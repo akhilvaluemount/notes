@@ -29,18 +29,33 @@ class AudioStreamProcessor {
   }
 
   // Initialize audio processing
-  async initialize(constraints = { audio: true }) {
+  async initialize(deviceId = null, constraints = { audio: true }) {
     try {
+      // Build audio constraints
+      const audioConstraints = {
+        sampleRate: this.sampleRate,
+        channelCount: 1,
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      };
+
+      // Add specific device ID if provided
+      if (deviceId) {
+        audioConstraints.deviceId = { exact: deviceId };
+        console.log('🎤 Using specific microphone:', deviceId);
+      } else {
+        console.log('🎤 Using default microphone');
+      }
+
+      // Merge with any additional constraints
+      if (typeof constraints.audio === 'object') {
+        Object.assign(audioConstraints, constraints.audio);
+      }
+
       // Get user media
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          sampleRate: this.sampleRate,
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          ...constraints.audio
-        }
+        audio: audioConstraints
       });
 
       // Create audio context

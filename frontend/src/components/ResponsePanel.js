@@ -3,6 +3,52 @@ import './ResponsePanel.css';
 import FormattedResponse from './FormattedResponse';
 import { parseResponseWithFallback, parseFormattedText, generateFormattedHTML } from '../utils/responseParser';
 
+// Import the same color palette and icons as FormattedResponse
+const SECTION_COLORS = [
+  { background: '#f0f9f0', bullet: '#27ae60', accent: '#2ecc71', name: 'green' },     // Light green
+  { background: '#fff8f0', bullet: '#ff9800', accent: '#f39c12', name: 'orange' },    // Light orange  
+  { background: '#f0f8ff', bullet: '#2196f3', accent: '#3498db', name: 'blue' },      // Light blue
+  { background: '#fdf0f5', bullet: '#e91e63', accent: '#e74c3c', name: 'pink' },      // Light pink
+  { background: '#f5f3ff', bullet: '#7c3aed', accent: '#9b59b6', name: 'purple' },    // Light purple
+  { background: '#f0fdf4', bullet: '#16a34a', accent: '#27ae60', name: 'emerald' },   // Light emerald
+  { background: '#ecfeff', bullet: '#06b6d4', accent: '#17a2b8', name: 'cyan' },      // Light cyan
+  { background: '#fffbeb', bullet: '#f59e0b', accent: '#f39c12', name: 'amber' },     // Light amber
+  { background: '#fef2f2', bullet: '#ef4444', accent: '#e74c3c', name: 'red' },       // Light red
+  { background: '#eef2ff', bullet: '#6366f1', accent: '#6c5ce7', name: 'indigo' },    // Light indigo
+  { background: '#faf5ff', bullet: '#8b5cf6', accent: '#9b59b6', name: 'violet' },    // Light violet
+  { background: '#f9fafb', bullet: '#4b5563', accent: '#6b7280', name: 'gray' }       // Light gray
+];
+
+const SECTION_ICONS = {
+  'definition': '📖',
+  'explanation': '💡',
+  'examples': '📌', 
+  'key points': '🔑',
+  'keypoints': '🔑',
+  'overview': '📚',
+  'introduction': '📚',
+  'solution': '✅',
+  'answer': '✅',
+  'implementation': '💻',
+  'code': '💻',
+  'coding': '💻',
+  'best practices': '🎯',
+  'comparison': '📊',
+  'analysis': '📊',
+  'warning': '⚠️',
+  'caution': '⚠️',
+  'important': '⚠️',
+  'note': '⚠️',
+  'tips': '💡',
+  'hints': '💡',
+  'advice': '💡',
+  'details': '🔍',
+  'deep dive': '🔍',
+  'conclusion': '📝',
+  'summary': '📝',
+  'default': '📄'
+};
+
 const ResponsePanel = ({ response, isLoading, isStreaming = false }) => {
   
   const openInNewTab = () => {
@@ -89,23 +135,11 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false }) => {
             100% { opacity: 1; }
           }
 
-          /* Exact FormattedResponse styles */
+          /* Complete FormattedResponse.css styles */
           .formatted-response {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             color: #2c3e50;
             line-height: 1.4;
-            animation: fadeIn 0.3s ease;
-          }
-
-          @keyframes fadeIn {
-            from {
-              opacity: 0;
-              transform: translateY(10px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
           }
 
           .response-section {
@@ -147,6 +181,156 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false }) => {
           }
 
           .definition-text {
+            font-size: 1rem;
+            color: #2c3e50;
+            margin: 0.1rem 0;
+            line-height: 1.4;
+            padding: 0.1rem;
+          }
+
+          /* Explanation Section */
+          .explanation-section {
+            background: #fff8f0;
+          }
+
+          .explanation-content {
+            padding-left: 0.5rem;
+          }
+
+          .explanation-bullet {
+            padding: 0.1rem 0 0.1rem 1rem;
+            margin-bottom: 0.1rem;
+            color: #2c3e50;
+            position: relative;
+          }
+
+          .explanation-bullet::before {
+            content: "•";
+            position: absolute;
+            left: 0.5rem;
+            color: #ff9800;
+            font-weight: bold;
+          }
+
+          /* Nested bullet adjustments */
+          .explanation-bullet,
+          .example-item,
+          .keypoint-item {
+            position: relative;
+          }
+
+          /* Adjust bullet positioning for nested items */
+          .explanation-bullet::before,
+          .example-item::before,
+          .keypoint-item::before {
+            left: 0.3rem;
+          }
+
+          .explanation-text {
+            margin: 0.1rem 0;
+            color: #2c3e50;
+            line-height: 1.4;
+          }
+
+          .answer-content {
+            padding-left: 1rem;
+          }
+
+          .answer-bullet {
+            position: relative;
+            padding-left: 1.5rem;
+            margin-bottom: 0.75rem;
+            color: #2c3e50;
+          }
+
+          .answer-bullet::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #3498db;
+            font-weight: bold;
+          }
+
+          .answer-text {
+            margin: 0.5rem 0;
+            padding-left: 1rem;
+          }
+
+          .answer-numbered {
+            margin-bottom: 0.5rem;
+            color: #2c3e50;
+            padding-left: 1rem;
+          }
+
+          /* Examples Section */
+          .examples-section {
+            background: #f0f8ff;
+          }
+
+          .examples-list {
+            margin: 0.2rem 0 0 0;
+          }
+
+          .example-item {
+            position: relative;
+            padding: 0.1rem 0 0.1rem 1rem;
+            margin-bottom: 0.1rem;
+            color: #2c3e50;
+          }
+
+          .example-item::before {
+            content: "•";
+            position: absolute;
+            left: 0.5rem;
+            color: #2196f3;
+            font-weight: bold;
+          }
+
+          .example-text {
+            margin: 0.1rem 0;
+            color: #4a5568;
+            line-height: 1.4;
+          }
+
+          .example-header {
+            color: #1976d2;
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 0.3rem 0 0.2rem 0;
+          }
+
+          /* Key Points Section */
+          .keypoints-section {
+            background: #fdf0f5;
+          }
+
+          .keypoints-list {
+            margin: 0.2rem 0 0 0;
+          }
+
+          .keypoint-item {
+            position: relative;
+            padding: 0.1rem 0 0.1rem 1rem;
+            margin-bottom: 0.1rem;
+            color: #2c3e50;
+          }
+
+          .keypoint-item::before {
+            content: "•";
+            position: absolute;
+            left: 0.5rem;
+            color: #e91e63;
+            font-weight: bold;
+          }
+
+          .keypoint-subheader {
+            color: #c2185b;
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 0.3rem 0 0.2rem 0;
+          }
+
+          .keypoint-text {
             font-size: 1rem;
             color: #2c3e50;
             margin: 0.1rem 0;
@@ -308,6 +492,73 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false }) => {
             color: #3498db;
             font-weight: 500;
           }
+
+          /* Fallback Section for Unstructured Content */
+          .fallback-section {
+            background: #fafafa; /* Very light gray */
+          }
+
+          .fallback-content {
+            padding: 0.75rem;
+            counter-reset: list-counter;
+          }
+
+          .fallback-paragraph {
+            margin: 0.75rem 0;
+            line-height: 1.6;
+            color: #2c3e50;
+            font-size: 1rem;
+          }
+
+          .fallback-bullet {
+            position: relative;
+            padding-left: 1.5rem;
+            margin: 0.5rem 0;
+            line-height: 1.6;
+            color: #2c3e50;
+          }
+
+          .fallback-bullet::before {
+            content: "•";
+            position: absolute;
+            left: 0.5rem;
+            color: #3b82f6; /* Blue */
+            font-weight: bold;
+          }
+
+          .fallback-numbered {
+            padding-left: 1.5rem;
+            margin: 0.5rem 0;
+            line-height: 1.6;
+            color: #2c3e50;
+            counter-increment: list-counter;
+            position: relative;
+          }
+
+          .fallback-numbered::before {
+            content: counter(list-counter) ".";
+            position: absolute;
+            left: 0;
+            color: #3b82f6;
+            font-weight: bold;
+          }
+
+          .fallback-raw {
+            padding: 0.75rem;
+            white-space: pre-wrap;
+            font-family: inherit;
+            line-height: 1.6;
+            color: #2c3e50;
+          }
+
+          .fallback-header {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin: 1rem 0 0.5rem 0;
+            padding-bottom: 0.25rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+          }
         </style>
       </head>
       <body>
@@ -468,17 +719,17 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false }) => {
       `;
     }
 
-    // If no sections found, show raw response
+    // If no sections found, use fallback content rendering
     if (sections.definition.length === 0 && sections.explanation.length === 0 && 
        sections.examples.length === 0 && sections.keyPoints.length === 0) {
       html += `
-        <div class="response-section" style="background: #f8f9fa; border: 1px solid #e9ecef;">
+        <div class="response-section fallback-section">
           <div class="section-header">
-            <span class="section-icon">📄</span>
-            <h3>Raw Response</h3>
+            <span class="section-icon">💬</span>
+            <h3>Response</h3>
           </div>
-          <div style="padding: 1rem; white-space: pre-wrap; font-family: inherit;">
-            ${response}
+          <div class="fallback-content">
+            ${renderFallbackContentHTML(response)}
           </div>
         </div>
       `;
@@ -486,6 +737,81 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false }) => {
 
     html += '</div>';
     return html;
+  };
+
+  const renderFallbackContentHTML = (text) => {
+    if (!text) return '';
+    
+    const lines = text.split('\n');
+    let html = '';
+    let currentParagraph = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+      
+      if (!trimmed) {
+        // Empty line - end current paragraph
+        if (currentParagraph.length > 0) {
+          html += `<p class="fallback-paragraph">${generateFormattedHTML(parseFormattedText(currentParagraph.join(' ')))}</p>`;
+          currentParagraph = [];
+        }
+      } else if (trimmed.match(/^[-•*]\\s+/) || trimmed.startsWith('• •')) {
+        // Bullet point - handle nested bullets and clean up
+        if (currentParagraph.length > 0) {
+          html += `<p class="fallback-paragraph">${generateFormattedHTML(parseFormattedText(currentParagraph.join(' ')))}</p>`;
+          currentParagraph = [];
+        }
+        
+        // Clean up the bullet content - remove multiple bullet symbols
+        let content = trimmed.replace(/^[-•*]\\s+/, '').replace(/^•\\s+/, '');
+        const indentLevel = (line.length - line.trimLeft().length) / 2;
+        
+        html += `<div class="fallback-bullet" style="margin-left: ${indentLevel * 1}rem;">${generateFormattedHTML(parseFormattedText(content))}</div>`;
+      } else if (trimmed.match(/^\\d+\\.\\s+/)) {
+        // Numbered list
+        if (currentParagraph.length > 0) {
+          html += `<p class="fallback-paragraph">${generateFormattedHTML(parseFormattedText(currentParagraph.join(' ')))}</p>`;
+          currentParagraph = [];
+        }
+        const content = trimmed.replace(/^\\d+\\.\\s+/, '');
+        html += `<div class="fallback-numbered">${generateFormattedHTML(parseFormattedText(content))}</div>`;
+      } else if (trimmed.startsWith('```')) {
+        // Code block start/end - handle code blocks
+        const codeLines = [];
+        i++; // Move to next line
+        while (i < lines.length && !lines[i].trim().startsWith('```')) {
+          codeLines.push(lines[i]);
+          i++;
+        }
+        if (codeLines.length > 0) {
+          html += `<pre class="code-block"><code>${codeLines.join('\\n')}</code></pre>`;
+        }
+      } else if (trimmed.match(/^#+\\s+/) || trimmed.match(/^\\*\\*.*\\*\\*:?\\s*$/) || trimmed.endsWith(':')) {
+        // Headers - markdown headers, bold headers, or lines ending with colon
+        if (currentParagraph.length > 0) {
+          html += `<p class="fallback-paragraph">${generateFormattedHTML(parseFormattedText(currentParagraph.join(' ')))}</p>`;
+          currentParagraph = [];
+        }
+        
+        const headerText = trimmed
+          .replace(/^#+\\s+/, '')  // Remove markdown #
+          .replace(/^\\*\\*|\\*\\*$/g, '')  // Remove bold markers
+          .replace(/:$/, '');  // Remove trailing colon
+          
+        html += `<h4 class="fallback-header">${generateFormattedHTML(parseFormattedText(headerText))}</h4>`;
+      } else {
+        // Regular text - add to current paragraph
+        currentParagraph.push(trimmed);
+      }
+    }
+    
+    // Add any remaining paragraph
+    if (currentParagraph.length > 0) {
+      html += `<p class="fallback-paragraph">${generateFormattedHTML(parseFormattedText(currentParagraph.join(' ')))}</p>`;
+    }
+    
+    return html || `<div class="fallback-raw">${generateFormattedHTML(parseFormattedText(text))}</div>`;
   };
 
   const generateJavaScriptParsingFunctions = () => {

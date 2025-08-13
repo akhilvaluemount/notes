@@ -42,7 +42,8 @@ function App() {
   const handleStartRecording = async () => {
     try {
       setError('');
-      const success = await startRecording();
+      // Pass the selected microphone ID to startRecording
+      const success = await startRecording(selectedMicrophone);
       if (!success) {
         setError('Failed to start recording. Please check your microphone permissions.');
       }
@@ -79,16 +80,24 @@ function App() {
     try {
       setError('');
       
-      const userQuestion = customPrompt || conversationHistory;
+      // If customPrompt is provided, use it directly (it already contains the full prompt)
+      // Otherwise, use conversationHistory with default prompt
+      let fullPrompt;
       
-      // Ensure userQuestion is a string and not empty
-      if (!userQuestion || typeof userQuestion !== 'string' || !userQuestion.trim()) {
-        setError('No content to analyze. Please record speech or type a question.');
-        return;
-      }
-      
-      // Construct the full prompt with system instructions
-      const fullPrompt = `Provide a concise, structured answer to the following question. Break the answer down into clear sections like:
+      if (customPrompt) {
+        // Custom prompt is already formatted and ready to use
+        fullPrompt = customPrompt;
+      } else {
+        const userQuestion = conversationHistory;
+        
+        // Ensure userQuestion is a string and not empty
+        if (!userQuestion || typeof userQuestion !== 'string' || !userQuestion.trim()) {
+          setError('No content to analyze. Please record speech or type a question.');
+          return;
+        }
+        
+        // Default prompt for manual text input or legacy Ask AI button
+        fullPrompt = `Provide a concise, structured answer to the following question. Break the answer down into clear sections like:
 
 Definition
 
@@ -101,7 +110,7 @@ Key Points
 This is for a frontend developer with knowledge of HTML, CSS, JavaScript, TypeScript, and Angular. Focus on these technologies specifically. Ensure the answer is brief, to the point, and focuses on the technical details, while avoiding lengthy explanations or over-explanation. Use bullet points and easy-to-read language to make the answer clear and accessible.
 
 Question: ${userQuestion}`;
-      
+      }
 
 
       // Clear previous response and set loading state
@@ -225,7 +234,22 @@ Question: ${userQuestion}`;
   const handleTextSubmit = async (e) => {
     e.preventDefault();
     if (textInput.trim()) {
-      await handleAskAI(textInput);
+      // Create a prompt for text input using the default format
+      const textPrompt = `Provide a concise, structured answer to the following question. Break the answer down into clear sections like:
+
+Definition
+
+Explanation of Concepts
+
+Examples
+
+Key Points
+
+This is for a frontend developer with knowledge of HTML, CSS, JavaScript, TypeScript, and Angular. Focus on these technologies specifically. Ensure the answer is brief, to the point, and focuses on the technical details, while avoiding lengthy explanations or over-explanation. Use bullet points and easy-to-read language to make the answer clear and accessible.
+
+Question: ${textInput}`;
+      
+      await handleAskAI(textPrompt);
       setTextInput('');
     }
   };

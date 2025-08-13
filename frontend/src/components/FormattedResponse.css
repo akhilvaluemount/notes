@@ -34,182 +34,41 @@
   margin: 0;
 }
 
-/* Definition Section */
-.definition-section {
-  background: #f0f9f0;
+/* Dynamic section styling - colors are now handled inline */
+.dynamic-section {
+  /* Base styles handled inline, but we can add any common styles here if needed */
 }
 
-.definition-content {
-  padding-left: 0.5rem;
+.section-content {
+  /* Content area styling */
 }
 
-.definition-text {
-  font-size: 1rem;
-  color: #2c3e50;
-  margin: 0.1rem 0;
-  line-height: 1.4;
-  padding: 0.1rem;
+.dynamic-bullet {
+  /* Bullet point styling handled inline */
 }
 
-/* Explanation Section */
-.explanation-section {
-  background: #fff8f0;
+.dynamic-numbered {
+  /* Numbered list styling handled inline */
 }
 
-.explanation-content {
-  padding-left: 0.5rem;
-}
-
-.explanation-bullet {
-  padding: 0.1rem 0 0.1rem 1rem;
-  margin-bottom: 0.1rem;
-  color: #2c3e50;
-  position: relative;
-}
-
-.explanation-bullet::before {
-  content: "•";
-  position: absolute;
-  left: 0.5rem;
-  color: #ff9800;
-  font-weight: bold;
-}
-
-/* Nested bullet adjustments */
-.explanation-bullet,
-.example-item,
-.keypoint-item {
-  position: relative;
-}
-
-/* Adjust bullet positioning for nested items */
-.explanation-bullet::before,
-.example-item::before,
-.keypoint-item::before {
-  left: 0.3rem;
-}
-
-.explanation-text {
-  margin: 0.1rem 0;
-  color: #2c3e50;
-  line-height: 1.4;
-}
-
-.answer-content {
-  padding-left: 1rem;
-}
-
-.answer-bullet {
-  position: relative;
-  padding-left: 1.5rem;
-  margin-bottom: 0.75rem;
-  color: #2c3e50;
-}
-
-.answer-bullet::before {
-  content: "•";
+.dynamic-numbered::before {
+  content: counter(list-counter) ".";
   position: absolute;
   left: 0;
-  color: #3498db;
   font-weight: bold;
+  color: inherit; /* Will use parent color */
 }
 
-.answer-text {
-  margin: 0.5rem 0;
-  padding-left: 1rem;
+.dynamic-text {
+  /* Text styling handled inline */
 }
 
-.answer-numbered {
-  margin-bottom: 0.5rem;
-  color: #2c3e50;
-  padding-left: 1rem;
+.dynamic-subheader,
+.dynamic-example-header {
+  /* Subheader styling handled inline */
 }
 
-/* Examples Section */
-.examples-section {
-  background: #f0f8ff;
-}
-
-.examples-list {
-  margin: 0.2rem 0 0 0;
-}
-
-.example-item {
-  position: relative;
-  padding: 0.1rem 0 0.1rem 1rem;
-  margin-bottom: 0.1rem;
-  color: #2c3e50;
-}
-
-.example-item::before {
-  content: "•";
-  position: absolute;
-  left: 0.5rem;
-  color: #2196f3;
-  font-weight: bold;
-}
-
-.example-text {
-  margin: 0.1rem 0;
-  color: #4a5568;
-  line-height: 1.4;
-}
-
-.example-header {
-  color: #1976d2;
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0.3rem 0 0.2rem 0;
-}
-
-/* Key Points Section */
-.keypoints-section {
-  background: #fdf0f5;
-}
-
-.keypoints-list {
-  margin: 0.2rem 0 0 0;
-}
-
-.keypoint-item {
-  position: relative;
-  padding: 0.1rem 0 0.1rem 1rem;
-  margin-bottom: 0.1rem;
-  color: #2c3e50;
-}
-
-.keypoint-item::before {
-  content: "•";
-  position: absolute;
-  left: 0.5rem;
-  color: #e91e63;
-  font-weight: bold;
-}
-
-.keypoint-subheader {
-  color: #c2185b;
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0.3rem 0 0.2rem 0;
-}
-
-.keypoint-text {
-  margin: 0.1rem 0;
-  color: #2c3e50;
-  line-height: 1.4;
-}
-
-/* Summary Section */
-.summary-section {
-  background: #f0f9ff;
-}
-
-.summary-text {
-  color: #0c4a6e;
-  line-height: 1.4;
-  margin: 0;
-  font-size: 0.95rem;
-}
+/* Keep only common styles that apply to all sections */
 
 /* Code Styling */
 .inline-code {
@@ -241,44 +100,80 @@
   border: none;
 }
 
-/* Fallback raw response styles */
+/* All section-specific styling is now handled dynamically with inline styles */
+
+/* Fallback Section for Unstructured Content */
 .fallback-section {
-  background: #f8f9fa;
+  background: #fafafa; /* Very light gray */
 }
 
-.response-raw {
-  padding: 0.5rem;
+.fallback-content {
+  padding: 0.75rem;
 }
 
-.response-paragraph {
-  margin: 1rem 0;
-  line-height: 1.8;
-  color: #2c3e50;
-  font-size: 1rem;
-  text-align: justify;
-}
-
-.response-sentence {
-  position: relative;
-  padding-left: 1.5rem;
-  margin-bottom: 0.75rem;
+.fallback-paragraph {
+  margin: 0.75rem 0;
   line-height: 1.6;
   color: #2c3e50;
+  font-size: 1rem;
 }
 
-.response-sentence::before {
-  content: "•";
-  position: absolute;
-  left: 0;
-  color: #3498db;
-  font-weight: bold;
-}
-
-.response-line {
+.fallback-bullet {
+  position: relative;
+  padding-left: 1.5rem;
   margin: 0.5rem 0;
   line-height: 1.6;
   color: #2c3e50;
 }
+
+.fallback-bullet::before {
+  content: "•";
+  position: absolute;
+  left: 0.5rem;
+  color: #3b82f6; /* Blue */
+  font-weight: bold;
+}
+
+.fallback-numbered {
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+  line-height: 1.6;
+  color: #2c3e50;
+  counter-increment: list-counter;
+  position: relative;
+}
+
+.fallback-numbered::before {
+  content: counter(list-counter) ".";
+  position: absolute;
+  left: 0;
+  color: #3b82f6;
+  font-weight: bold;
+}
+
+.fallback-content {
+  counter-reset: list-counter;
+}
+
+.fallback-raw {
+  padding: 0.75rem;
+  white-space: pre-wrap;
+  font-family: inherit;
+  line-height: 1.6;
+  color: #2c3e50;
+}
+
+
+.fallback-header {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 1rem 0 0.5rem 0;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Counter reset is now handled inline for each section */
 
 .empty-state {
   text-align: center;

@@ -132,7 +132,7 @@ const useRealtimeTranscription = () => {
   }, [connectWebSocket]);
 
   // Initialize audio processor
-  const initializeAudio = useCallback(async () => {
+  const initializeAudio = useCallback(async (deviceId = null) => {
     if (audioProcessorRef.current) {
       return true;
     }
@@ -160,8 +160,8 @@ const useRealtimeTranscription = () => {
         setIsRecording(false);
       });
 
-      // Initialize audio
-      const success = await processor.initialize();
+      // Initialize audio with specific device ID if provided
+      const success = await processor.initialize(deviceId);
       if (!success) {
         throw new Error('Failed to initialize audio processor');
       }
@@ -175,9 +175,15 @@ const useRealtimeTranscription = () => {
   }, []);
 
   // Start recording (REAL audio implementation)
-  const startRecording = useCallback(async () => {
+  const startRecording = useCallback(async (deviceId = null) => {
     try {
       setConnectionError(null);
+
+      // If switching devices, clean up existing audio processor
+      if (audioProcessorRef.current && deviceId) {
+        audioProcessorRef.current.stopStreaming();
+        audioProcessorRef.current = null;
+      }
 
       // Connect to WebSocket proxy
       if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
@@ -196,11 +202,12 @@ const useRealtimeTranscription = () => {
             if (message.type === 'custom_transcription_partial') {
               setPartialTranscript(message.text);
             } else if (message.type === 'custom_transcription_final') {
-              // Only update conversation history if it's different from the last final transcript
+              // Append to conversation history instead of replacing
               setConversationHistory(prev => {
-                // If this is a new final transcript (different from previous)
-                if (message.text && message.text.trim() !== prev?.trim()) {
-                  const newHistory = message.text;
+                // If this is a new final transcript, append it
+                if (message.text && message.text.trim()) {
+                  // Add to existing history with proper spacing
+                  const newHistory = prev ? prev + ' ' + message.text : message.text;
                   return newHistory;
                 } else {
                   return prev;
@@ -227,9 +234,9 @@ const useRealtimeTranscription = () => {
         wsRef.current = ws;
       }
 
-      // Initialize real audio recording
+      // Initialize real audio recording with device ID
       if (!audioProcessorRef.current) {
-        const audioSuccess = await initializeAudio();
+        const audioSuccess = await initializeAudio(deviceId);
         if (!audioSuccess) {
           throw new Error('Failed to initialize audio');
         }
@@ -255,6 +262,7 @@ const useRealtimeTranscription = () => {
     // Stop audio streaming
     if (audioProcessorRef.current) {
       audioProcessorRef.current.stopStreaming();
+      audioProcessorRef.current = null; // Clear reference so it can be reinitialized
     }
     
     setIsRecording(false);
@@ -266,6 +274,7 @@ const useRealtimeTranscription = () => {
     setConversationHistory('');
     setFinalTranscript('');
     setPartialTranscript('');
+    setMessageCount(0);
   }, []);
 
   // Disconnect WebSocket

@@ -82,7 +82,11 @@ class AssemblyAIRealtimeProxy {
     const connection = this.connections.get(clientId);
     if (connection) {
       if (connection.close) {
-        connection.close();
+        try {
+          connection.close();
+        } catch (error) {
+          console.warn(`⚠️ Error closing connection for client ${clientId}:`, error.message);
+        }
       }
     }
     
@@ -204,7 +208,11 @@ class AssemblyAIRealtimeProxy {
         // Connection timeout
         const timeout = setTimeout(() => {
           if (!connectionEstablished) {
-            rt.close();
+            try {
+              rt.close();
+            } catch (error) {
+              console.warn(`⚠️ Error closing AssemblyAI connection during timeout for client ${clientId}:`, error.message);
+            }
             reject(new Error('AssemblyAI connection timeout'));
           }
         }, 10000);
@@ -343,5 +351,26 @@ if (require.main === module) {
     console.log('\n🛑 Shutting down AssemblyAI proxy server...');
     proxy.stop();
     process.exit(0);
+  });
+
+  // Handle unhandled promise rejections
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Unhandled Promise Rejection:', reason);
+    console.error('Promise:', promise);
+  });
+
+  // Handle uncaught exceptions
+  process.on('uncaughtException', (error) => {
+    console.error('❌ Uncaught Exception:', error);
+    console.error('Stack:', error.stack);
+    
+    // Don't exit process for WebSocket close errors during timeout
+    if (error.message && error.message.includes('WebSocket was closed before the connection was established')) {
+      console.log('🔄 Continuing execution despite WebSocket close error during timeout');
+      return;
+    }
+    
+    // For other critical errors, might want to exit
+    // process.exit(1);
   });
 }
