@@ -170,18 +170,27 @@ class AssemblyAIRealtimeProxy {
 
         rt.on('turn', (turn) => {
           if (turn.transcript && turn.transcript.trim()) {
-            if (turn.end_of_turn) {
-              // Final transcript
-              this.handleAssemblyAITranscript(clientWs, { 
-                message_type: 'FinalTranscript', 
-                text: turn.transcript 
-              });
+            // Apply confidence filtering to prevent random words
+            const shouldSendTranscript = this.shouldSendTranscript(turn.transcript, turn.confidence);
+            
+            if (shouldSendTranscript) {
+              if (turn.end_of_turn) {
+                // Final transcript
+                this.handleAssemblyAITranscript(clientWs, { 
+                  message_type: 'FinalTranscript', 
+                  text: turn.transcript,
+                  confidence: turn.confidence
+                });
+              } else {
+                // Partial transcript
+                this.handleAssemblyAITranscript(clientWs, { 
+                  message_type: 'PartialTranscript', 
+                  text: turn.transcript,
+                  confidence: turn.confidence
+                });
+              }
             } else {
-              // Partial transcript
-              this.handleAssemblyAITranscript(clientWs, { 
-                message_type: 'PartialTranscript', 
-                text: turn.transcript 
-              });
+              console.log(`🔇 Filtered low-confidence transcript: "${turn.transcript}" (confidence: ${turn.confidence})`);
             }
           }
         });
@@ -230,6 +239,34 @@ class AssemblyAIRealtimeProxy {
     });
   }
 
+
+  // Enhanced transcript filtering to prevent random words
+  shouldSendTranscript(text, confidence = null) {
+    // Environment-configurable confidence threshold
+    const minConfidence = parseFloat(process.env.STT_MIN_CONFIDENCE) || 0.7;
+    
+    // Filter by confidence if available
+    if (confidence !== null && confidence < minConfidence) {
+      return false;
+    }
+    
+    // Filter single characters and common noise words
+    const cleanText = text.trim().toLowerCase();
+    const noiseWords = ['uh', 'um', 'ah', 'oh', 'hmm', 'er', 'the', 'a', 'an'];
+    const isSingleChar = cleanText.length <= 2;
+    const isNoiseWord = noiseWords.includes(cleanText);
+    const isRepeatedChar = /^(.)\1{2,}$/.test(cleanText); // "aaa", "mmm", etc.
+    
+    // Filter gibberish patterns
+    const isGibberish = /^[bcdfghjklmnpqrstvwxyz]{3,}$/.test(cleanText); // Only consonants
+    
+    if (isSingleChar || isNoiseWord || isRepeatedChar || isGibberish) {
+      return false;
+    }
+    
+    // Allow meaningful transcripts
+    return true;
+  }
 
   // Handle AssemblyAI transcripts
   handleAssemblyAITranscript(clientWs, transcript) {

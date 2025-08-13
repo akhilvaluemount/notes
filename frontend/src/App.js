@@ -21,13 +21,17 @@ function App() {
     isConnected,
     isRecording,
     connectionError,
+    connectionState,
     partialTranscript,
     finalTranscript,
     conversationHistory,
     messageCount,
+    messageHistory,
+    currentMessageId,
     startRecording,
     stopRecording,
     clearConversation: clearRealtimeConversation,
+    createNewMessage,
     connect: connectRealtime,
     disconnect: disconnectRealtime
   } = useRealtimeTranscription();
@@ -313,6 +317,8 @@ Question: ${textInput}`;
           conversation={conversationHistory}
           partialTranscript={partialTranscript}
           messageCount={messageCount}
+          messageHistory={messageHistory}
+          currentMessageId={currentMessageId}
           autoScroll={autoScroll}
           isProcessing={isProcessing}
           onAskAI={handleAskAI}
@@ -321,9 +327,11 @@ Question: ${textInput}`;
           onStartRecording={handleStartRecording}
           onStopRecording={handleStopRecording}
           onClearConversation={handleClearConversation}
+          onCreateNewMessage={createNewMessage}
           onToggleAutoScroll={() => setAutoScroll(!autoScroll)}
           recordingStatus={getRecordingStatus()}
           isConnected={isConnected}
+          connectionState={connectionState}
           // Text input props
           textInput={textInput}
           onTextInputChange={(e) => setTextInput(e.target.value)}

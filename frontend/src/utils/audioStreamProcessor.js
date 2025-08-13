@@ -13,14 +13,17 @@ class AudioStreamProcessor {
     this.onAudioData = null; // Callback for processed audio data
     this.onError = null; // Error callback
     
-    // Voice Activity Detection settings - optimized for 2-second chunks
-    this.vadEnabled = false; // Temporarily disable VAD for testing
-    this.silenceThreshold = 0.005; // Lower threshold for better speech detection
-    this.minSpeechDuration = 300; // Min ms of speech to start streaming (reduced for faster response)
-    this.maxSilenceDuration = 2000; // Max ms of silence before stopping (aligned with chunk duration)
+    // Enhanced Voice Activity Detection for continuous session
+    this.vadEnabled = true; // Enable VAD for intelligent streaming
+    this.silenceThreshold = 0.01; // Volume threshold for speech detection
+    this.backgroundNoiseThreshold = 0.003; // Background noise level
+    this.minSpeechDuration = 200; // Min ms of speech to start streaming
+    this.keepAliveInterval = 2000; // Send keep-alive chunks every 2 seconds during silence
     this.speechStartTime = null;
     this.lastSpeechTime = null;
+    this.lastKeepAlive = 0;
     this.isStreamingAudio = false;
+    this.audioStreamingMode = 'idle'; // 'idle', 'speech', 'keep_alive'
     
     // Audio optimization settings
     this.chunkBuffer = [];
@@ -31,13 +34,19 @@ class AudioStreamProcessor {
   // Initialize audio processing
   async initialize(deviceId = null, constraints = { audio: true }) {
     try {
-      // Build audio constraints
+      // Enhanced audio constraints for clean transcription
       const audioConstraints = {
         sampleRate: this.sampleRate,
         channelCount: 1,
         echoCancellation: true,
         noiseSuppression: true,
-        autoGainControl: true
+        autoGainControl: true,
+        // Advanced noise suppression for better quality
+        googEchoCancellation: true,
+        googAutoGainControl: true,
+        googNoiseSuppression: true,
+        googHighpassFilter: true,
+        googTypingNoiseDetection: true
       };
 
       // Add specific device ID if provided
@@ -96,15 +105,20 @@ class AudioStreamProcessor {
           const inputBuffer = event.inputBuffer;
           const audioData = inputBuffer.getChannelData(0); // Get mono channel
           
-          // Perform Voice Activity Detection
+          // Perform Enhanced Voice Activity Detection
           const shouldStream = this.performVAD(audioData);
           
           if (shouldStream && this.onAudioData) {
-            // Convert to PCM16 format for AssemblyAI Realtime API
-            const pcm16Data = this.convertToPCM16(audioData);
-            
-            // Add to buffer for optimized chunking
-            this.addToChunkBuffer(pcm16Data);
+            if (shouldStream === 'keep_alive') {
+              // Generate minimal keep-alive chunk instead of real audio
+              const keepAliveData = this.generateKeepAliveChunk(audioData.length);
+              this.addToChunkBuffer(keepAliveData);
+            } else if (shouldStream === true) {
+              // Normal speech - send real audio data
+              const pcm16Data = this.convertToPCM16(audioData);
+              this.addToChunkBuffer(pcm16Data);
+            }
+            // For 'filtered' background noise, we don't send anything
           }
         }
       };
@@ -152,7 +166,7 @@ class AudioStreamProcessor {
 
   }
 
-  // Voice Activity Detection - determines if audio contains speech
+  // Enhanced Voice Activity Detection for continuous session
   performVAD(audioData) {
     if (!this.vadEnabled) return true; // Always stream if VAD disabled
     
@@ -165,35 +179,49 @@ class AudioStreamProcessor {
     
     const currentTime = Date.now();
     const isSpeech = rms > this.silenceThreshold;
+    const isBackgroundNoise = rms > this.backgroundNoiseThreshold && rms <= this.silenceThreshold;
     
     if (isSpeech) {
-      // Speech detected
+      // Clear speech detected - stream normally
       if (!this.speechStartTime) {
         this.speechStartTime = currentTime;
+        console.log('🎤 Speech detected, starting normal audio streaming');
       }
       this.lastSpeechTime = currentTime;
+      this.audioStreamingMode = 'speech';
       
-      // Only start streaming after minimum speech duration
+      // Stream immediately for speech
       if (currentTime - this.speechStartTime >= this.minSpeechDuration) {
-        if (!this.isStreamingAudio) {
-          this.isStreamingAudio = true;
-        }
+        this.isStreamingAudio = true;
         return true;
       }
+    } else if (isBackgroundNoise) {
+      // Background noise - filter out to prevent random transcriptions
+      this.audioStreamingMode = 'filtered';
+      return this.shouldSendKeepAlive(currentTime);
     } else {
-      // Silence detected
+      // True silence - send periodic keep-alive chunks
+      this.audioStreamingMode = 'keep_alive';
       if (this.lastSpeechTime && 
-          currentTime - this.lastSpeechTime >= this.maxSilenceDuration) {
-        // Stop streaming after prolonged silence
-        if (this.isStreamingAudio) {
-          this.isStreamingAudio = false;
-          this.speechStartTime = null;
-          this.flushChunkBuffer(); // Send any remaining buffered audio
-        }
+          currentTime - this.lastSpeechTime > this.minSpeechDuration) {
+        // Reset speech detection after silence period
+        this.speechStartTime = null;
       }
+      
+      return this.shouldSendKeepAlive(currentTime);
     }
     
     return this.isStreamingAudio;
+  }
+  
+  // Determine if we should send keep-alive chunk during silence
+  shouldSendKeepAlive(currentTime) {
+    if (currentTime - this.lastKeepAlive >= this.keepAliveInterval) {
+      this.lastKeepAlive = currentTime;
+      console.log('📡 Sending keep-alive chunk to maintain session');
+      return 'keep_alive'; // Special flag for keep-alive chunks
+    }
+    return false;
   }
   
   // Add audio to chunk buffer for optimized sending
@@ -243,6 +271,22 @@ class AudioStreamProcessor {
     
     return int16Array.buffer; // Return ArrayBuffer for WebSocket
   }
+  
+  // Generate minimal keep-alive chunk to maintain AssemblyAI session
+  generateKeepAliveChunk(length) {
+    const int16Array = new Int16Array(length);
+    
+    // Generate very low-amplitude white noise to keep VAD active
+    // without triggering transcription
+    const amplitude = 50; // Very low amplitude (vs 32767 max)
+    
+    for (let i = 0; i < length; i++) {
+      // Generate minimal random noise
+      int16Array[i] = (Math.random() - 0.5) * amplitude;
+    }
+    
+    return int16Array.buffer; // Return ArrayBuffer for WebSocket
+  }
 
   // Set callback for audio data
   setAudioDataCallback(callback) {
@@ -269,12 +313,17 @@ class AudioStreamProcessor {
     return {
       isRecording: this.isRecording,
       isStreamingAudio: this.isStreamingAudio,
+      audioStreamingMode: this.audioStreamingMode,
       sampleRate: this.sampleRate,
       audioContextState: this.audioContext?.state,
       hasMediaStream: !!this.mediaStream,
       vadEnabled: this.vadEnabled,
       bufferedChunks: this.chunkBuffer.length,
-      speechDetected: !!this.speechStartTime
+      speechDetected: !!this.speechStartTime,
+      silenceThreshold: this.silenceThreshold,
+      backgroundNoiseThreshold: this.backgroundNoiseThreshold,
+      keepAliveInterval: this.keepAliveInterval,
+      lastKeepAlive: this.lastKeepAlive
     };
   }
 
