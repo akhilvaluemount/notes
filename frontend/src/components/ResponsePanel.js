@@ -49,6 +49,196 @@ const SECTION_ICONS = {
   'default': '📄'
 };
 
+// Function to get FormattedResponse CSS content for new tab
+const getFormattedResponseCSS = () => {
+  // Since we can't dynamically import CSS at runtime, we'll include the essential styles inline
+  // This ensures the new tab window has the same styling as the main FormattedResponse component
+  return `
+    /* FormattedResponse CSS for new tab compatibility */
+    :root {
+      --fg: #2c3e50;
+      --fg-muted: #4b5563;
+      --fg-soft: #6b7280;
+      --bg: #ffffff;
+      --bg-soft: #f8f9fa;
+      --bg-elev: #ffffff;
+      --border: rgba(0,0,0,0.1);
+      --shadow: 0 1px 3px rgba(0,0,0,0.1);
+      --accent: #3b82f6;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --info: #0ea5e9;
+      --purple: #8b5cf6;
+      --pink: #d63384;
+      --code-fg: #d4d4d4;
+      --code-bg: #1e1e1e;
+      --inline-code-bg: #f0f0f0;
+      --inline-code-fg: var(--pink);
+      --ff-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      --ff-mono: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+      --fs-0: 0.85rem;
+      --fs-1: 0.95rem;
+      --fs-2: 1.1rem;
+      --fs-3: 1.25rem;
+      --lh: 1.6;
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --pad-sm: 0.5rem;
+      --pad-md: 0.75rem;
+      --pad-lg: 1rem;
+      --easing: cubic-bezier(.2,.8,.2,1);
+      --dur-fast: 150ms;
+      --dur: 250ms;
+    }
+
+    .formatted-response {
+      font-family: var(--ff-base);
+      color: var(--fg);
+      line-height: var(--lh);
+      background: transparent;
+      min-height: 50px;
+    }
+
+    .response-section {
+      margin-bottom: 0.75rem;
+      background: var(--bg-elev);
+      border-radius: var(--radius-md);
+      padding: var(--pad-md);
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 0.4rem;
+    }
+
+    .section-icon { font-size: 1.2rem; }
+
+    .response-section h3 {
+      font-size: var(--fs-2);
+      font-weight: 600;
+      color: var(--fg);
+      margin: 0;
+    }
+
+    .inline-code {
+      background: var(--inline-code-bg);
+      color: var(--inline-code-fg);
+      padding: 0.2rem 0.4rem;
+      border-radius: 3px;
+      font-family: var(--ff-mono);
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .code-block {
+      background: var(--code-bg);
+      color: var(--code-fg);
+      padding: var(--pad-lg);
+      border-radius: var(--radius-sm);
+      overflow-x: auto;
+      margin: 0.75rem 0;
+      font-family: var(--ff-mono);
+      font-size: 0.9rem;
+      line-height: 1.5;
+      position: relative;
+    }
+
+    .code-block code { 
+      color: inherit; 
+      background: transparent; 
+      padding: 0; 
+      border: none; 
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Section-specific styles */
+    .definition-section { background: #f0f9f0; }
+    .explanation-section { background: #fff8f0; }
+    .examples-section { background: #f0f8ff; }
+    .keypoints-section { background: #fdf0f5; }
+    .fallback-section { background: #fafafa; }
+
+    .definition-content, .explanation-content, .examples-list, .keypoints-list, .fallback-content {
+      padding-left: 0.5rem;
+    }
+
+    .definition-text, .explanation-text, .example-text, .keypoint-text, .fallback-paragraph {
+      font-size: 1rem;
+      color: var(--fg);
+      margin: 0.1rem 0;
+      line-height: 1.4;
+      padding: 0.1rem;
+    }
+
+    .explanation-bullet, .example-item, .keypoint-item, .fallback-bullet {
+      padding: 0.1rem 0 0.1rem 1rem;
+      margin-bottom: 0.1rem;
+      color: var(--fg);
+      position: relative;
+    }
+
+    .explanation-bullet::before { content: "•"; position: absolute; left: 0.5rem; color: #ff9800; font-weight: bold; }
+    .example-item::before { content: "•"; position: absolute; left: 0.5rem; color: #2196f3; font-weight: bold; }
+    .keypoint-item::before { content: "•"; position: absolute; left: 0.5rem; color: #e91e63; font-weight: bold; }
+    .fallback-bullet::before { content: "•"; position: absolute; left: 0.5rem; color: var(--accent); font-weight: bold; }
+
+    .example-header, .keypoint-subheader, .fallback-header {
+      color: #1976d2;
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 0.3rem 0 0.2rem 0;
+    }
+
+    .keypoint-subheader { color: #c2185b; }
+    .fallback-header { 
+      font-size: 1.2rem; 
+      color: var(--fg); 
+      padding-bottom: 0.25rem; 
+      border-bottom: 1px solid var(--border); 
+    }
+
+    .fallback-numbered {
+      padding-left: 1.5rem;
+      margin: 0.5rem 0;
+      line-height: 1.6;
+      color: var(--fg);
+      counter-increment: list-counter;
+      position: relative;
+    }
+
+    .fallback-numbered::before {
+      content: counter(list-counter) ".";
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-weight: bold;
+    }
+
+    .fallback-content { counter-reset: list-counter; }
+
+    .fallback-raw {
+      padding: var(--pad-md);
+      white-space: pre-wrap;
+      font-family: inherit;
+      line-height: 1.6;
+      color: var(--fg);
+    }
+  `;
+};
+
 const ResponsePanel = ({ response, isLoading, isStreaming = false }) => {
   
   const openInNewTab = () => {
@@ -73,9 +263,12 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false }) => {
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>AI Response - Voice Transcription App</title>
+        <title>Mokita Notes - Voice Transcription App</title>
         <style>
-          /* Import all the existing styles */
+          /* Import FormattedResponse styles for consistent rendering */
+          ${getFormattedResponseCSS()}
+          
+          /* Additional page-specific styles */
           * {
             margin: 0;
             padding: 0;
@@ -493,6 +686,30 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false }) => {
             font-weight: 500;
           }
 
+          /* Streaming indicator for new tab */
+          .streaming-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #27ae60;
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+            padding: 0.25rem 0.5rem;
+            background: rgba(39, 174, 96, 0.1);
+            border-radius: 4px;
+            animation: pulse 2s infinite;
+          }
+
+          .streaming-indicator::before {
+            content: '🔴';
+            animation: blink 1s infinite;
+          }
+
+          @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+          }
+
           /* Fallback Section for Unstructured Content */
           .fallback-section {
             background: #fafafa; /* Very light gray */
@@ -564,15 +781,19 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false }) => {
       <body>
         <div class="container">
           <div class="header">
-            <h1>🤖 AI Response</h1>
+            <h1>📝 Mokita Notes</h1>
             <div class="sync-status">
               <span class="sync-indicator"></span>
               <span id="sync-status">Connected - Real-time sync active</span>
             </div>
           </div>
           
-          <div id="response-content">
-            ${generateFormattedResponseHTML(sections, initialResponse)}
+          <div id="response-content" class="formatted-response ai-response-content">
+            ${generateInitialHTML(initialResponse)}
+          </div>
+          
+          <div id="streaming-indicator" class="streaming-indicator" style="display: none;">
+            Streaming AI response...
           </div>
           
           <div class="timestamp">
@@ -586,6 +807,7 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false }) => {
           const syncStatus = document.getElementById('sync-status');
           const lastUpdate = document.getElementById('last-update');
           const responseContent = document.getElementById('response-content');
+          const streamingIndicator = document.getElementById('streaming-indicator');
           
           // Listen for AI response updates
           channel.addEventListener('message', (event) => {
@@ -600,19 +822,37 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false }) => {
               setTimeout(() => {
                 indicator.style.backgroundColor = '#3498db';
               }, 300);
+            } else if (event.data.type === 'ai-streaming-start') {
+              // Show streaming indicator when AI starts responding
+              streamingIndicator.style.display = 'block';
+              console.log('AI streaming started');
+            } else if (event.data.type === 'ai-streaming-end') {
+              // Hide streaming indicator when AI stops responding
+              streamingIndicator.style.display = 'none';
+              console.log('AI streaming ended');
             }
           });
 
+          let lastResponse = '';
+          
           function updateResponseContent(response) {
             if (!response || !response.trim()) {
-              responseContent.innerHTML = '<div class="empty-state">No response received</div>';
+              if (responseContent.innerHTML.indexOf('empty-state') === -1) {
+                responseContent.innerHTML = '<div class="empty-state">No response received</div>';
+              }
               return;
             }
 
-            // Parse and generate HTML using the same logic as main app
+            // Only update if content actually changed
+            if (response === lastResponse) return;
+            
+            // Simple, efficient update - mimic React behavior
             const sections = parseResponseWithFallback(response);
-            const html = generateFormattedResponseHTML(sections, response);
-            responseContent.innerHTML = html;
+            const newHTML = generateFormattedResponseHTML(sections, response);
+            
+            // Direct update without transitions - let the browser handle it efficiently
+            responseContent.innerHTML = newHTML;
+            lastResponse = response;
           }
 
           ${generateJavaScriptParsingFunctions()}
@@ -625,6 +865,15 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false }) => {
       </body>
       </html>
     `;
+  };
+
+  const generateInitialHTML = (response) => {
+    if (!response || !response.trim()) {
+      return '<div class="empty-state">Waiting for AI response...</div>';
+    }
+    
+    const sections = parseResponseWithFallback(response);
+    return generateFormattedResponseHTML(sections, response);
   };
 
   const generateFormattedResponseHTML = (sections, response) => {
@@ -977,7 +1226,7 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false }) => {
   return (
     <div className="response-panel">
       <div className="response-header">
-        <h2>AI Response {isStreaming && <span className="streaming-indicator">🔴 Streaming...</span>}</h2>
+        <h2>Notes {isStreaming && <span className="streaming-indicator">🔴 Streaming...</span>}</h2>
         {response && !isLoading && (
           <button 
             className="btn-open-tab" 

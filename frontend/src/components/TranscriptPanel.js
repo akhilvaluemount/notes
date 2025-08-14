@@ -35,6 +35,8 @@ const TranscriptPanel = ({
 }) => {
   const panelRef = useRef(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState(null);
+  const [editedTexts, setEditedTexts] = useState({});
   
 
   useEffect(() => {
@@ -54,6 +56,34 @@ const TranscriptPanel = ({
     document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);
   }, [showSettings]);
+
+  // Handle message click to enable editing
+  const handleMessageClick = (messageId, currentText) => {
+    setEditingMessageId(messageId);
+    setEditedTexts(prev => ({
+      ...prev,
+      [messageId]: currentText || ''
+    }));
+  };
+
+  // Handle text change while editing
+  const handleEditChange = (messageId, newText) => {
+    setEditedTexts(prev => ({
+      ...prev,
+      [messageId]: newText
+    }));
+  };
+
+  // Handle save edit (on blur or enter key)
+  const handleSaveEdit = (messageId) => {
+    setEditingMessageId(null);
+    // The edited text stays in editedTexts for persistence
+  };
+
+  // Get display text for a message (edited or original)
+  const getDisplayText = (message) => {
+    return editedTexts[message.id] !== undefined ? editedTexts[message.id] : message.text;
+  };
 
   return (
     <div className="transcript-panel">
@@ -185,7 +215,7 @@ const TranscriptPanel = ({
 
       {/* Transcript Content */}
       <div className="transcript-section-header">
-        <h2>Live Transcript</h2>
+        <h2>Discussion</h2>
         <div className="transcript-header-buttons">
           <button 
             onClick={onCreateNewMessage}
@@ -207,7 +237,7 @@ const TranscriptPanel = ({
       <div className="transcript-container" ref={panelRef}>
         {messageHistory.length === 0 && !partialTranscript ? (
           <div className="empty-state">
-            <p>No transcripts yet. Click Record to start live transcription with AssemblyAI Realtime API.</p>
+            <p>No discussion yet. Click Record to start capturing your thoughts and ideas.</p>
           </div>
         ) : (
           <div className="messages-container">
@@ -215,13 +245,14 @@ const TranscriptPanel = ({
               .map((message, index) => {
                 const isLatest = index === messageHistory.length - 1;
                 const isCurrentMessage = message.id === currentMessageId;
+                const isEditing = editingMessageId === message.id;
                 
                 // For current message, show accumulated text + partial
-                let displayText = message.text || '';
-                if (isCurrentMessage && partialTranscript) {
+                let displayText = getDisplayText(message);
+                if (isCurrentMessage && partialTranscript && !isEditing) {
                   // Show existing text plus current partial
-                  displayText = message.text ? 
-                    `${message.text} ${partialTranscript}` : 
+                  displayText = displayText ? 
+                    `${displayText} ${partialTranscript}` : 
                     partialTranscript;
                 }
                 
@@ -231,34 +262,64 @@ const TranscriptPanel = ({
                 return (
                   <div 
                     key={message.id} 
-                    className={`message-block ${isLatest ? 'latest-message' : 'older-message'} ${message.isPartial ? 'partial-message' : 'final-message'} ${message.hasSilenceGap ? 'has-silence-gap' : ''}`}
+                    className={`message-block ${isLatest ? 'latest-message' : 'older-message'} ${message.isPartial ? 'partial-message' : 'final-message'} ${message.silenceSegmented ? 'silence-segmented' : ''}`}
                   >
-                    {message.hasSilenceGap && (
-                      <div className="silence-indicator">
-                        <span>⏸️ Silence detected - continuing in same message...</span>
+                    {message.silenceSegmented && (
+                      <div className="silence-segmentation-indicator">
+                        <span>🔇 Auto-segmented after 10-second silence</span>
                       </div>
                     )}
                     <div className="message-content">
-                      {isCurrentMessage && message.isPartial ? (
-                        <>
-                          {message.text && <span>{message.text} </span>}
-                          {partialTranscript && (
-                            <span className="typing-indicator">
-                              {partialTranscript}
-                              <span className="live-cursor">|</span>
-                            </span>
-                          )}
-                        </>
+                      {isEditing ? (
+                        <textarea
+                          className="message-edit-input"
+                          value={editedTexts[message.id] || ''}
+                          onChange={(e) => handleEditChange(message.id, e.target.value)}
+                          onBlur={() => handleSaveEdit(message.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              handleSaveEdit(message.id);
+                            }
+                            if (e.key === 'Escape') {
+                              setEditingMessageId(null);
+                              setEditedTexts(prev => {
+                                const newTexts = {...prev};
+                                delete newTexts[message.id];
+                                return newTexts;
+                              });
+                            }
+                          }}
+                          autoFocus
+                        />
                       ) : (
-                        displayText
+                        <div 
+                          className="message-text-content"
+                          onClick={() => handleMessageClick(message.id, displayText)}
+                          title="Click to edit"
+                        >
+                          {isCurrentMessage && message.isPartial && partialTranscript && !isEditing ? (
+                            <>
+                              {displayText && <span>{displayText} </span>}
+                              {partialTranscript && (
+                                <span className="typing-indicator">
+                                  {partialTranscript}
+                                  <span className="live-cursor">|</span>
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            displayText
+                          )}
+                        </div>
                       )}
                     </div>
                     
-                    {message.text?.trim() && (
+                    {displayText?.trim() && (
                       <div className={`message-actions ${isLatest ? 'always-visible' : 'hover-visible'}`}>
                         {buttonConfig.map((button) => {
                           const handleButtonClick = () => {
-                            const customPrompt = button.prompt.replace('{transcript}', message.text);
+                            const customPrompt = button.prompt.replace('{transcript}', displayText);
                             onAskAI(customPrompt);
                           };
 
@@ -266,12 +327,11 @@ const TranscriptPanel = ({
                             <button 
                               key={button.id}
                               onClick={handleButtonClick}
-                              className={`btn ${button.id === 'ask-ai' ? 'btn-primary' : 'btn-secondary'} action-btn`}
-                              disabled={isProcessing || !message.text?.trim()}
-                              title={button.description}
+                              className={`btn-icon-only ${button.id === 'ask-ai' ? 'btn-icon-primary' : 'btn-icon-secondary'}`}
+                              disabled={isProcessing || !displayText?.trim()}
+                              title={`${button.icon} ${button.label} - ${button.description}`}
                             >
-                              <span className="btn-icon">{button.icon}</span>
-                              {button.label}
+                              {button.icon}
                             </button>
                           );
                         })}

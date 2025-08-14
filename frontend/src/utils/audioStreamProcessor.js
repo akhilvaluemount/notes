@@ -27,7 +27,7 @@ class AudioStreamProcessor {
     
     // Audio optimization settings for throttle management
     this.chunkBuffer = [];
-    this.maxBufferDuration = 500; // ms - send chunks every 500ms to stay under throttle limit
+    this.maxBufferDuration = 250; // ms - reduced from 500ms for more responsive transcription
     this.lastChunkSent = 0;
   }
 
@@ -138,11 +138,16 @@ class AudioStreamProcessor {
 
   // Stop audio streaming
   stopStreaming() {
+    // IMPORTANT: Flush any remaining buffered audio BEFORE setting isRecording to false
+    // This ensures the last audio chunk with the final word(s) is sent to AssemblyAI
+    if (this.chunkBuffer.length > 0) {
+      console.log('📤 Flushing final audio buffer with', this.chunkBuffer.length, 'chunks');
+      this.flushChunkBuffer();
+    }
+    
+    // Now we can safely stop recording
     this.isRecording = false;
     this.isStreamingAudio = false;
-    
-    // Flush any remaining buffered audio
-    this.flushChunkBuffer();
     
     // Reset VAD state
     this.speechStartTime = null;

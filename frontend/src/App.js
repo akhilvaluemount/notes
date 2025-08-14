@@ -124,6 +124,15 @@ Question: ${userQuestion}`;
       if (useStreaming) {
         // Use streaming endpoint - OpenAI API call
         setIsStreaming(true);
+        
+        // Broadcast streaming start event
+        if (broadcastChannelRef.current) {
+          broadcastChannelRef.current.postMessage({
+            type: 'ai-streaming-start',
+            timestamp: new Date().toISOString()
+          });
+        }
+        
         let firstChunk = true;
         
         try {
@@ -183,6 +192,12 @@ Question: ${userQuestion}`;
                         timestamp: data.timestamp,
                         streaming: false
                       });
+                      
+                      // Broadcast streaming end event
+                      broadcastChannelRef.current.postMessage({
+                        type: 'ai-streaming-end',
+                        timestamp: new Date().toISOString()
+                      });
                     }
                   } else if (data.type === 'error') {
                     throw new Error(data.error);
@@ -197,6 +212,14 @@ Question: ${userQuestion}`;
           console.error('Streaming error:', err);
           setError(`Streaming failed: ${err.message}`);
           setIsStreaming(false);
+          
+          // Broadcast streaming end event on error
+          if (broadcastChannelRef.current) {
+            broadcastChannelRef.current.postMessage({
+              type: 'ai-streaming-end',
+              timestamp: new Date().toISOString()
+            });
+          }
         }
       } else {
         // Use traditional non-streaming endpoint - OpenAI API call
@@ -231,6 +254,14 @@ Question: ${userQuestion}`;
     } finally {
       setIsLoadingAI(false);
       setIsStreaming(false);
+      
+      // Ensure streaming end event is sent if not already sent
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.postMessage({
+          type: 'ai-streaming-end',
+          timestamp: new Date().toISOString()
+        });
+      }
     }
   };
 

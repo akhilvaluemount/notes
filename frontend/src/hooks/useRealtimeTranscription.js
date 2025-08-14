@@ -33,7 +33,7 @@ const useRealtimeTranscription = () => {
   const connectionTimeoutRef = useRef(null);  // For 3-minute connection timeout
   const currentMessageIdRef = useRef(null);  // Add ref for current message ID
   const messageHistoryRef = useRef([]);  // Add ref for message history
-  const SILENCE_THRESHOLD = 20000; // 20 seconds - visual indication
+  const SILENCE_THRESHOLD = 10000; // 10 seconds - auto-segment messages
   const CONNECTION_TIMEOUT = 180000; // 3 minutes - connection timeout
   
   // Keep messageHistoryRef in sync with messageHistory state
@@ -87,11 +87,13 @@ const useRealtimeTranscription = () => {
     }
     // NOTE: No longer setting connectionTimeoutRef - keeping session alive during recording
     
-    // Set timeout for visual silence indication (20 seconds)
+    // Set timeout for auto-segmentation after 10 seconds of silence
     silenceTimeoutRef.current = setTimeout(() => {
       setConnectionState('silence_detected');
+      console.log('🔇 10-second silence detected - preparing to start new message on next speech');
       
       if (currentMessageIdRef.current) {
+        // Finalize current message
         setMessageHistory(prev => {
           const messages = [...prev];
           const currentIndex = messages.findIndex(msg => msg.id === currentMessageIdRef.current);
@@ -99,13 +101,19 @@ const useRealtimeTranscription = () => {
           if (currentIndex !== -1) {
             messages[currentIndex] = {
               ...messages[currentIndex],
-              hasSilenceGap: true,
+              isPartial: false, // Finalize the message
+              silenceSegmented: true, // Mark as auto-segmented
               lastActivityTime: lastActivityRef.current
             };
           }
           
           return messages;
         });
+        
+        // Clear current message ID so next speech starts a new message
+        setCurrentMessageId(null);
+        currentMessageIdRef.current = null;
+        console.log('📝 Current message finalized - next speech will start new message');
       }
     }, SILENCE_THRESHOLD);
     

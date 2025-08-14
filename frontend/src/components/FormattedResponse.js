@@ -63,6 +63,70 @@ const FormattedResponse = ({ response }) => {
     );
   }
 
+  // Function to detect if lines form a markdown table
+  const detectMarkdownTable = (lines, startIndex) => {
+    if (startIndex >= lines.length - 1) return null;
+    
+    const line = lines[startIndex].trim();
+    const nextLine = lines[startIndex + 1]?.trim();
+    
+    // Check if current line has table format (has pipes and content)
+    const hasTableFormat = line.includes('|') && line.split('|').length >= 3;
+    
+    // Check if next line is a separator line (contains dashes and pipes)
+    const isSeparatorLine = nextLine && 
+      nextLine.includes('|') && 
+      nextLine.includes('-') &&
+      nextLine.split('|').every(cell => cell.trim().match(/^-*$/));
+    
+    if (hasTableFormat && isSeparatorLine) {
+      // Find the end of the table
+      let endIndex = startIndex + 2; // Start after separator line
+      while (endIndex < lines.length) {
+        const tableLine = lines[endIndex].trim();
+        if (!tableLine || !tableLine.includes('|')) break;
+        endIndex++;
+      }
+      
+      return {
+        startIndex,
+        endIndex: endIndex - 1,
+        headerLine: startIndex,
+        separatorLine: startIndex + 1,
+        dataStartIndex: startIndex + 2
+      };
+    }
+    
+    return null;
+  };
+
+  // Function to parse markdown table into structured data
+  const parseMarkdownTable = (lines, tableInfo) => {
+    const headerLine = lines[tableInfo.headerLine];
+    const dataLines = lines.slice(tableInfo.dataStartIndex, tableInfo.endIndex + 1);
+    
+    // Parse header
+    const headers = headerLine.split('|')
+      .map(cell => cell.trim())
+      .filter(cell => cell.length > 0);
+    
+    // Parse data rows
+    const rows = dataLines
+      .filter(line => line.trim().length > 0)
+      .map(line => {
+        return line.split('|')
+          .map(cell => cell.trim())
+          .filter(cell => cell.length > 0);
+      })
+      .filter(row => row.length > 0);
+    
+    return {
+      type: 'table',
+      headers,
+      rows
+    };
+  };
+
   // Parse text with markdown-like formatting
   const parseFormattedText = (text) => {
     if (!text) return text;
@@ -175,6 +239,31 @@ const FormattedResponse = ({ response }) => {
         codeContent.push(line);
         continue;
       }
+
+      // Check for markdown tables
+      const tableInfo = detectMarkdownTable(lines, i);
+      if (tableInfo) {
+        const tableData = parseMarkdownTable(lines, tableInfo);
+        
+        if (currentSectionIndex >= 0) {
+          // Add table to current section
+          dynamicSections[currentSectionIndex].content.push(tableData);
+        } else {
+          // Create new section for standalone table
+          const colorIndex = dynamicSections.length % SECTION_COLORS.length;
+          dynamicSections.push({
+            title: 'Comparison Table',
+            content: [tableData],
+            colorIndex: colorIndex,
+            icon: '📊'
+          });
+          currentSectionIndex = dynamicSections.length - 1;
+        }
+        
+        // Skip to end of table
+        i = tableInfo.endIndex;
+        continue;
+      }
       
       // Skip empty lines
       if (!trimmedLine) continue;
@@ -275,6 +364,33 @@ const FormattedResponse = ({ response }) => {
           <code className={`language-${item.language}`}>{item.content}</code>
         </pre>
       );
+    } else if (item.type === 'table') {
+      return (
+        <div key={index} className="fr-table-scroll">
+          <table>
+            <thead>
+              <tr>
+                {item.headers.map((header, headerIndex) => (
+                  <th key={headerIndex}>
+                    {parseFormattedText(header)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {item.rows.map((row, rowIndex) => (
+                <tr key={rowIndex}>
+                  {row.map((cell, cellIndex) => (
+                    <td key={cellIndex}>
+                      {parseFormattedText(cell)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
     } else if (item.type === 'subheader') {
       return (
         <h4 key={index} className="dynamic-subheader" style={{
@@ -321,6 +437,53 @@ const FormattedResponse = ({ response }) => {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const trimmed = line.trim();
+
+      // Check for markdown tables in fallback content
+      const tableInfo = detectMarkdownTable(lines, i);
+      if (tableInfo) {
+        // End current paragraph if exists
+        if (currentParagraph.length > 0) {
+          elements.push(
+            <p key={`para-${elements.length}`} className="fallback-paragraph">
+              {parseFormattedText(currentParagraph.join(' '))}
+            </p>
+          );
+          currentParagraph = [];
+        }
+
+        // Parse and render table
+        const tableData = parseMarkdownTable(lines, tableInfo);
+        elements.push(
+          <div key={`table-${elements.length}`} className="fr-table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  {tableData.headers.map((header, headerIndex) => (
+                    <th key={headerIndex}>
+                      {parseFormattedText(header)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {tableData.rows.map((row, rowIndex) => (
+                  <tr key={rowIndex}>
+                    {row.map((cell, cellIndex) => (
+                      <td key={cellIndex}>
+                        {parseFormattedText(cell)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+
+        // Skip to end of table
+        i = tableInfo.endIndex;
+        continue;
+      }
       
       if (!trimmed) {
         // Empty line - end current paragraph

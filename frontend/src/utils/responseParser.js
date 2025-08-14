@@ -307,7 +307,7 @@ export const generateSyncedTabHTML = (initialResponse = '') => {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>AI Response - Voice Transcription App</title>
+      <title>Mokita Notes - Voice Transcription App</title>
       <style>
         /* Import all the existing styles */
         * {
@@ -518,14 +518,14 @@ export const generateSyncedTabHTML = (initialResponse = '') => {
     <body>
       <div class="container">
         <div class="header">
-          <h1>🤖 AI Response</h1>
+          <h1>📝 Mokita Notes</h1>
           <div class="sync-status">
             <span class="sync-indicator"></span>
             <span id="sync-status">Connected - Real-time sync active</span>
           </div>
         </div>
         
-        <div id="response-content">
+        <div id="response-content" class="formatted-response ai-response-content">
           ${initialResponse ? generateResponseHTML(initialResponse) : '<div class="empty-state">Waiting for AI response...</div>'}
         </div>
         
