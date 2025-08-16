@@ -23,6 +23,7 @@ function App() {
     connectionError,
     connectionState,
     partialTranscript,
+    newWords,
     finalTranscript,
     conversationHistory,
     messageCount,
@@ -347,6 +348,7 @@ Question: ${textInput}`;
         <TranscriptPanel 
           conversation={conversationHistory}
           partialTranscript={partialTranscript}
+          newWords={newWords}
           messageCount={messageCount}
           messageHistory={messageHistory}
           currentMessageId={currentMessageId}

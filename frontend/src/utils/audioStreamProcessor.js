@@ -18,7 +18,7 @@ class AudioStreamProcessor {
     this.silenceThreshold = 0.01; // Volume threshold for speech detection
     this.backgroundNoiseThreshold = 0.003; // Background noise level
     this.minSpeechDuration = 200; // Min ms of speech to start streaming
-    this.keepAliveInterval = 2000; // Send keep-alive chunks every 2 seconds during silence
+    this.keepAliveInterval = 200; // Send keep-alive chunks every 200ms for ultra-responsive silence handling
     this.speechStartTime = null;
     this.lastSpeechTime = null;
     this.lastKeepAlive = 0;
@@ -27,7 +27,7 @@ class AudioStreamProcessor {
     
     // Audio optimization settings for throttle management
     this.chunkBuffer = [];
-    this.maxBufferDuration = 250; // ms - reduced from 500ms for more responsive transcription
+    this.maxBufferDuration = 100; // ms - reduced to 100ms for ultra-low latency
     this.lastChunkSent = 0;
   }
 

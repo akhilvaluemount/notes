@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './TranscriptPanel.css';
 import AudioRecorder from './AudioRecorder';
 import MicrophoneSelector from './MicrophoneSelector';
@@ -7,6 +7,7 @@ import buttonConfig from '../config/buttonConfig';
 const TranscriptPanel = ({ 
   conversation, 
   partialTranscript,
+  newWords = [],
   messageCount = 0,
   messageHistory = [],
   currentMessageId,
@@ -37,6 +38,7 @@ const TranscriptPanel = ({
   const [showSettings, setShowSettings] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editedTexts, setEditedTexts] = useState({});
+  const lastPartialRef = useRef('');
   
 
   useEffect(() => {
@@ -44,6 +46,30 @@ const TranscriptPanel = ({
       panelRef.current.scrollTop = panelRef.current.scrollHeight;
     }
   }, [conversation, messageHistory, autoScroll]);
+
+  // Split partial transcript into existing words and new words for animation
+  const getWordsForDisplay = useCallback((fullText, newWordsArray) => {
+    if (!fullText) return { existingWords: [], newWords: [] };
+    
+    const allWords = fullText.split(' ').filter(word => word.trim());
+    const newWordsCount = newWordsArray.length;
+    
+    // If we have new words, split the text
+    if (newWordsCount > 0 && allWords.length >= newWordsCount) {
+      const existingWords = allWords.slice(0, allWords.length - newWordsCount);
+      const actualNewWords = allWords.slice(-newWordsCount);
+      return { existingWords, newWords: actualNewWords };
+    }
+    
+    // If no new words detected, treat all words as existing (static)
+    return { existingWords: allWords, newWords: [] };
+  }, []);
+
+  // Stable word animation key generation
+  const getStableWordKey = useCallback((messageId, word, index, isNew = false) => {
+    const prefix = isNew ? 'new' : 'existing';
+    return `${messageId}-${prefix}-word-${index}-${word}`;
+  }, []);
 
   // Close settings when clicking ESC
   useEffect(() => {
@@ -191,7 +217,7 @@ const TranscriptPanel = ({
         
         {/* Text Input Section */}
         <div className="text-input-section">
-          <form onSubmit={onTextSubmit} className="text-input-form">
+          <div className="text-input-form">
             <input
               type="text"
               value={textInput}
@@ -200,14 +226,31 @@ const TranscriptPanel = ({
               className="text-input-field"
               disabled={isLoadingAI}
             />
-            <button 
-              type="submit" 
-              className="btn btn-primary text-submit-btn"
-              disabled={!textInput.trim() || isLoadingAI}
-            >
-              {isLoadingAI ? 'Processing...' : 'Ask AI'}
-            </button>
-          </form>
+            
+            {/* Inline Action Buttons */}
+            <div className="text-input-actions">
+              {buttonConfig.map((button) => {
+                const handleQuickAction = () => {
+                  if (textInput.trim()) {
+                    const customPrompt = button.prompt.replace('{transcript}', textInput);
+                    onAskAI(customPrompt);
+                  }
+                };
+
+                return (
+                  <button 
+                    key={button.id}
+                    onClick={handleQuickAction}
+                    className={`btn-icon-only ${button.id === 'ask-ai' ? 'btn-icon-primary' : 'btn-icon-secondary'}`}
+                    disabled={!textInput.trim() || isLoadingAI}
+                    title={`${button.icon} ${button.label} - ${button.description}`}
+                  >
+                    {button.icon}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
         
         {error && <div className="error-message">{error}</div>}
@@ -299,17 +342,52 @@ const TranscriptPanel = ({
                           title="Click to edit"
                         >
                           {isCurrentMessage && message.isPartial && partialTranscript && !isEditing ? (
-                            <>
-                              {displayText && <span>{displayText} </span>}
-                              {partialTranscript && (
-                                <span className="typing-indicator">
-                                  {partialTranscript}
-                                  <span className="live-cursor">|</span>
-                                </span>
-                              )}
-                            </>
+                            (() => {
+                              const { existingWords, newWords: wordsToAnimate } = getWordsForDisplay(partialTranscript, newWords);
+                              
+                              return (
+                                <>
+                                  {/* Existing words (static, no animation) */}
+                                  {existingWords.length > 0 && (
+                                    <span className="message-text-static">
+                                      {existingWords.map((word, idx) => (
+                                        <span 
+                                          key={getStableWordKey(message.id, word, idx, false)}
+                                          className="static-word"
+                                        >
+                                          {word}{idx < existingWords.length - 1 || wordsToAnimate.length > 0 ? ' ' : ''}
+                                        </span>
+                                      ))}
+                                    </span>
+                                  )}
+                                  
+                                  {/* New words (animated) */}
+                                  {wordsToAnimate.length > 0 && (
+                                    <span className="typing-indicator">
+                                      {wordsToAnimate.map((word, idx) => (
+                                        <span 
+                                          key={getStableWordKey(message.id, word, existingWords.length + idx, true)}
+                                          className="streaming-word"
+                                          style={{
+                                            animationDelay: `${idx * 50}ms`
+                                          }}
+                                        >
+                                          {word}{idx < wordsToAnimate.length - 1 ? ' ' : ''}
+                                        </span>
+                                      ))}
+                                      <span className="live-cursor">|</span>
+                                    </span>
+                                  )}
+                                  
+                                  {/* Show cursor even if no new words */}
+                                  {wordsToAnimate.length === 0 && existingWords.length > 0 && (
+                                    <span className="live-cursor">|</span>
+                                  )}
+                                </>
+                              );
+                            })()
                           ) : (
-                            displayText
+                            <span className="message-text-static">{displayText}</span>
                           )}
                         </div>
                       )}
@@ -347,8 +425,42 @@ const TranscriptPanel = ({
               <div className="message-block latest-message partial-message">
                 <div className="message-content">
                   <span className="typing-indicator">
-                    {partialTranscript}
-                    <span className="live-cursor">|</span>
+                    {(() => {
+                      const { existingWords, newWords: wordsToAnimate } = getWordsForDisplay(partialTranscript, newWords);
+                      
+                      return (
+                        <>
+                          {/* Existing words (static) */}
+                          {existingWords.length > 0 && (
+                            <span className="message-text-static">
+                              {existingWords.map((word, idx) => (
+                                <span 
+                                  key={`orphan-existing-${idx}-${word}`}
+                                  className="static-word"
+                                >
+                                  {word}{idx < existingWords.length - 1 || wordsToAnimate.length > 0 ? ' ' : ''}
+                                </span>
+                              ))}
+                            </span>
+                          )}
+                          
+                          {/* New words (animated) */}
+                          {wordsToAnimate.map((word, idx) => (
+                            <span 
+                              key={`orphan-new-${existingWords.length + idx}-${word}`}
+                              className="streaming-word"
+                              style={{
+                                animationDelay: `${idx * 50}ms`
+                              }}
+                            >
+                              {word}{idx < wordsToAnimate.length - 1 ? ' ' : ''}
+                            </span>
+                          ))}
+                          
+                          <span className="live-cursor">|</span>
+                        </>
+                      );
+                    })()}
                   </span>
                 </div>
               </div>

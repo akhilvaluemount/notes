@@ -41,6 +41,55 @@
   margin: 0;
 }
 
+/* Word-by-word streaming animations */
+.streaming-word {
+  display: inline-block;
+  opacity: 0;
+  animation: fadeInWord 0.3s ease-in-out forwards;
+  transform: translateY(2px);
+}
+
+.static-word {
+  display: inline-block;
+  opacity: 1;
+  /* No animation for static words to prevent blinking */
+}
+
+@keyframes fadeInWord {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-text-static {
+  display: inline;
+}
+
+.typing-indicator {
+  display: inline;
+  color: #2c3e50;
+}
+
+.live-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.2em;
+  background-color: #2980b9;
+  animation: blink 1s infinite;
+  vertical-align: text-bottom;
+  margin-left: 2px;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
 .settings-btn {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -689,6 +738,13 @@
   display: flex;
   gap: 0.5rem;
   align-items: center;
+}
+
+/* Inline Action Buttons */
+.text-input-actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
 }
 
 .text-input-field {

@@ -8,6 +8,11 @@ class AssemblyAIV3Proxy {
   constructor() {
     this.wss = null;
     this.clients = new Map();
+    this.mockWords = [
+      'Hello', 'this', 'is', 'a', 'test', 'of', 'the', 'real-time', 'transcription', 'system.',
+      'It', 'should', 'display', 'words', 'one', 'by', 'one', 'as', 'they', 'are', 'spoken.',
+      'The', 'transcription', 'quality', 'depends', 'on', 'the', 'audio', 'input', 'and', 'processing.'
+    ];
   }
 
   startServer(port = 5002) {
@@ -25,13 +30,8 @@ class AssemblyAIV3Proxy {
 
   async handleClient(clientWs, clientId) {
     try {
-      // Connect to AssemblyAI v3 streaming endpoint
-      const assemblyWs = new WebSocket('wss://streaming.assemblyai.com/v3/stream', {
-        headers: {
-          'Authorization': process.env.ASSEMBLYAI_API_KEY,
-          'Content-Type': 'application/json'
-        }
-      });
+      // Connect to AssemblyAI v3 Universal Streaming endpoint
+      const assemblyWs = new WebSocket(`wss://streaming.assemblyai.com/v3/ws?token=${process.env.ASSEMBLYAI_API_KEY}`);
 
       this.clients.set(clientId, { clientWs, assemblyWs });
 
@@ -39,15 +39,13 @@ class AssemblyAIV3Proxy {
       assemblyWs.on('open', () => {
         console.log(`✅ Connected to AssemblyAI v3 for client ${clientId}`);
         
-        // Send initial configuration matching Python SDK
+        // Send initial configuration for v3 Universal Streaming API
         const config = {
-          type: 'configure',
-          config: {
-            sample_rate: 16000,
-            format_turns: true,
-            encoding: 'pcm_s16le',
-            channels: 1
-          }
+          type: 'UpdateConfiguration',
+          sample_rate: 16000,
+          encoding: 'pcm_s16le',
+          format_turns: true,
+          end_of_turn_confidence_threshold: 0.7
         };
         
         assemblyWs.send(JSON.stringify(config));
@@ -70,16 +68,18 @@ class AssemblyAIV3Proxy {
           
           // Map AssemblyAI v3 events to our frontend format
           switch (message.type) {
+            case 'Begin':
             case 'session_begins':
-              console.log(`🎬 Session started: ${message.session_id}`);
+              console.log(`🎬 Session started: ${message.session_id || 'v3'}`);
               if (clientWs.readyState === WebSocket.OPEN) {
                 clientWs.send(JSON.stringify({
                   type: 'session_started',
-                  session_id: message.session_id
+                  session_id: message.session_id || 'v3-session'
                 }));
               }
               break;
               
+            case 'PartialTranscript':
             case 'partial_transcript':
               console.log(`📝 Partial: "${message.text}"`);
               if (clientWs.readyState === WebSocket.OPEN) {
@@ -91,17 +91,32 @@ class AssemblyAIV3Proxy {
               }
               break;
               
+            case 'Turn':
+            case 'FinalTranscript':
             case 'final_transcript':
             case 'turn':
-              console.log(`✅ Turn/Final: "${message.text || message.transcript}"`);
               const transcriptText = message.text || message.transcript || '';
+              const isEndOfTurn = message.end_of_turn === true;
+              
               if (transcriptText && clientWs.readyState === WebSocket.OPEN) {
-                clientWs.send(JSON.stringify({
-                  type: 'custom_transcription_final',
-                  text: transcriptText,
-                  timestamp: new Date().toISOString(),
-                  end_of_turn: message.end_of_turn
-                }));
+                if (isEndOfTurn) {
+                  // Send as final transcript when turn is complete
+                  console.log(`✅ Final Turn: "${transcriptText}"`);
+                  clientWs.send(JSON.stringify({
+                    type: 'custom_transcription_final',
+                    text: transcriptText,
+                    timestamp: new Date().toISOString(),
+                    end_of_turn: true
+                  }));
+                } else {
+                  // Send as partial transcript for incremental updates
+                  console.log(`📝 Partial Turn: "${transcriptText}"`);
+                  clientWs.send(JSON.stringify({
+                    type: 'custom_transcription_partial',
+                    text: transcriptText,
+                    timestamp: new Date().toISOString()
+                  }));
+                }
               }
               break;
               
@@ -155,12 +170,9 @@ class AssemblyAIV3Proxy {
             // Audio data - send directly to AssemblyAI
             console.log(`📤 Forwarding ${data.length} bytes of audio to AssemblyAI`);
             
-            // AssemblyAI v3 expects audio in a specific format
-            const audioMessage = {
-              type: 'audio',
-              audio: data.toString('base64')
-            };
-            assemblyWs.send(JSON.stringify(audioMessage));
+            // AssemblyAI v3 Universal Streaming expects raw audio data
+            // Send binary PCM16 data directly without JSON wrapper
+            assemblyWs.send(data);
           } else {
             // Control messages
             try {

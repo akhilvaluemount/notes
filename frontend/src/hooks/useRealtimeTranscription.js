@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import AudioStreamProcessor from '../utils/audioStreamProcessor';
+// import textFormatter from '../utils/textFormatter';
 
 /**
  * Custom hook for AssemblyAI Real-time transcription
@@ -14,6 +15,8 @@ const useRealtimeTranscription = () => {
 
   // Transcription state
   const [partialTranscript, setPartialTranscript] = useState('');
+  const [previousPartialTranscript, setPreviousPartialTranscript] = useState('');
+  const [newWords, setNewWords] = useState([]);
   const [finalTranscript, setFinalTranscript] = useState('');
   const [conversationHistory, setConversationHistory] = useState('');
   const [messageCount, setMessageCount] = useState(0);
@@ -48,6 +51,30 @@ const useRealtimeTranscription = () => {
   const generateMessageId = () => {
     return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   };
+
+  // Detect newly added words by comparing current vs previous partial transcript
+  const detectNewWords = useCallback((currentText, previousText) => {
+    if (!currentText) return [];
+    if (!previousText) return currentText.split(' ').filter(word => word.trim());
+    
+    const currentWords = currentText.split(' ').filter(word => word.trim());
+    const previousWords = previousText.split(' ').filter(word => word.trim());
+    
+    // If current text is shorter, it means we got a completely new transcript (not incremental)
+    if (currentWords.length < previousWords.length) {
+      return currentWords;
+    }
+    
+    // Check if current text starts with previous text (incremental case)
+    const previousJoined = previousWords.join(' ');
+    if (currentText.startsWith(previousJoined)) {
+      // Return only the new words that were added
+      return currentWords.slice(previousWords.length);
+    }
+    
+    // If not incremental, return all current words as new
+    return currentWords;
+  }, []);
 
   // Start a new message after silence
   const startNewMessage = useCallback(() => {
@@ -356,7 +383,15 @@ const useRealtimeTranscription = () => {
   const handleTranscriptionMessage = useCallback((message) => {
     if (message.type === 'custom_transcription_partial') {
       trackSpeechActivity();
-      setPartialTranscript(message.text);
+      
+      // For partial transcripts, detect newly added words and update states
+      const currentText = message.text;
+      const newWordsDetected = detectNewWords(currentText, previousPartialTranscript);
+      
+      // Update states
+      setPreviousPartialTranscript(currentText);
+      setPartialTranscript(currentText);
+      setNewWords(newWordsDetected);
       
       let msgId = currentMessageIdRef.current;
       if (!msgId) {
@@ -388,6 +423,9 @@ const useRealtimeTranscription = () => {
         shouldCreateNewMessage = true;
       }
       
+      // For final transcripts, replace the message text completely (don't accumulate)
+      const finalText = message.text;
+      
       setMessageHistory(prev => {
         const messages = [...prev];
         let currentIndex = messages.findIndex(msg => msg.id === msgId);
@@ -395,25 +433,25 @@ const useRealtimeTranscription = () => {
         if (shouldCreateNewMessage && currentIndex === -1) {
           messages.push({
             id: msgId,
-            text: message.text,
+            text: finalText,
             timestamp: new Date().toISOString(),
-            isPartial: true,
+            isPartial: false, // Mark as final
             hasSilenceGap: false
           });
         } else if (currentIndex !== -1) {
-          const existingText = messages[currentIndex].text || '';
+          // Replace the text completely, don't accumulate
           messages[currentIndex] = {
             ...messages[currentIndex],
-            text: existingText + (existingText ? ' ' : '') + message.text,
-            isPartial: true,
+            text: finalText,
+            isPartial: false, // Mark as final
             hasSilenceGap: false
           };
         } else {
           messages.push({
             id: msgId,
-            text: message.text,
+            text: finalText,
             timestamp: new Date().toISOString(),
-            isPartial: true,
+            isPartial: false, // Mark as final
             hasSilenceGap: false
           });
         }
@@ -421,19 +459,18 @@ const useRealtimeTranscription = () => {
         return messages;
       });
       
-      setConversationHistory(prev => {
-        if (message.text && message.text.trim()) {
-          const newHistory = prev ? prev + ' ' + message.text : message.text;
-          return newHistory;
-        }
-        return prev;
-      });
-      
-      setFinalTranscript(message.text);
+      // Clear partial transcript and related states after final
       setPartialTranscript('');
+      setPreviousPartialTranscript('');
+      setNewWords([]);
+      setFinalTranscript(finalText);
       setMessageCount(prev => prev + 1);
+      
+      // Start a new message for the next speech segment
+      setCurrentMessageId(null);
+      currentMessageIdRef.current = null;
     }
-  }, [trackSpeechActivity, startNewMessage]);
+  }, [trackSpeechActivity, startNewMessage, detectNewWords, previousPartialTranscript]);
 
   // Start recording (REAL audio implementation)
   const startRecording = useCallback(async (deviceId = null) => {
@@ -512,6 +549,8 @@ const useRealtimeTranscription = () => {
     setConversationHistory('');
     setFinalTranscript('');
     setPartialTranscript('');
+    setPreviousPartialTranscript('');
+    setNewWords([]);
     setMessageCount(0);
     setMessageHistory([]);
     setCurrentMessageId(null);
@@ -567,6 +606,8 @@ const useRealtimeTranscription = () => {
     setIsConnected(false);
     setIsRecording(false);
     setPartialTranscript('');
+    setPreviousPartialTranscript('');
+    setNewWords([]);
   }, []);
 
   // Cleanup on unmount
@@ -596,6 +637,7 @@ const useRealtimeTranscription = () => {
     connectionError,
     connectionState,
     partialTranscript,
+    newWords,
     finalTranscript,
     conversationHistory,
     messageCount,

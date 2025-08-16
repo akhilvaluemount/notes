@@ -1,0 +1,255 @@
+.performance-monitor {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  max-width: 400px;
+  font-size: 0.9rem;
+}
+
+.performance-monitor-mini {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0.5rem;
+  margin: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.performance-monitor-mini:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.mini-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mini-title {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.latency-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  color: white;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.monitor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #ecf0f1;
+}
+
+.monitor-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.1rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-icon-small {
+  background: transparent;
+  border: 1px solid #bdc3c7;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+
+.btn-icon-small:hover {
+  background: #ecf0f1;
+  border-color: #95a5a6;
+}
+
+/* Quick Stats Bar */
+.quick-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  color: #7f8c8d;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+.stat-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.trend {
+  font-size: 0.8rem;
+  margin-left: 0.25rem;
+}
+
+.trend-improving {
+  color: #27ae60;
+}
+
+.trend-stable {
+  color: #95a5a6;
+}
+
+.trend-degrading {
+  color: #e74c3c;
+}
+
+/* Tabs */
+.monitor-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+.tab {
+  background: transparent;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  color: #7f8c8d;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.tab:hover {
+  color: #34495e;
+}
+
+.tab.active {
+  color: #2980b9;
+  border-bottom-color: #2980b9;
+}
+
+/* Tab Content */
+.tab-content {
+  padding: 0.5rem 0;
+}
+
+.metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f5f6fa;
+}
+
+.metric-row:last-child {
+  border-bottom: none;
+}
+
+.metric-row.total {
+  font-weight: 600;
+  padding-top: 0.75rem;
+  margin-top: 0.5rem;
+  border-top: 2px solid #ecf0f1;
+}
+
+.metric-label {
+  color: #7f8c8d;
+  font-size: 0.85rem;
+}
+
+.metric-value {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.95rem;
+}
+
+/* Volume Bar */
+.volume-bar {
+  flex: 1;
+  height: 6px;
+  background: #ecf0f1;
+  border-radius: 3px;
+  margin: 0 1rem;
+  overflow: hidden;
+}
+
+.volume-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+/* Sparkline */
+.sparkline {
+  margin-left: 1rem;
+}
+
+/* Session Info */
+.session-info {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #ecf0f1;
+  font-size: 0.8rem;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.25rem 0;
+  color: #7f8c8d;
+}
+
+.info-row span:last-child {
+  color: #34495e;
+  font-weight: 500;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .performance-monitor {
+    max-width: 100%;
+    margin: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .quick-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .monitor-tabs {
+    overflow-x: auto;
+  }
+
+  .tab {
+    white-space: nowrap;
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+  }
+}
