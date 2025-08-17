@@ -586,6 +586,57 @@ const useRealtimeTranscription = () => {
     return newId;
   }, [startNewMessage]);
 
+  // Delete messages by IDs
+  const deleteMessages = useCallback((messageIds) => {
+    setMessageHistory(prev => {
+      return prev.filter(msg => !messageIds.includes(msg.id));
+    });
+  }, []);
+
+  // Merge messages from source group into target group
+  const mergeMessages = useCallback((sourceMessageIds, targetMessageIds, direction) => {
+    setMessageHistory(prev => {
+      const messages = [...prev];
+      const sourceMessages = messages.filter(msg => sourceMessageIds.includes(msg.id));
+      const targetIndex = messages.findIndex(msg => targetMessageIds.includes(msg.id));
+      
+      if (targetIndex === -1 || sourceMessages.length === 0) return messages;
+      
+      // Get source text (current message content)
+      const sourceText = sourceMessages.map(msg => msg.text).filter(text => text?.trim()).join(' ');
+      if (!sourceText) return messages;
+      
+      // Remove source messages
+      const filteredMessages = messages.filter(msg => !sourceMessageIds.includes(msg.id));
+      
+      // Find target message in filtered array
+      const newTargetIndex = filteredMessages.findIndex(msg => targetMessageIds.includes(msg.id));
+      if (newTargetIndex === -1) return messages;
+      
+      // Get target message
+      const targetMessage = filteredMessages[newTargetIndex];
+      const targetText = targetMessage.text || '';
+      
+      let combinedText;
+      if (direction === 'up') {
+        // UP ARROW: Add current message to the END of the previous message
+        combinedText = targetText + (targetText && sourceText ? ' ' : '') + sourceText;
+      } else {
+        // DOWN ARROW: Add current message to the BEGINNING of the next message
+        combinedText = sourceText + (sourceText && targetText ? ' ' : '') + targetText;
+      }
+      
+      // Update target message with combined text
+      filteredMessages[newTargetIndex] = {
+        ...targetMessage,
+        text: combinedText,
+        isPartial: false
+      };
+      
+      return filteredMessages;
+    });
+  }, []);
+
   // Disconnect WebSocket
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -649,6 +700,8 @@ const useRealtimeTranscription = () => {
     stopRecording,
     clearConversation,
     createNewMessage,
+    deleteMessages,
+    mergeMessages,
     connect: connectWebSocket,
     disconnect,
 

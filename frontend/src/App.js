@@ -1,10 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import './App.css';
 import AudioRecorder from './components/AudioRecorder';
 import TranscriptPanel from './components/TranscriptPanel';
 import ResponsePanel from './components/ResponsePanel';
 import useRealtimeTranscription from './hooks/useRealtimeTranscription';
+import { processTranscriptForQuestions, DebouncedQuestionProcessor } from './utils/autoQuestionDetection';
+import { processQAHistoryEntry, parseMultiQAResponse, hasMultipleQA } from './utils/multiQAParser';
+import buttonConfig from './config/buttonConfig';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
@@ -15,6 +18,13 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [autoScroll, setAutoScroll] = useState(true);
   const [error, setError] = useState('');
+  
+  // Q&A History state for preserving questions and answers
+  const [qaHistory, setQaHistory] = useState([]);
+  
+  // Auto question detection state
+  const [autoQuestionProcessing, setAutoQuestionProcessing] = useState(false);
+  const questionProcessorRef = useRef(null);
   
   // Realtime transcription hook
   const {
@@ -33,6 +43,8 @@ function App() {
     stopRecording,
     clearConversation: clearRealtimeConversation,
     createNewMessage,
+    deleteMessages,
+    mergeMessages,
     connect: connectRealtime,
     disconnect: disconnectRealtime
   } = useRealtimeTranscription();
@@ -71,6 +83,120 @@ function App() {
   const handleClearConversation = () => {
     clearRealtimeConversation();
     setError('');
+    // Also clear Q&A history when clearing conversation
+    setQaHistory([]);
+  };
+
+  // Generate unique ID for Q&A entries
+  const generateQAId = () => {
+    return `qa_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  };
+
+  // Extract question from prompt (remove the AI instruction part)
+  const extractQuestionFromPrompt = (prompt) => {
+    // Look for "Question: " pattern and extract everything after it
+    const questionMatch = prompt.match(/Question:\s*(.+)$/s);
+    if (questionMatch) {
+      return questionMatch[1].trim();
+    }
+    
+    // If no "Question:" pattern, try to extract the last meaningful part
+    const lines = prompt.split('\n').filter(line => line.trim());
+    const lastLine = lines[lines.length - 1];
+    
+    // Return the last line if it looks like a question, otherwise return the whole prompt
+    return lastLine || prompt;
+  };
+
+  // Save Q&A pair to history - automatically split multi-question responses
+  const saveQAToHistory = (prompt, answer) => {
+    const originalQuestion = extractQuestionFromPrompt(prompt);
+    
+    console.log('💾 Saving Q&A to history:', { originalQuestion, answer });
+    
+    // Check if the AI response contains multiple Q&A pairs
+    if (hasMultipleQA(answer)) {
+      console.log('💾 Detected multiple Q&A in response, splitting...');
+      
+      // Parse the response into separate Q&A pairs
+      const multiQAList = parseMultiQAResponse(answer);
+      
+      if (multiQAList.length > 1) {
+        console.log('💾 Successfully parsed', multiQAList.length, 'Q&A pairs');
+        
+        // Create separate Q&A entries for each parsed pair
+        const qaEntries = multiQAList.map((qa, index) => ({
+          id: `${generateQAId()}_multi_${index}`,
+          question: qa.question, // Use the polished question from AI response
+          answer: qa.answer,
+          timestamp: new Date().toISOString(),
+          isExpanded: index === 0, // Only first one expanded
+          originalQuestion: originalQuestion, // Keep original transcript for reference
+          isMultiQuestionSplit: true,
+          splitIndex: index,
+          totalSplits: multiQAList.length
+        }));
+        
+        setQaHistory(prev => {
+          // Collapse all previous Q&A items and add new entries at the beginning
+          const collapsedPrevious = prev.map(qa => ({ ...qa, isExpanded: false }));
+          return [...qaEntries, ...collapsedPrevious];
+        });
+        
+        return; // Exit early since we handled the multi-Q&A case
+      }
+    }
+    
+    // Single Q&A case - handle normally
+    console.log('💾 Single Q&A, saving normally');
+    const qaEntry = {
+      id: generateQAId(),
+      question: originalQuestion,
+      answer: answer,
+      timestamp: new Date().toISOString(),
+      isExpanded: true
+    };
+    
+    setQaHistory(prev => {
+      const collapsedPrevious = prev.map(qa => ({ ...qa, isExpanded: false }));
+      return [qaEntry, ...collapsedPrevious];
+    });
+  };
+
+  // Toggle Q&A expansion
+  const toggleQAExpansion = (qaId) => {
+    setQaHistory(prev => prev.map(qa => 
+      qa.id === qaId 
+        ? { ...qa, isExpanded: !qa.isExpanded }
+        : qa
+    ));
+  };
+
+  // Automatic question processing function
+  const processAutoQuestion = async (questionText) => {
+    try {
+      setAutoQuestionProcessing(true);
+      console.log('🤖 Auto-processing question:', questionText);
+      
+      // Get the "100" button prompt from config
+      const hundredButtonConfig = buttonConfig.find(btn => btn.id === "100");
+      if (!hundredButtonConfig) {
+        console.error('100 button config not found');
+        return;
+      }
+      
+      // Create the prompt using the 100 button template
+      const autoPrompt = hundredButtonConfig.prompt.replace('{transcript}', questionText);
+      
+      // Automatically trigger AI response using the 100 button prompt
+      await handleAskAI(autoPrompt);
+      
+    } catch (error) {
+      console.error('Error in auto question processing:', error);
+      setError('Failed to auto-process question: ' + error.message);
+    } finally {
+      setAutoQuestionProcessing(false);
+    }
   };
 
 
@@ -116,6 +242,9 @@ This is for a frontend developer with knowledge of HTML, CSS, JavaScript, TypeSc
 
 Question: ${userQuestion}`;
       }
+
+      // Store the prompt for saving to Q&A history later
+      const originalPrompt = fullPrompt;
 
 
       // Clear previous response and set loading state
@@ -185,6 +314,9 @@ Question: ${userQuestion}`;
                     setAiResponse(data.fullResponse);
                     setIsStreaming(false);
                     
+                    // Save Q&A pair to history when response is complete
+                    saveQAToHistory(originalPrompt, data.fullResponse);
+                    
                     // Final broadcast
                     if (broadcastChannelRef.current) {
                       broadcastChannelRef.current.postMessage({
@@ -228,6 +360,9 @@ Question: ${userQuestion}`;
         
         if (response.data.success) {
           setAiResponse(response.data.answer);
+          
+          // Save Q&A pair to history for non-streaming responses
+          saveQAToHistory(originalPrompt, response.data.answer);
           
           // Broadcast AI response update to other tabs
           if (broadcastChannelRef.current) {
@@ -304,10 +439,13 @@ Question: ${textInput}`;
     return 'ready';
   };
 
-  // Initialize BroadcastChannel on mount
+  // Initialize BroadcastChannel and auto question processor on mount
   useEffect(() => {
     // Initialize BroadcastChannel for AI response synchronization
     broadcastChannelRef.current = new BroadcastChannel('ai-response-sync');
+    
+    // Initialize debounced question processor
+    questionProcessorRef.current = new DebouncedQuestionProcessor(3000); // 3 second delay
     
     // Listen for messages from other tabs
     const handleBroadcastMessage = (event) => {
@@ -323,9 +461,35 @@ Question: ${textInput}`;
         broadcastChannelRef.current.removeEventListener('message', handleBroadcastMessage);
         broadcastChannelRef.current.close();
       }
+      
+      // Clean up question processor
+      if (questionProcessorRef.current) {
+        questionProcessorRef.current.clear();
+      }
     };
   }, []);
 
+
+  // Auto question detection from final transcripts
+  useEffect(() => {
+    if (finalTranscript && finalTranscript.trim() && questionProcessorRef.current) {
+      // Get already processed question texts to avoid duplicates
+      const processedQuestionTexts = qaHistory.map(qa => qa.question);
+      
+      // Process transcript for questions
+      const detectedQuestion = processTranscriptForQuestions(finalTranscript, processedQuestionTexts);
+      
+      if (detectedQuestion) {
+        console.log('🔍 Auto-detected question from transcript:', detectedQuestion);
+        
+        // Use debounced processor to handle the question
+        questionProcessorRef.current.processQuestion(
+          detectedQuestion.text,
+          processAutoQuestion
+        );
+      }
+    }
+  }, [finalTranscript, qaHistory]);
 
   // Handle realtime connection errors
   useEffect(() => {
@@ -333,6 +497,16 @@ Question: ${textInput}`;
       setError(connectionError);
     }
   }, [connectionError]);
+
+  // Handle delete group - remove messages by IDs
+  const handleDeleteGroup = useCallback((messageIds) => {
+    deleteMessages(messageIds);
+  }, [deleteMessages]);
+
+  // Handle merge groups - combine messages from two groups
+  const handleMergeGroups = useCallback((sourceMessageIds, targetMessageIds, direction) => {
+    mergeMessages(sourceMessageIds, targetMessageIds, direction);
+  }, [mergeMessages]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -374,11 +548,18 @@ Question: ${textInput}`;
           // Microphone props (for compatibility)
           selectedMicrophone={selectedMicrophone}
           onMicrophoneSelect={setSelectedMicrophone}
+          // Q&A history for tracking processed transcripts
+          qaHistory={qaHistory}
+          // Message management handlers
+          onDeleteGroup={handleDeleteGroup}
+          onMergeGroups={handleMergeGroups}
         />
         <ResponsePanel 
           response={aiResponse}
           isLoading={isLoadingAI}
           isStreaming={isStreaming}
+          qaHistory={qaHistory}
+          onToggleQA={toggleQAExpansion}
         />
       </div>
     </div>
