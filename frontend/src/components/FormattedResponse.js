@@ -17,6 +17,19 @@ const SECTION_COLORS = [
   { background: '#f9fafb', bullet: '#4b5563', accent: '#6b7280', name: 'gray' }       // Light gray
 ];
 
+// SVG Icons as React components
+const QuestionIcon = ({ size = 24 }) => (
+  <svg width={size} height={size} fill="#3b82f6" viewBox="0 0 24 24" style={{ display: 'inline-block', marginRight: '12px', verticalAlign: 'middle' }}>
+    <path fillRule="evenodd" d="M2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10S2 17.523 2 12Zm9.008-3.018a1.502 1.502 0 0 1 2.522 1.159v.024a1.44 1.44 0 0 1-1.493 1.418 1 1 0 0 0-1.037.999V14a1 1 0 1 0 2 0v-.539a3.44 3.44 0 0 0 2.529-3.256 3.502 3.502 0 0 0-7-.255 1 1 0 0 0 2 .076c.014-.398.187-.774.48-1.044Zm.982 7.026a1 1 0 1 0 0 2H12a1 1 0 1 0 0-2h-.01Z" clipRule="evenodd"/>
+  </svg>
+);
+
+const AnswerIcon = ({ size = 24 }) => (
+  <svg width={size} height={size} fill="#16a34a" viewBox="0 0 24 24" style={{ display: 'inline-block', marginRight: '12px', verticalAlign: 'middle' }}>
+    <path fillRule="evenodd" d="M12 2c-.791 0-1.55.314-2.11.874l-.893.893a.985.985 0 0 1-.696.288H7.04A2.984 2.984 0 0 0 4.055 7.04v1.262a.986.986 0 0 1-.288.696l-.893.893a2.984 2.984 0 0 0 0 4.22l.893.893a.985.985 0 0 1 .288.696v1.262a2.984 2.984 0 0 0 2.984 2.984h1.262c.261 0 .512.104.696.288l.893.893a2.984 2.984 0 0 0 4.22 0l.893-.893a.985.985 0 0 1 .696-.288h1.262a2.984 2.984 0 0 0 2.984-2.984V15.7c0-.261.104-.512.288-.696l.893-.893a2.984 2.984 0 0 0 0-4.22l-.893-.893a.985.985 0 0 1-.288-.696V7.04a2.984 2.984 0 0 0-2.984-2.984h-1.262a.985.985 0 0 1-.696-.288l-.893-.893A2.984 2.984 0 0 0 12 2Zm3.683 7.73a1 1 0 1 0-1.414-1.413l-4.253 4.253-1.277-1.277a1 1 0 0 0-1.415 1.414l1.985 1.984a1 1 0 0 0 1.414 0l4.96-4.96Z" clipRule="evenodd"/>
+  </svg>
+);
+
 // Default icons for common section types
 const SECTION_ICONS = {
   'definition': '📖',
@@ -26,8 +39,8 @@ const SECTION_ICONS = {
   'keypoints': '🔑',
   'overview': '📚',
   'introduction': '📚',
-  'solution': '✅',
-  'answer': '✅',
+  'solution': <AnswerIcon />,
+  'answer': <AnswerIcon />,
   'implementation': '💻',
   'code': '💻',
   'coding': '💻',
@@ -45,7 +58,7 @@ const SECTION_ICONS = {
   'deep dive': '🔍',
   'conclusion': '📝',
   'summary': '📝',
-  'default': '📄'
+  'default': <QuestionIcon />
 };
 
 const FormattedResponse = ({ response }) => {

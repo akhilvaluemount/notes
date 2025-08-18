@@ -27,8 +27,8 @@ const SECTION_ICONS = {
   'keypoints': '🔑',
   'overview': '📚',
   'introduction': '📚',
-  'solution': '✅',
-  'answer': '✅',
+  'solution': '<span class="answer-icon-svg"></span>',
+  'answer': '<span class="answer-icon-svg"></span>',
   'implementation': '💻',
   'code': '💻',
   'coding': '💻',
@@ -46,7 +46,7 @@ const SECTION_ICONS = {
   'deep dive': '🔍',
   'conclusion': '📝',
   'summary': '📝',
-  'default': '📄'
+  'default': '<span class="question-icon-svg"></span>'
 };
 
 // Function to get FormattedResponse CSS content for new tab
@@ -271,15 +271,16 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false, qaHistory = [
   const openInNewTab = () => {
     if (!response) return;
     
-    const newWindow = window.open('', '_blank');
-    if (newWindow) {
-      // Generate enhanced HTML with full CSS styling and real-time sync
-      const enhancedHTML = generateEnhancedSyncedHTML(response);
-      newWindow.document.write(enhancedHTML);
-      newWindow.document.close();
-    }
+    // Store the current response in sessionStorage for the new tab to pick up
+    sessionStorage.setItem('initialAiResponse', response);
+    
+    // Open the /notes route in a new tab
+    window.open('/notes', '_blank');
   };
 
+  // Removed unused HTML generation functions since we're using /notes route now
+  
+  // Keeping for potential future use if needed
   const generateEnhancedSyncedHTML = (initialResponse) => {
     // Parse the response using the same logic as FormattedResponse
     const sections = parseResponseWithFallback(initialResponse);
@@ -631,6 +632,31 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false, qaHistory = [
           .qa-cards-container .qa-card:nth-child(4) { animation-delay: 0.4s; }
           .qa-cards-container .qa-card:nth-child(5) { animation-delay: 0.5s; }
           .qa-cards-container .qa-card:nth-child(n+6) { animation-delay: 0.6s; }
+
+          /* SVG Icons */
+          .question-icon-svg {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23059669'%3E%3Cpath fill-rule='evenodd' d='M2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10S2 17.523 2 12Zm9.008-3.018a1.502 1.502 0 0 1 2.522 1.159v.024a1.44 1.44 0 0 1-1.493 1.418 1 1 0 0 0-1.037.999V14a1 1 0 1 0 2 0v-.539a3.44 3.44 0 0 0 2.529-3.256 3.502 3.502 0 0 0-7-.255 1 1 0 0 0 2 .076c.014-.398.187-.774.48-1.044Zm.982 7.026a1 1 0 1 0 0 2H12a1 1 0 1 0 0-2h-.01Z' clip-rule='evenodd'/%3E%3C/svg%3E");
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            vertical-align: middle;
+            margin-right: 8px;
+          }
+
+          .answer-icon-svg {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23059669'%3E%3Cpath fill-rule='evenodd' d='M12 2c-.791 0-1.55.314-2.11.874l-.893.893a.985.985 0 0 1-.696.288H7.04A2.984 2.984 0 0 0 4.055 7.04v1.262a.986.986 0 0 1-.288.696l-.893.893a2.984 2.984 0 0 0 0 4.22l.893.893a.985.985 0 0 1 .288.696v1.262a2.984 2.984 0 0 0 2.984 2.984h1.262c.261 0 .512.104.696.288l.893.893a2.984 2.984 0 0 0 4.22 0l.893-.893a.985.985 0 0 1 .696-.288h1.262a2.984 2.984 0 0 0 2.984-2.984V15.7c0-.261.104-.512.288-.696l.893-.893a2.984 2.984 0 0 0 0-4.22l-.893-.893a.985.985 0 0 1-.288-.696V7.04a2.984 2.984 0 0 0-2.984-2.984h-1.262a.985.985 0 0 1-.696-.288l-.893-.893A2.984 2.984 0 0 0 12 2Zm3.683 7.73a1 1 0 1 0-1.414-1.413l-4.253 4.253-1.277-1.277a1 1 0 0 0-1.415 1.414l1.985 1.984a1 1 0 0 0 1.414 0l4.96-4.96Z' clip-rule='evenodd'/%3E%3C/svg%3E");
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            vertical-align: middle;
+            margin-right: 8px;
+          }
 
           /* Complete FormattedResponse.css styles */
           .formatted-response {
@@ -1364,13 +1390,17 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false, qaHistory = [
 
               // Question
               const q = makeEl('div','question');
-              q.appendChild(makeEl('div','q-title', \`📄 \${mdInline(qNum)}\`));
+              const qTitle = makeEl('div','q-title');
+              qTitle.innerHTML = \`<span class="question-icon-svg"></span>\${mdInline(qNum)}\`;
+              q.appendChild(qTitle);
               q.appendChild(makeEl('p','q-text', mdInline(qText)));
               card.appendChild(q);
 
               // Answer
               const a = makeEl('div','answer');
-              a.appendChild(makeEl('div','a-title','✅ Answer'));
+              const aTitle = makeEl('div','a-title');
+              aTitle.innerHTML = '<span class="answer-icon-svg"></span>Answer';
+              a.appendChild(aTitle);
 
               // Process answer content (bullets, paragraphs, etc.)
               processAnswerContent(answerContent, a, mdInline);
@@ -1919,7 +1949,7 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false, qaHistory = [
 
         if (sections.definition.length === 0 && sections.explanation.length === 0 && 
            sections.examples.length === 0 && sections.keyPoints.length === 0) {
-          html += '<div class="response-section" style="background: #f8f9fa; border: 1px solid #e9ecef;"><div class="section-header"><span class="section-icon">📄</span><h3>Raw Response</h3></div><div style="padding: 1rem; white-space: pre-wrap; font-family: inherit;">' + response + '</div></div>';
+          html += '<div class="response-section" style="background: #f8f9fa; border: 1px solid #e9ecef;"><div class="section-header"><span class="section-icon"><span class="question-icon-svg"></span></span><h3>Raw Response</h3></div><div style="padding: 1rem; white-space: pre-wrap; font-family: inherit;">' + response + '</div></div>';
         }
 
         html += '</div>';
