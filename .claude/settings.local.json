@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm start)",
+      "Bash(set SKIP_PREFLIGHT_CHECK=true)",
+      "Bash(npm run proxy:*)",
+      "Bash(tasklist:*)",
+      "Bash(powershell:*)",
+      "Bash(rm:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

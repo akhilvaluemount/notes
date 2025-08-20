@@ -1,0 +1,27 @@
+.audio-recorder {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.processing-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  background-color: rgba(52, 152, 219, 0.1);
+  border-radius: 4px;
+  color: #3498db;
+  font-size: 0.9rem;
+  font-weight: 500;
+  animation: fadeInOut 1.5s infinite;
+}
+
+@keyframes fadeInOut {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
