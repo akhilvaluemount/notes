@@ -1,0 +1,24 @@
+{
+  "name": "voice-transcription-backend",
+  "version": "1.0.0",
+  "description": "Backend for voice transcription app using AssemblyAI and ChatGPT",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "proxy": "node hybrid-proxy.js",
+    "proxy-dev": "nodemon hybrid-proxy.js"
+  },
+  "dependencies": {
+    "assemblyai": "^4.15.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.1",
+    "express": "^4.18.2",
+    "openai": "^4.28.0",
+    "stream": "^0.0.3",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3"
+  }
+}

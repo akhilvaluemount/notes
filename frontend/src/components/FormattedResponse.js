@@ -1,0 +1,698 @@
+import React from 'react';
+import './FormattedResponse.css';
+
+// Dynamic color palette for sections
+const SECTION_COLORS = [
+  { background: '#f0f9f0', bullet: '#27ae60', accent: '#2ecc71', name: 'green' },     // Light green
+  { background: '#fff8f0', bullet: '#ff9800', accent: '#f39c12', name: 'orange' },    // Light orange  
+  { background: '#f0f8ff', bullet: '#2196f3', accent: '#3498db', name: 'blue' },      // Light blue
+  { background: '#fdf0f5', bullet: '#e91e63', accent: '#e74c3c', name: 'pink' },      // Light pink
+  { background: '#f5f3ff', bullet: '#7c3aed', accent: '#9b59b6', name: 'purple' },    // Light purple
+  { background: '#f0fdf4', bullet: '#16a34a', accent: '#27ae60', name: 'emerald' },   // Light emerald
+  { background: '#ecfeff', bullet: '#06b6d4', accent: '#17a2b8', name: 'cyan' },      // Light cyan
+  { background: '#fffbeb', bullet: '#f59e0b', accent: '#f39c12', name: 'amber' },     // Light amber
+  { background: '#fef2f2', bullet: '#ef4444', accent: '#e74c3c', name: 'red' },       // Light red
+  { background: '#eef2ff', bullet: '#6366f1', accent: '#6c5ce7', name: 'indigo' },    // Light indigo
+  { background: '#faf5ff', bullet: '#8b5cf6', accent: '#9b59b6', name: 'violet' },    // Light violet
+  { background: '#f9fafb', bullet: '#4b5563', accent: '#6b7280', name: 'gray' }       // Light gray
+];
+
+// SVG Icons as React components
+const QuestionIcon = ({ size = 24 }) => (
+  <svg width={size} height={size} fill="#3b82f6" viewBox="0 0 24 24" style={{ display: 'inline-block', marginRight: '12px', verticalAlign: 'middle' }}>
+    <path fillRule="evenodd" d="M2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10S2 17.523 2 12Zm9.008-3.018a1.502 1.502 0 0 1 2.522 1.159v.024a1.44 1.44 0 0 1-1.493 1.418 1 1 0 0 0-1.037.999V14a1 1 0 1 0 2 0v-.539a3.44 3.44 0 0 0 2.529-3.256 3.502 3.502 0 0 0-7-.255 1 1 0 0 0 2 .076c.014-.398.187-.774.48-1.044Zm.982 7.026a1 1 0 1 0 0 2H12a1 1 0 1 0 0-2h-.01Z" clipRule="evenodd"/>
+  </svg>
+);
+
+const AnswerIcon = ({ size = 24 }) => (
+  <svg width={size} height={size} fill="#16a34a" viewBox="0 0 24 24" style={{ display: 'inline-block', marginRight: '12px', verticalAlign: 'middle' }}>
+    <path fillRule="evenodd" d="M12 2c-.791 0-1.55.314-2.11.874l-.893.893a.985.985 0 0 1-.696.288H7.04A2.984 2.984 0 0 0 4.055 7.04v1.262a.986.986 0 0 1-.288.696l-.893.893a2.984 2.984 0 0 0 0 4.22l.893.893a.985.985 0 0 1 .288.696v1.262a2.984 2.984 0 0 0 2.984 2.984h1.262c.261 0 .512.104.696.288l.893.893a2.984 2.984 0 0 0 4.22 0l.893-.893a.985.985 0 0 1 .696-.288h1.262a2.984 2.984 0 0 0 2.984-2.984V15.7c0-.261.104-.512.288-.696l.893-.893a2.984 2.984 0 0 0 0-4.22l-.893-.893a.985.985 0 0 1-.288-.696V7.04a2.984 2.984 0 0 0-2.984-2.984h-1.262a.985.985 0 0 1-.696-.288l-.893-.893A2.984 2.984 0 0 0 12 2Zm3.683 7.73a1 1 0 1 0-1.414-1.413l-4.253 4.253-1.277-1.277a1 1 0 0 0-1.415 1.414l1.985 1.984a1 1 0 0 0 1.414 0l4.96-4.96Z" clipRule="evenodd"/>
+  </svg>
+);
+
+// Default icons for common section types
+const SECTION_ICONS = {
+  'definition': '📖',
+  'explanation': '💡',
+  'examples': '📌', 
+  'key points': '🔑',
+  'keypoints': '🔑',
+  'overview': '📚',
+  'introduction': '📚',
+  'solution': <AnswerIcon />,
+  'answer': <AnswerIcon />,
+  'implementation': '💻',
+  'code': '💻',
+  'coding': '💻',
+  'best practices': '🎯',
+  'comparison': '📊',
+  'analysis': '📊',
+  'warning': '⚠️',
+  'caution': '⚠️',
+  'important': '⚠️',
+  'note': '⚠️',
+  'tips': '💡',
+  'hints': '💡',
+  'advice': '💡',
+  'details': '🔍',
+  'deep dive': '🔍',
+  'conclusion': '📝',
+  'summary': '📝',
+  'default': <QuestionIcon />
+};
+
+const FormattedResponse = ({ response }) => {
+  console.log('FormattedResponse received response:', response);
+  console.log('Response type:', typeof response);
+  console.log('Response length:', response?.length);
+  
+  // Simple fallback if response is empty or just whitespace
+  if (!response || !response.trim()) {
+    console.log('Response is empty or just whitespace');
+    return (
+      <div className="formatted-response ai-response-content">
+        <div className="empty-state">No response received</div>
+      </div>
+    );
+  }
+
+  // Function to detect if lines form a markdown table
+  const detectMarkdownTable = (lines, startIndex) => {
+    if (startIndex >= lines.length - 1) return null;
+    
+    const line = lines[startIndex].trim();
+    const nextLine = lines[startIndex + 1]?.trim();
+    
+    // Check if current line has table format (has pipes and content)
+    const hasTableFormat = line.includes('|') && line.split('|').length >= 3;
+    
+    // Check if next line is a separator line (contains dashes and pipes)
+    const isSeparatorLine = nextLine && 
+      nextLine.includes('|') && 
+      nextLine.includes('-') &&
+      nextLine.split('|').every(cell => cell.trim().match(/^-*$/));
+    
+    if (hasTableFormat && isSeparatorLine) {
+      // Find the end of the table
+      let endIndex = startIndex + 2; // Start after separator line
+      while (endIndex < lines.length) {
+        const tableLine = lines[endIndex].trim();
+        if (!tableLine || !tableLine.includes('|')) break;
+        endIndex++;
+      }
+      
+      return {
+        startIndex,
+        endIndex: endIndex - 1,
+        headerLine: startIndex,
+        separatorLine: startIndex + 1,
+        dataStartIndex: startIndex + 2
+      };
+    }
+    
+    return null;
+  };
+
+  // Function to parse markdown table into structured data
+  const parseMarkdownTable = (lines, tableInfo) => {
+    const headerLine = lines[tableInfo.headerLine];
+    const dataLines = lines.slice(tableInfo.dataStartIndex, tableInfo.endIndex + 1);
+    
+    // Parse header
+    const headers = headerLine.split('|')
+      .map(cell => cell.trim())
+      .filter(cell => cell.length > 0);
+    
+    // Parse data rows
+    const rows = dataLines
+      .filter(line => line.trim().length > 0)
+      .map(line => {
+        return line.split('|')
+          .map(cell => cell.trim())
+          .filter(cell => cell.length > 0);
+      })
+      .filter(row => row.length > 0);
+    
+    return {
+      type: 'table',
+      headers,
+      rows
+    };
+  };
+
+  // Parse text with markdown-like formatting
+  const parseFormattedText = (text) => {
+    if (!text) return text;
+    
+    // Handle **bold** text
+    let parts = text.split(/(\*\*[^*]+\*\*)/g);
+    
+    return parts.map((part, index) => {
+      // Check for bold text
+      if (part.startsWith('**') && part.endsWith('**')) {
+        const content = part.slice(2, -2);
+        return <strong key={index}>{content}</strong>;
+      }
+      
+      // Check for inline code with backticks
+      const codeParts = part.split(/(`[^`]+`|\*\w+[\w-]*|\[\w+\])/g);
+      
+      return codeParts.map((subPart, subIndex) => {
+        const key = `${index}-${subIndex}`;
+        
+        // Handle backtick code
+        if (subPart.startsWith('`') && subPart.endsWith('`')) {
+          return <code key={key} className="inline-code">{subPart.slice(1, -1)}</code>;
+        }
+        
+        // Handle Angular directives like *ngIf, *ngFor
+        if (subPart.match(/^\*ng\w+/)) {
+          return <code key={key} className="inline-code">{subPart}</code>;
+        }
+        
+        // Handle attribute directives like [ngClass]
+        if (subPart.match(/^\[\w+\]/)) {
+          return <code key={key} className="inline-code">{subPart}</code>;
+        }
+        
+        return subPart;
+      });
+    }).flat();
+  };
+
+  // Parse the response to extract sections dynamically
+  const parseResponse = (text) => {
+    const dynamicSections = []; // Array of {title, content, colorIndex, icon}
+
+    // Split by lines and process
+    const lines = text.split('\n');
+    let currentSectionIndex = -1;
+    let codeBlock = false;
+    let codeContent = [];
+    let codeLanguage = '';
+    
+    // Helper function to get icon for section title
+    const getSectionIcon = (title) => {
+      const lowerTitle = title.toLowerCase().trim();
+      return SECTION_ICONS[lowerTitle] || SECTION_ICONS['default'];
+    };
+    
+    // Helper function to detect if line is a section header
+    const detectSectionHeader = (line) => {
+      const trimmed = line.trim();
+      
+      // ### Markdown headers
+      const markdownMatch = trimmed.match(/^###\s+(.+?)(:)?$/i);
+      if (markdownMatch) {
+        return markdownMatch[1].trim();
+      }
+      
+      // **Bold** headers  
+      const boldMatch = trimmed.match(/^\*\*(.+?)\*\*(:)?$/i);
+      if (boldMatch) {
+        return boldMatch[1].trim();
+      }
+      
+      // Plain text headers ending with colon (must be substantial text)
+      const colonMatch = trimmed.match(/^([a-zA-Z][a-zA-Z\s]{3,}):$/);
+      if (colonMatch) {
+        return colonMatch[1].trim();
+      }
+      
+      return null;
+    };
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmedLine = line.trim();
+      
+      // Handle code blocks
+      if (trimmedLine.startsWith('```')) {
+        if (codeBlock) {
+          // End of code block
+          if (currentSectionIndex >= 0 && codeContent.length > 0) {
+            dynamicSections[currentSectionIndex].content.push({
+              type: 'code',
+              content: codeContent.join('\n'),
+              language: codeLanguage || 'javascript'
+            });
+          }
+          codeContent = [];
+          codeLanguage = '';
+          codeBlock = false;
+        } else {
+          // Start of code block
+          codeBlock = true;
+          codeLanguage = trimmedLine.replace('```', '') || 'javascript';
+        }
+        continue;
+      }
+      
+      if (codeBlock) {
+        codeContent.push(line);
+        continue;
+      }
+
+      // Check for markdown tables
+      const tableInfo = detectMarkdownTable(lines, i);
+      if (tableInfo) {
+        const tableData = parseMarkdownTable(lines, tableInfo);
+        
+        if (currentSectionIndex >= 0) {
+          // Add table to current section
+          dynamicSections[currentSectionIndex].content.push(tableData);
+        } else {
+          // Create new section for standalone table
+          const colorIndex = dynamicSections.length % SECTION_COLORS.length;
+          dynamicSections.push({
+            title: 'Comparison Table',
+            content: [tableData],
+            colorIndex: colorIndex,
+            icon: '📊'
+          });
+          currentSectionIndex = dynamicSections.length - 1;
+        }
+        
+        // Skip to end of table
+        i = tableInfo.endIndex;
+        continue;
+      }
+      
+      // Skip empty lines
+      if (!trimmedLine) continue;
+      
+      // Check if this line is a section header
+      const sectionTitle = detectSectionHeader(trimmedLine);
+      if (sectionTitle) {
+        // Create new section
+        const colorIndex = dynamicSections.length % SECTION_COLORS.length;
+        const icon = getSectionIcon(sectionTitle);
+        
+        dynamicSections.push({
+          title: sectionTitle,
+          content: [],
+          colorIndex: colorIndex,
+          icon: icon
+        });
+        
+        currentSectionIndex = dynamicSections.length - 1;
+        console.log(`Found section: "${sectionTitle}" with color index ${colorIndex}`);
+        continue;
+      }
+      
+      // Add content to current section if we have one
+      if (currentSectionIndex >= 0) {
+        let contentItem;
+        
+        if (trimmedLine.startsWith('•') || trimmedLine.startsWith('-') || trimmedLine.startsWith('*')) {
+          // Bullet points
+          const leadingSpaces = line.length - line.trimLeft().length;
+          const indentLevel = Math.floor(leadingSpaces / 2);
+          contentItem = { 
+            type: 'bullet', 
+            content: trimmedLine.substring(1).trim(),
+            indent: indentLevel
+          };
+        } else if (trimmedLine.match(/^\d+\.\s+/)) {
+          // Numbered lists
+          const content = trimmedLine.replace(/^\d+\.\s+/, '');
+          contentItem = { type: 'numbered', content: content };
+        } else if (trimmedLine.match(/^[\w\s]+Example:?$/i)) {
+          // Example headers
+          contentItem = { type: 'example-header', content: trimmedLine };
+        } else if (trimmedLine.match(/^[\w\s]+:$/)) {
+          // Subheaders (ending with colon but not section headers)
+          contentItem = { type: 'subheader', content: trimmedLine };
+        } else {
+          // Regular text
+          contentItem = { type: 'text', content: trimmedLine };
+        }
+        
+        dynamicSections[currentSectionIndex].content.push(contentItem);
+      }
+    }
+
+    return dynamicSections;
+  };
+
+  // Helper function to render section items dynamically
+  const renderSectionItem = (item, index, colorData) => {
+    const bulletStyle = {
+      marginLeft: `${(item.indent || 0) * 1}rem`,
+      position: 'relative',
+      paddingLeft: '1rem',
+      marginBottom: '0.1rem',
+      color: '#2c3e50'
+    };
+    
+    const bulletBeforeStyle = {
+      content: '"•"',
+      position: 'absolute',
+      left: '0.5rem',
+      color: colorData.bullet,
+      fontWeight: 'bold'
+    };
+
+    if (item.type === 'bullet') {
+      return (
+        <div key={index} className="dynamic-bullet" style={bulletStyle}>
+          <span style={bulletBeforeStyle}>•</span>
+          {parseFormattedText(item.content)}
+        </div>
+      );
+    } else if (item.type === 'numbered') {
+      return (
+        <div key={index} className="dynamic-numbered" style={{
+          paddingLeft: '1.5rem',
+          margin: '0.1rem 0',
+          counterIncrement: 'list-counter',
+          position: 'relative'
+        }}>
+          {parseFormattedText(item.content)}
+        </div>
+      );
+    } else if (item.type === 'code') {
+      return (
+        <pre key={index} className="code-block">
+          <code className={`language-${item.language}`}>{item.content}</code>
+        </pre>
+      );
+    } else if (item.type === 'table') {
+      return (
+        <div key={index} className="fr-table-scroll">
+          <table>
+            <thead>
+              <tr>
+                {item.headers.map((header, headerIndex) => (
+                  <th key={headerIndex}>
+                    {parseFormattedText(header)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {item.rows.map((row, rowIndex) => (
+                <tr key={rowIndex}>
+                  {row.map((cell, cellIndex) => (
+                    <td key={cellIndex}>
+                      {parseFormattedText(cell)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    } else if (item.type === 'subheader') {
+      return (
+        <h4 key={index} className="dynamic-subheader" style={{
+          color: colorData.accent,
+          fontSize: '1rem',
+          fontWeight: 600,
+          margin: '0.3rem 0 0.2rem 0'
+        }}>
+          {parseFormattedText(item.content)}
+        </h4>
+      );
+    } else if (item.type === 'example-header') {
+      return (
+        <h4 key={index} className="dynamic-example-header" style={{
+          color: colorData.accent,
+          fontSize: '1rem',
+          fontWeight: 600,
+          margin: '0.3rem 0 0.2rem 0'
+        }}>
+          {parseFormattedText(item.content)}
+        </h4>
+      );
+    } else {
+      return (
+        <p key={index} className="dynamic-text" style={{
+          fontSize: '1rem',
+          color: '#2c3e50',
+          margin: '0.1rem 0',
+          lineHeight: '1.4',
+          padding: '0.1rem'
+        }}>
+          {parseFormattedText(item.content)}
+        </p>
+      );
+    }
+  };
+
+  // Helper function to render fallback content
+  const renderFallbackContent = (text) => {
+    const lines = text.split('\n');
+    const elements = [];
+    let currentParagraph = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+
+      // Check for markdown tables in fallback content
+      const tableInfo = detectMarkdownTable(lines, i);
+      if (tableInfo) {
+        // End current paragraph if exists
+        if (currentParagraph.length > 0) {
+          elements.push(
+            <p key={`para-${elements.length}`} className="fallback-paragraph">
+              {parseFormattedText(currentParagraph.join(' '))}
+            </p>
+          );
+          currentParagraph = [];
+        }
+
+        // Parse and render table
+        const tableData = parseMarkdownTable(lines, tableInfo);
+        elements.push(
+          <div key={`table-${elements.length}`} className="fr-table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  {tableData.headers.map((header, headerIndex) => (
+                    <th key={headerIndex}>
+                      {parseFormattedText(header)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {tableData.rows.map((row, rowIndex) => (
+                  <tr key={rowIndex}>
+                    {row.map((cell, cellIndex) => (
+                      <td key={cellIndex}>
+                        {parseFormattedText(cell)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+
+        // Skip to end of table
+        i = tableInfo.endIndex;
+        continue;
+      }
+      
+      if (!trimmed) {
+        // Empty line - end current paragraph
+        if (currentParagraph.length > 0) {
+          elements.push(
+            <p key={`para-${elements.length}`} className="fallback-paragraph">
+              {parseFormattedText(currentParagraph.join(' '))}
+            </p>
+          );
+          currentParagraph = [];
+        }
+      } else if (trimmed.match(/^[-•*]\s+/) || trimmed.startsWith('• •')) {
+        // Bullet point - handle nested bullets and clean up
+        if (currentParagraph.length > 0) {
+          elements.push(
+            <p key={`para-${elements.length}`} className="fallback-paragraph">
+              {parseFormattedText(currentParagraph.join(' '))}
+            </p>
+          );
+          currentParagraph = [];
+        }
+        
+        // Clean up the bullet content - remove multiple bullet symbols
+        let content = trimmed.replace(/^[-•*]\s+/, '').replace(/^•\s+/, '');
+        const indentLevel = (line.length - line.trimLeft().length) / 2;
+        
+        elements.push(
+          <div key={`bullet-${elements.length}`} 
+               className="fallback-bullet" 
+               style={{marginLeft: `${indentLevel * 1}rem`}}>
+            {parseFormattedText(content)}
+          </div>
+        );
+      } else if (trimmed.match(/^\d+\.\s+/)) {
+        // Numbered list
+        if (currentParagraph.length > 0) {
+          elements.push(
+            <p key={`para-${elements.length}`} className="fallback-paragraph">
+              {parseFormattedText(currentParagraph.join(' '))}
+            </p>
+          );
+          currentParagraph = [];
+        }
+        const content = trimmed.replace(/^\d+\.\s+/, '');
+        elements.push(
+          <div key={`num-${elements.length}`} className="fallback-numbered">
+            {parseFormattedText(content)}
+          </div>
+        );
+      } else if (trimmed.startsWith('```')) {
+        // Code block start/end - handle code blocks
+        const codeLines = [];
+        i++; // Move to next line
+        while (i < lines.length && !lines[i].trim().startsWith('```')) {
+          codeLines.push(lines[i]);
+          i++;
+        }
+        if (codeLines.length > 0) {
+          elements.push(
+            <pre key={`code-${elements.length}`} className="code-block">
+              <code>{codeLines.join('\n')}</code>
+            </pre>
+          );
+        }
+      } else if (trimmed.match(/^#+\s+/) || trimmed.match(/^\*\*.*\*\*:?\s*$/) || trimmed.endsWith(':')) {
+        // Headers - markdown headers, bold headers, or lines ending with colon
+        if (currentParagraph.length > 0) {
+          elements.push(
+            <p key={`para-${elements.length}`} className="fallback-paragraph">
+              {parseFormattedText(currentParagraph.join(' '))}
+            </p>
+          );
+          currentParagraph = [];
+        }
+        
+        const headerText = trimmed
+          .replace(/^#+\s+/, '')  // Remove markdown #
+          .replace(/^\*\*|\*\*$/g, '')  // Remove bold markers
+          .replace(/:$/, '');  // Remove trailing colon
+          
+        elements.push(
+          <h4 key={`header-${elements.length}`} className="fallback-header">
+            {parseFormattedText(headerText)}
+          </h4>
+        );
+      } else {
+        // Regular text - add to current paragraph
+        currentParagraph.push(trimmed);
+      }
+    }
+    
+    // Add any remaining paragraph
+    if (currentParagraph.length > 0) {
+      elements.push(
+        <p key={`para-${elements.length}`} className="fallback-paragraph">
+          {parseFormattedText(currentParagraph.join(' '))}
+        </p>
+      );
+    }
+    
+    return elements.length > 0 ? elements : (
+      <div className="fallback-raw">
+        {parseFormattedText(text)}
+      </div>
+    );
+  };
+
+  // Parse the response using dynamic section detection
+  const dynamicSections = parseResponse(response);
+
+  // Render dynamic sections or fallback content
+  return (
+    <div className="formatted-response ai-response-content">
+      {dynamicSections.length > 0 ? (
+        // Render all detected sections dynamically
+        dynamicSections.map((section, sectionIndex) => {
+          const colorData = SECTION_COLORS[section.colorIndex];
+          
+          return (
+            <div 
+              key={`section-${sectionIndex}`} 
+              className="response-section dynamic-section"
+              style={{
+                marginBottom: '0.75rem',
+                background: colorData.background,
+                borderRadius: '8px',
+                padding: '0.75rem',
+                position: 'relative',
+                overflow: 'hidden',
+                counterReset: 'list-counter'
+              }}
+            >
+              <div className="section-header" style={{
+                display: 'flex',
+                alignItems: 'center',
+                marginBottom: '0.3rem',
+                gap: '0.3rem',
+                paddingBottom: '0.2rem',
+                borderBottom: '1px solid rgba(0, 0, 0, 0.1)'
+              }}>
+                <span className="section-icon" style={{ fontSize: '1.2rem' }}>
+                  {section.icon}
+                </span>
+                <h3 style={{
+                  fontSize: '1.1rem',
+                  fontWeight: 600,
+                  color: '#2c3e50',
+                  margin: 0
+                }}>
+                  {section.title}
+                </h3>
+              </div>
+              
+              <div className="section-content" style={{ paddingLeft: '0.5rem' }}>
+                {section.content.map((item, itemIndex) => 
+                  renderSectionItem(item, itemIndex, colorData)
+                )}
+              </div>
+            </div>
+          );
+        })
+      ) : (
+        // Enhanced fallback for unstructured responses
+        <div className="response-section fallback-section" style={{
+          marginBottom: '0.75rem',
+          background: '#fafafa',
+          borderRadius: '8px',
+          padding: '0.75rem',
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          <div className="section-header" style={{
+            display: 'flex',
+            alignItems: 'center',
+            marginBottom: '0.3rem',
+            gap: '0.3rem',
+            paddingBottom: '0.2rem',
+            borderBottom: '1px solid rgba(0, 0, 0, 0.1)'
+          }}>
+            <span className="section-icon" style={{ fontSize: '1.2rem' }}>💬</span>
+            <h3 style={{
+              fontSize: '1.1rem',
+              fontWeight: 600,
+              color: '#2c3e50',
+              margin: 0
+            }}>
+              Response
+            </h3>
+          </div>
+          <div className="fallback-content" style={{ padding: '0.75rem', counterReset: 'list-counter' }}>
+            {renderFallbackContent(response)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default FormattedResponse;

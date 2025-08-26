@@ -1,0 +1,463 @@
+/*
+  ChatGPT Response UI — Enhanced CSS
+  Purpose: style all common response types (sections, bullets, tables, code, callouts, checklists, FAQs, media) with light/dark themes,
+  accessibility, responsive rules, and sensible defaults. Backwards-compatible with your existing classes.
+*/
+
+/* ============================
+   0) SVG Icons
+   ============================ */
+.question-icon-svg {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23059669'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+.answer-icon-svg {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23059669'%3E%3Cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+/* ============================
+   1) Design Tokens (CSS Vars)
+   ============================ */
+   :root {
+    /* Palette */
+    --fg: #2c3e50;
+    --fg-muted: #4b5563;
+    --fg-soft: #6b7280;
+    --bg: #ffffff;
+    --bg-soft: #f8f9fa;
+    --bg-elev: #ffffff;
+    --border: rgba(0,0,0,0.1);
+    --shadow: 0 1px 3px rgba(0,0,0,0.1);
+  
+    /* Accent hues */
+    --accent: #3b82f6;   /* blue */
+    --success: #10b981;  /* green */
+    --warning: #f59e0b;  /* amber */
+    --danger: #ef4444;   /* red */
+    --info: #0ea5e9;     /* sky */
+    --purple: #8b5cf6;
+    --pink: #d63384;
+  
+    /* Code */
+    --code-fg: #d4d4d4;
+    --code-bg: #1e1e1e;
+    --inline-code-bg: #f0f0f0;
+    --inline-code-fg: var(--pink);
+  
+    /* Typography */
+    --ff-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --ff-mono: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+    --fs-0: 0.85rem;
+    --fs-1: 0.95rem;
+    --fs-2: 1.1rem;
+    --fs-3: 1.25rem;
+    --lh: 1.6;
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --pad-sm: 0.5rem;
+    --pad-md: 0.75rem;
+    --pad-lg: 1rem;
+  
+    /* Motion */
+    --easing: cubic-bezier(.2,.8,.2,1);
+    --dur-fast: 150ms;
+    --dur: 250ms;
+  }
+  
+  /* Dark theme via prefers-color-scheme or manual [data-theme="dark"] */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fg: #e5e7eb;
+      --fg-muted: #cbd5e1;
+      --fg-soft: #94a3b8;
+      --bg: #0b1220;
+      --bg-soft: #0f172a;
+      --bg-elev: #0b1220;
+      --border: rgba(255,255,255,0.12);
+      --shadow: 0 1px 3px rgba(0,0,0,0.4);
+  
+      --inline-code-bg: #101421;
+      --inline-code-fg: #ff7bc8;
+      --code-fg: #e5e7eb;
+      --code-bg: #0a0f1a;
+    }
+  }
+  
+  [data-theme="dark"] {
+    --fg: #e5e7eb;
+    --fg-muted: #cbd5e1;
+    --fg-soft: #94a3b8;
+    --bg: #0b1220;
+    --bg-soft: #0f172a;
+    --bg-elev: #0b1220;
+    --border: rgba(255,255,255,0.12);
+    --shadow: 0 1px 3px rgba(0,0,0,0.4);
+  
+    --inline-code-bg: #101421;
+    --inline-code-fg: #ff7bc8;
+    --code-fg: #e5e7eb;
+    --code-bg: #0a0f1a;
+  }
+  
+  /* ============================
+     2) Base Container & Typography
+     ============================ */
+  .formatted-response {
+    font-family: var(--ff-base);
+    color: var(--fg);
+    line-height: var(--lh);
+    background: transparent; /* host chooses container bg */
+  }
+  
+  .formatted-response a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .formatted-response a:hover { text-decoration: underline; }
+  
+  .formatted-response h1,
+  .formatted-response h2,
+  .formatted-response h3,
+  .formatted-response h4 {
+    color: var(--fg);
+    margin: 0.75rem 0 0.5rem;
+    line-height: 1.25;
+  }
+  .formatted-response h1 { font-size: 1.6rem; }
+  .formatted-response h2 { font-size: 1.35rem; }
+  .formatted-response h3 { font-size: var(--fs-2); }
+  .formatted-response h4 { font-size: 1rem; color: var(--fg-muted); }
+  
+  .formatted-response p { margin: 0.5rem 0; }
+  .formatted-response hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1rem 0;
+  }
+  
+  /* Focus ring for accessibility */
+  .formatted-response :where(button, a, [tabindex], input, textarea, select):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+  
+  /* ============================
+     3) Sections (compatible with your existing classes)
+     ============================ */
+  .response-section {
+    margin-bottom: 0.75rem;
+    background: var(--bg-elev);
+    border-radius: var(--radius-md);
+    padding: var(--pad-md);
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    animation: fadeIn var(--dur) var(--easing);
+  }
+  
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0.4rem;
+  }
+  .section-icon { font-size: 1.2rem; }
+  .response-section h3 {
+    font-size: var(--fs-2);
+    font-weight: 600;
+    color: var(--fg);
+    margin: 0;
+  }
+  
+  /* Dynamic section accent via utility classes */
+  .response-section.is-accent { border-left: 3px solid var(--accent); }
+  .response-section.is-success { border-left: 3px solid var(--success); }
+  .response-section.is-warning { border-left: 3px solid var(--warning); }
+  .response-section.is-danger { border-left: 3px solid var(--danger); }
+  .response-section.is-info { border-left: 3px solid var(--info); }
+  
+  .section-content { margin-top: 0.35rem; }
+  
+  /* ============================
+     4) Lists (bullets, numbers, checklists)
+     ============================ */
+  /* Base list reset */
+  .fr-list { margin: 0.25rem 0 0.5rem; padding-left: 1.25rem; }
+  .fr-list li { margin: 0.25rem 0; color: var(--fg); }
+  
+  /* Bulleted */
+  .fr-bulleted { list-style: disc; }
+  .fr-bulleted.fr-soft { list-style: circle; color: var(--fg-muted); }
+  
+  /* Numbered */
+  .fr-numbered { list-style: decimal; }
+  
+  /* Hybrid bullets with colored markers */
+  .fr-colored {
+    list-style: none;
+    padding-left: 0.9rem;
+  }
+  .fr-colored li {
+    position: relative;
+    padding-left: 0.75rem;
+  }
+  .fr-colored li::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  
+  /* Checklist */
+  .fr-checklist { list-style: none; padding-left: 0; }
+  .fr-checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin: 0.35rem 0;
+    background: var(--bg-soft);
+  }
+  .fr-check { flex: 0 0 auto; width: 1.1rem; height: 1.1rem; border: 2px solid var(--accent); border-radius: 4px; margin-top: 0.1rem; }
+  .fr-check.is-checked { background: var(--accent); border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--bg); }
+  
+  /* Definition list */
+  .formatted-response dl { margin: 0.75rem 0; }
+  .formatted-response dt { font-weight: 600; margin-top: 0.5rem; }
+  .formatted-response dd { margin: 0.25rem 0 0.5rem 0.75rem; color: var(--fg-muted); }
+  
+  /* ============================
+     5) Tables (Markdown-aware)
+     ============================ */
+  .formatted-response table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    background: var(--bg-elev);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .formatted-response thead th {
+    background: var(--bg-soft);
+    color: var(--fg);
+    font-weight: 600;
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 2px solid var(--border);
+    font-size: var(--fs-1);
+  }
+  .formatted-response tbody td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--fg);
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+  .formatted-response tbody tr:last-child td { border-bottom: none; }
+  .formatted-response tbody tr:nth-child(even) { background: var(--bg-soft); }
+  .formatted-response tbody tr:hover { background: color-mix(in oklab, var(--accent) 6%, var(--bg) 94%); transition: background-color var(--dur-fast) var(--easing); }
+  
+  /* Scroll wrapper for wide tables */
+  .fr-table-scroll { overflow-x: auto; border-radius: var(--radius-sm); }
+  .fr-table-scroll > table { min-width: 640px; }
+  
+  /* ============================
+     6) Code & Preformatted
+     ============================ */
+  .inline-code {
+    background: var(--inline-code-bg);
+    color: var(--inline-code-fg);
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-family: var(--ff-mono);
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+  
+  .code-block {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    padding: var(--pad-lg);
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+    margin: 0.75rem 0;
+    font-family: var(--ff-mono);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    position: relative;
+  }
+  .code-block code { color: inherit; background: transparent; padding: 0; border: none; }
+  
+  /* Optional: code block header */
+  .code-header {
+    position: sticky; top: 0; left: 0; right: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(0deg, transparent, rgba(0,0,0,0.08));
+    padding: 0.25rem 0.5rem; margin: -0.75rem -0.75rem 0.5rem; border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  }
+  .code-lang { font-size: 0.8rem; opacity: 0.8; }
+  
+  /* ============================
+     7) Callouts / Alerts / Badges
+     ============================ */
+  .callout {
+    display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 0.75rem;
+    align-items: start;
+    border: 1px solid var(--border);
+    background: var(--bg-soft);
+    padding: var(--pad-md);
+    border-radius: var(--radius-md);
+    margin: 0.75rem 0;
+  }
+  .callout .icon { font-size: 1.1rem; line-height: 1; }
+  .callout .title { font-weight: 600; }
+  .callout .content { grid-column: 1 / -1; }
+  
+  .callout.info { border-left: 3px solid var(--info); }
+  .callout.success { border-left: 3px solid var(--success); }
+  .callout.warning { border-left: 3px solid var(--warning); }
+  .callout.danger { border-left: 3px solid var(--danger); }
+  
+  .badge { display:inline-block; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.75rem; border: 1px solid var(--border); background: var(--bg-soft); }
+  .badge.success { background: color-mix(in oklab, var(--success) 12%, var(--bg) 88%); }
+  .badge.warning { background: color-mix(in oklab, var(--warning) 12%, var(--bg) 88%); }
+  .badge.danger  { background: color-mix(in oklab, var(--danger) 12%, var(--bg) 88%); }
+  .badge.info    { background: color-mix(in oklab, var(--info) 12%, var(--bg) 88%); }
+  
+  /* ============================
+     8) Blockquotes & Notes
+     ============================ */
+  .formatted-response blockquote {
+    border-left: 4px solid var(--accent);
+    padding: 0.5rem 0.75rem;
+    margin: 0.75rem 0;
+    background: color-mix(in oklab, var(--accent) 5%, var(--bg) 95%);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    color: var(--fg);
+  }
+  
+  /* ============================
+     9) Media & Figures
+     ============================ */
+  .figure { margin: 0.75rem 0; }
+  .figure img, .figure video, .figure iframe {
+    width: 100%; height: auto; border-radius: var(--radius-sm); box-shadow: var(--shadow);
+  }
+  .figure-caption { text-align: center; color: var(--fg-soft); font-size: var(--fs-0); margin-top: 0.35rem; }
+  
+  /* ============================
+     10) FAQ / Details / Q&A
+     ============================ */
+  .faq details { border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-elev); margin: 0.5rem 0; }
+  .faq summary { cursor: pointer; padding: 0.6rem 0.75rem; font-weight: 600; list-style: none; }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq details[open] summary { border-bottom: 1px solid var(--border); }
+  .faq .faq-content { padding: 0.6rem 0.75rem; color: var(--fg-muted); }
+  
+  .qa { border-left: 3px solid var(--purple); padding-left: 0.6rem; margin: 0.5rem 0; }
+  .qa .q { font-weight: 700; }
+  .qa .a { color: var(--fg-muted); }
+  
+  /* ============================
+     11) Utilities (spacing, layout, tone)
+     ============================ */
+  .muted { color: var(--fg-muted); }
+  .small { font-size: var(--fs-0); }
+  .tight > * + * { margin-top: 0.35rem; }
+  .loose > * + * { margin-top: 0.75rem; }
+  
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+  @media (max-width: 768px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  
+  .kbd { font-family: var(--ff-mono); font-size: 0.8rem; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 6px; padding: 0.05rem 0.35rem; background: var(--bg-soft); }
+  mark { background: color-mix(in oklab, var(--accent) 25%, #fff 75%); color: black; padding: 0.05rem 0.2rem; border-radius: 3px; }
+  
+  /* Pills / chips */
+  .pills { display:flex; flex-wrap: wrap; gap: 0.35rem; }
+  .pill { padding: 0.25rem 0.6rem; border-radius: 999px; border: 1px solid var(--border); background: var(--bg-soft); font-size: 0.8rem; }
+  
+  /* Progress */
+  .progress { width: 100%; height: 8px; background: var(--bg-soft); border-radius: 999px; overflow: hidden; }
+  .progress > span { display: block; height: 100%; width: 0%; background: var(--accent); transition: width var(--dur) var(--easing); }
+  
+  /* ============================
+     12) Fallback blocks (keep compatibility)
+     ============================ */
+  .fallback-section { background: #fafafa; }
+  .fallback-content { padding: var(--pad-md); counter-reset: list-counter; }
+  .fallback-paragraph { margin: 0.75rem 0; line-height: 1.6; color: var(--fg); font-size: 1rem; }
+  .fallback-bullet { position: relative; padding-left: 1.5rem; margin: 0.5rem 0; line-height: 1.6; color: var(--fg); }
+  .fallback-bullet::before { content: "•"; position: absolute; left: 0.5rem; color: var(--accent); font-weight: bold; }
+  .fallback-numbered { padding-left: 1.5rem; margin: 0.5rem 0; line-height: 1.6; color: var(--fg); counter-increment: list-counter; position: relative; }
+  .fallback-numbered::before { content: counter(list-counter) "."; position: absolute; left: 0; color: var(--accent); font-weight: bold; }
+  .fallback-raw { padding: var(--pad-md); white-space: pre-wrap; font-family: inherit; line-height: 1.6; color: var(--fg); }
+  .fallback-header { font-size: 1.2rem; font-weight: 600; color: var(--fg); margin: 1rem 0 0.5rem 0; padding-bottom: 0.25rem; border-bottom: 1px solid var(--border); }
+  
+  /* ============================
+     13) Animations & Reduced Motion
+     ============================ */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+  
+  /* ============================
+     14) Responsive Tweaks
+     ============================ */
+  @media (max-width: 768px) {
+    .response-section { padding: var(--pad-lg); }
+    .section-content { padding-left: 0; }
+  }
+  
+  /* ============================
+     15) Print Styles (clean output)
+     ============================ */
+  @media print {
+    :root { --bg: #ffffff; --fg: #000; --border: rgba(0,0,0,0.2); }
+    .response-section { box-shadow: none; border: 1px solid var(--border); }
+    .callout { break-inside: avoid-page; }
+    .code-block { background: #fff; color: #000; border: 1px solid #ddd; }
+  }
+  
+  /* ============================
+     16) Backwards-compat bridge for your dynamic-* classes
+     ============================ */
+  .dynamic-section {}
+  .dynamic-bullet {}
+  .dynamic-numbered { position: relative; padding-left: 1.25rem; }
+  .dynamic-numbered::before { content: counter(list-counter) "."; position: absolute; left: 0; font-weight: bold; color: inherit; }
+  .dynamic-text {}
+  .dynamic-subheader {}
+  .dynamic-example-header {}
+  
+  /* Keep your original inline-capable hooks working, while providing new utilities above. */
+  
