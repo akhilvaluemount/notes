@@ -470,8 +470,10 @@ Question: ${textInput}`;
   }, []);
 
 
-  // Auto question detection from final transcripts
+  // Auto question detection from final transcripts - DISABLED FOR NOW
   useEffect(() => {
+    // Commented out automatic question processing to prevent automatic API calls
+    /*
     if (finalTranscript && finalTranscript.trim() && questionProcessorRef.current) {
       // Get already processed question texts to avoid duplicates
       const processedQuestionTexts = qaHistory.map(qa => qa.question);
@@ -489,6 +491,7 @@ Question: ${textInput}`;
         );
       }
     }
+    */
   }, [finalTranscript, qaHistory]);
 
   // Handle realtime connection errors
@@ -518,7 +521,6 @@ Question: ${textInput}`;
   return (
     <div className="app">
       <div className="main-content">
-        
         <TranscriptPanel 
           conversation={conversationHistory}
           partialTranscript={partialTranscript}

@@ -1,8 +1,10 @@
 .microphone-selector {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
+  background: rgba(52, 73, 94, 0.8);
+  border: 1px solid rgba(189, 195, 199, 0.3);
+  border-radius: 8px;
   margin-bottom: 1rem;
   transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
 }
 
 .microphone-selector.collapsed {
@@ -23,8 +25,8 @@
 }
 
 .selector-header:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
   padding: 0.25rem;
   margin: -0.25rem;
 }

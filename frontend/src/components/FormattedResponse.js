@@ -32,6 +32,18 @@ const AnswerIcon = ({ size = 24 }) => (
 
 // Default icons for common section types
 const SECTION_ICONS = {
+  'question': <QuestionIcon />,
+  'question 1': <QuestionIcon />,
+  'question 2': <QuestionIcon />,
+  'question 3': <QuestionIcon />,
+  'question 4': <QuestionIcon />,
+  'question 5': <QuestionIcon />,
+  'answer': <AnswerIcon />,
+  'answer 1': <AnswerIcon />,
+  'answer 2': <AnswerIcon />,
+  'answer 3': <AnswerIcon />,
+  'answer 4': <AnswerIcon />,
+  'answer 5': <AnswerIcon />,
   'definition': '📖',
   'explanation': '💡',
   'examples': '📌', 
@@ -40,7 +52,6 @@ const SECTION_ICONS = {
   'overview': '📚',
   'introduction': '📚',
   'solution': <AnswerIcon />,
-  'answer': <AnswerIcon />,
   'implementation': '💻',
   'code': '💻',
   'coding': '💻',
@@ -58,7 +69,7 @@ const SECTION_ICONS = {
   'deep dive': '🔍',
   'conclusion': '📝',
   'summary': '📝',
-  'default': <QuestionIcon />
+  'default': '💬'
 };
 
 const FormattedResponse = ({ response }) => {
@@ -197,26 +208,48 @@ const FormattedResponse = ({ response }) => {
       return SECTION_ICONS[lowerTitle] || SECTION_ICONS['default'];
     };
     
+    // Check if response starts with Answer without Question
+    const firstNonEmptyLine = lines.find(line => line.trim());
+    if (firstNonEmptyLine && firstNonEmptyLine.trim().match(/^Answer\s+\d+\s*:/i)) {
+      // Add a default Question section if response starts with Answer
+      const questionNum = firstNonEmptyLine.match(/\d+/)[0];
+      dynamicSections.push({
+        title: `Question ${questionNum}`,
+        content: [{ type: 'text', content: '[Question text not provided]' }],
+        colorIndex: 2, // Blue for questions
+        icon: getSectionIcon(`Question ${questionNum}`)
+      });
+      currentSectionIndex = 0;
+    }
+    
     // Helper function to detect if line is a section header
     const detectSectionHeader = (line) => {
       const trimmed = line.trim();
       
+      // Question 1: or Answer 1: patterns (may have content after colon)
+      const qaMatch = trimmed.match(/^(Question|Answer)\s+\d+\s*:(.*)$/i);
+      if (qaMatch) {
+        const sectionTitle = qaMatch[1] + ' ' + qaMatch[0].match(/\d+/)[0];
+        const remainingContent = qaMatch[2].trim();
+        return { title: sectionTitle, remainingContent };
+      }
+      
       // ### Markdown headers
       const markdownMatch = trimmed.match(/^###\s+(.+?)(:)?$/i);
       if (markdownMatch) {
-        return markdownMatch[1].trim();
+        return { title: markdownMatch[1].trim(), remainingContent: null };
       }
       
       // **Bold** headers  
       const boldMatch = trimmed.match(/^\*\*(.+?)\*\*(:)?$/i);
       if (boldMatch) {
-        return boldMatch[1].trim();
+        return { title: boldMatch[1].trim(), remainingContent: null };
       }
       
       // Plain text headers ending with colon (must be substantial text)
       const colonMatch = trimmed.match(/^([a-zA-Z][a-zA-Z\s]{3,}):$/);
       if (colonMatch) {
-        return colonMatch[1].trim();
+        return { title: colonMatch[1].trim(), remainingContent: null };
       }
       
       return null;
@@ -282,10 +315,20 @@ const FormattedResponse = ({ response }) => {
       if (!trimmedLine) continue;
       
       // Check if this line is a section header
-      const sectionTitle = detectSectionHeader(trimmedLine);
-      if (sectionTitle) {
+      const sectionHeader = detectSectionHeader(trimmedLine);
+      if (sectionHeader) {
+        const sectionTitle = sectionHeader.title;
+        
         // Create new section
-        const colorIndex = dynamicSections.length % SECTION_COLORS.length;
+        let colorIndex = dynamicSections.length % SECTION_COLORS.length;
+        
+        // Use specific colors for Question/Answer patterns
+        if (sectionTitle.toLowerCase().startsWith('question')) {
+          colorIndex = 2; // Blue for questions
+        } else if (sectionTitle.toLowerCase().startsWith('answer')) {
+          colorIndex = 0; // Green for answers
+        }
+        
         const icon = getSectionIcon(sectionTitle);
         
         dynamicSections.push({
@@ -297,6 +340,15 @@ const FormattedResponse = ({ response }) => {
         
         currentSectionIndex = dynamicSections.length - 1;
         console.log(`Found section: "${sectionTitle}" with color index ${colorIndex}`);
+        
+        // If there's content after the colon on the same line, add it to the section
+        if (sectionHeader.remainingContent) {
+          dynamicSections[currentSectionIndex].content.push({
+            type: 'text',
+            content: sectionHeader.remainingContent
+          });
+        }
+        
         continue;
       }
       
