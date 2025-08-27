@@ -270,7 +270,10 @@ class AssemblyAIRealtimeProxy {
 
   // Handle AssemblyAI transcripts
   handleAssemblyAITranscript(clientWs, transcript) {
+    console.log('🔍 Received transcript from AssemblyAI:', transcript);
+    
     if (transcript.message_type === 'PartialTranscript') {
+      console.log('📝 Sending partial transcript to client:', transcript.text);
       const message = {
         type: 'conversation.item.input_audio_transcription.delta',
         delta: transcript.text || ''
@@ -285,6 +288,7 @@ class AssemblyAIRealtimeProxy {
       clientWs.send(JSON.stringify(customMessage));
       
     } else if (transcript.message_type === 'FinalTranscript') {
+      console.log('✅ Sending final transcript to client:', transcript.text);
       const message = {
         type: 'conversation.item.input_audio_transcription.completed',
         transcript: transcript.text || ''

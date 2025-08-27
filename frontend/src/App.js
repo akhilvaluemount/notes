@@ -8,6 +8,7 @@ import useRealtimeTranscription from './hooks/useRealtimeTranscription';
 import { processTranscriptForQuestions, DebouncedQuestionProcessor } from './utils/autoQuestionDetection';
 import { processQAHistoryEntry, parseMultiQAResponse, hasMultipleQA } from './utils/multiQAParser';
 import buttonConfig from './config/buttonConfig';
+import rolesConfig from './config/rolesAndTechnologies.json';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
@@ -57,6 +58,22 @@ function App() {
   
   // Camera selection state
   const [selectedCamera, setSelectedCamera] = useState(null);
+  
+  // Role selection state
+  const [selectedRole, setSelectedRole] = useState(() => {
+    // Load from localStorage or default to frontend
+    const saved = localStorage.getItem('selectedRole');
+    return saved || 'frontend';
+  });
+
+  // Get current role data
+  const currentRoleData = rolesConfig.roles.find(role => role.id === selectedRole) || rolesConfig.roles[0];
+
+  // Handle role selection
+  const handleRoleSelect = useCallback((roleId) => {
+    setSelectedRole(roleId);
+    localStorage.setItem('selectedRole', roleId);
+  }, []);
 
   // Simple recording functions for realtime system
   const handleStartRecording = async () => {
@@ -585,6 +602,12 @@ Question: ${textInput}`;
     mergeMessages(sourceMessageIds, targetMessageIds, direction);
   }, [mergeMessages]);
 
+  // Connect to WebSocket on mount
+  useEffect(() => {
+    console.log('🚀 App starting - connecting to WebSocket proxy');
+    connectRealtime();
+  }, [connectRealtime]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -628,6 +651,11 @@ Question: ${textInput}`;
           selectedCamera={selectedCamera}
           onCameraSelect={setSelectedCamera}
           onPhotoCapture={handlePhotoCapture}
+          // Role props
+          selectedRole={selectedRole}
+          currentRoleData={currentRoleData}
+          rolesConfig={rolesConfig}
+          onRoleSelect={handleRoleSelect}
           // Q&A history for tracking processed transcripts
           qaHistory={qaHistory}
           // Message management handlers

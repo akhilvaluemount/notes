@@ -39,6 +39,11 @@ const TranscriptPanel = ({
   selectedCamera,
   onCameraSelect,
   onPhotoCapture,
+  // Role props
+  selectedRole,
+  currentRoleData,
+  rolesConfig,
+  onRoleSelect,
   // Q&A history for tracking processed transcripts
   qaHistory = [],
   // Message management props
@@ -47,6 +52,24 @@ const TranscriptPanel = ({
 }) => {
   const panelRef = useRef(null);
   const [showSettings, setShowSettings] = useState(false);
+
+  // Debug logs for transcript state updates (only when there's actual content)
+  useEffect(() => {
+    if (partialTranscript) {
+      console.log('🎯 TranscriptPanel: partialTranscript updated:', partialTranscript);
+    }
+    if (messageHistory && messageHistory.length > 0) {
+      console.log('🎯 TranscriptPanel: messageHistory updated:', messageHistory.length, 'messages');
+    }
+  }, [conversation, partialTranscript, messageHistory]);
+
+  // Helper function to replace all prompt placeholders
+  const replacePromptPlaceholders = useCallback((prompt, transcript) => {
+    return prompt
+      .replace('{transcript}', transcript)
+      .replace('{role}', currentRoleData?.name || 'Developer')
+      .replace('{technologies}', currentRoleData?.technologies || 'various technologies');
+  }, [currentRoleData]);
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editedTexts, setEditedTexts] = useState({});
   const [hoveredGroupId, setHoveredGroupId] = useState(null);
@@ -427,10 +450,10 @@ const TranscriptPanel = ({
       setAttachedImage(null);
     } else if (buttonConfig && textInput.trim()) {
       // Regular text-only submission
-      const customPrompt = buttonConfig.prompt.replace('{transcript}', textInput);
+      const customPrompt = replacePromptPlaceholders(buttonConfig.prompt, textInput);
       onAskAI(customPrompt);
     }
-  }, [textInput, attachedImage, onPhotoCapture, onTextInputChange, onAskAI]);
+  }, [textInput, attachedImage, onPhotoCapture, onTextInputChange, onAskAI, replacePromptPlaceholders]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -542,6 +565,32 @@ const TranscriptPanel = ({
               disabled={false}
               showRefresh={true}
             />
+
+            {/* Role Selector */}
+            <div className="settings-section">
+              <h4>🎯 Interview Role</h4>
+              <div className="role-dropdown-container">
+                <select
+                  className="role-dropdown"
+                  value={selectedRole}
+                  onChange={(e) => onRoleSelect(e.target.value)}
+                >
+                  {rolesConfig?.roles ? rolesConfig.roles.map(role => (
+                    <option key={role.id} value={role.id}>
+                      {role.name}
+                    </option>
+                  )) : (
+                    <option value="frontend">Loading roles...</option>
+                  )}
+                </select>
+              </div>
+              {currentRoleData && (
+                <div className="technologies-display">
+                  <h5>📚 Technologies:</h5>
+                  <p>{currentRoleData.technologies}</p>
+                </div>
+              )}
+            </div>
             
             <div className="settings-info">
               <p>💡 Zero wake-up delay with continuous session management</p>
@@ -856,7 +905,7 @@ const TranscriptPanel = ({
                             .map(msg => getDisplayText(msg))
                             .filter(text => text?.trim())
                             .join(' ');
-                          const customPrompt = button.prompt.replace('{transcript}', combinedText);
+                          const customPrompt = replacePromptPlaceholders(button.prompt, combinedText);
                           
                           // Mark this group as processed
                           setProcessedGroups(prev => new Set([...prev, group.id]));

@@ -166,7 +166,7 @@ const useRealtimeTranscription = () => {
 
         ws.onopen = () => {
           clearTimeout(timeout);
-          console.log('✅ Connected to AssemblyAI proxy server');
+          console.log('✅ Connected to AssemblyAI proxy server at', WEBSOCKET_URL);
           wsRef.current = ws;
           setIsConnected(true);
           setConnectionError(null);
@@ -180,12 +180,12 @@ const useRealtimeTranscription = () => {
             const message = JSON.parse(event.data);
             handleTranscriptionMessage(message);
           } catch (e) {
-            console.error('Error parsing WebSocket message:', e);
+            console.error('❌ Error parsing WebSocket message:', e, 'Raw data:', event.data);
           }
         };
 
         ws.onclose = (event) => {
-          console.log('🔌 WebSocket connection closed:', event.code, event.reason);
+          console.log('🔌 WebSocket connection closed:', event.code, event.reason, 'Was clean?', event.wasClean);
           setIsConnected(false);
           if (connectionState !== 'disconnected') {
             setConnectionState('disconnected');
@@ -347,7 +347,7 @@ const useRealtimeTranscription = () => {
               const message = JSON.parse(event.data);
               handleTranscriptionMessage(message);
             } catch (e) {
-              // Handle binary audio data
+              // Handle binary audio data - this is normal
             }
           };
           
@@ -381,7 +381,10 @@ const useRealtimeTranscription = () => {
 
   // Handle transcription messages (extracted for reuse)
   const handleTranscriptionMessage = useCallback((message) => {
+    console.log('🔍 Received WebSocket message:', message);
+    
     if (message.type === 'custom_transcription_partial') {
+      console.log('📝 Processing partial transcript:', message.text);
       trackSpeechActivity();
       
       // For partial transcripts, detect newly added words and update states
@@ -413,6 +416,7 @@ const useRealtimeTranscription = () => {
       }
       
     } else if (message.type === 'custom_transcription_final') {
+      console.log('✅ Processing final transcript:', message.text);
       trackSpeechActivity();
       
       let msgId = currentMessageIdRef.current;
@@ -469,12 +473,15 @@ const useRealtimeTranscription = () => {
       // Start a new message for the next speech segment
       setCurrentMessageId(null);
       currentMessageIdRef.current = null;
+    } else {
+      console.log('❓ Unknown message type received:', message.type, message);
     }
   }, [trackSpeechActivity, startNewMessage, detectNewWords, previousPartialTranscript]);
 
   // Start recording (REAL audio implementation)
   const startRecording = useCallback(async (deviceId = null) => {
     try {
+      console.log('🎤 Starting recording with deviceId:', deviceId);
       setConnectionError(null);
 
       // If switching devices, clean up existing audio processor
