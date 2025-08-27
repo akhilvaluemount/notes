@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './TranscriptPanel.css';
 import AudioRecorder from './AudioRecorder';
 import MicrophoneSelector from './MicrophoneSelector';
+import CameraSelector from './CameraSelector';
+import CameraCapture from './CameraCapture';
 import buttonConfig from '../config/buttonConfig';
 
 const TranscriptPanel = ({ 
@@ -33,6 +35,10 @@ const TranscriptPanel = ({
   // Microphone props (for compatibility)
   selectedMicrophone,
   onMicrophoneSelect,
+  // Camera props
+  selectedCamera,
+  onCameraSelect,
+  onPhotoCapture,
   // Q&A history for tracking processed transcripts
   qaHistory = [],
   // Message management props
@@ -47,6 +53,14 @@ const TranscriptPanel = ({
   const [clickedGroupId, setClickedGroupId] = useState(null);
   const [hoverTimeouts, setHoverTimeouts] = useState({});
   const [processedGroups, setProcessedGroups] = useState(new Set());
+  
+  // Camera capture state
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [currentCaptureMessageId, setCurrentCaptureMessageId] = useState(null);
+  
+  // Text input image attachment state
+  const [attachedImage, setAttachedImage] = useState(null);
+  const fileInputRef = useRef(null);
   
 
   useEffect(() => {
@@ -294,6 +308,130 @@ const TranscriptPanel = ({
     }
   }, [messageGroups]);
 
+  // Handle camera capture
+  const handleCameraCapture = useCallback((groupId) => {
+    setCurrentCaptureMessageId(groupId);
+    setIsCameraOpen(true);
+  }, []);
+
+  // Handle camera capture from text input
+  const handleTextInputCameraCapture = useCallback(() => {
+    setCurrentCaptureMessageId('text-input'); // Special ID for text input captures
+    setIsCameraOpen(true);
+  }, []);
+
+  // Handle photo captured
+  const handlePhotoCapture = useCallback((photoData) => {
+    if (currentCaptureMessageId === 'text-input') {
+      // For text input captures, attach the image to the input box
+      setAttachedImage({
+        file: photoData.blob,
+        preview: photoData.url,
+        name: `Camera_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.jpg`,
+        size: photoData.blob.size
+      });
+    } else if (onPhotoCapture && currentCaptureMessageId) {
+      // For message group captures, process immediately as before
+      const messageGroup = messageGroups.find(g => g.id === currentCaptureMessageId);
+      const contextText = messageGroup ? 
+        messageGroup.messages
+          .map(msg => getDisplayText(msg))
+          .filter(text => text?.trim())
+          .join(' ') : '';
+      
+      onPhotoCapture({
+        ...photoData,
+        messageId: currentCaptureMessageId,
+        contextText: contextText
+      });
+    }
+    setIsCameraOpen(false);
+    setCurrentCaptureMessageId(null);
+  }, [onPhotoCapture, currentCaptureMessageId, messageGroups, setAttachedImage]);
+
+  // Handle camera modal close
+  const handleCameraClose = useCallback(() => {
+    setIsCameraOpen(false);
+    setCurrentCaptureMessageId(null);
+  }, []);
+
+  // Handle image file selection
+  const handleImageSelect = useCallback((event) => {
+    const file = event.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        alert('Image file too large. Please select an image smaller than 10MB.');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setAttachedImage({
+          file: file,
+          preview: e.target.result,
+          name: file.name,
+          size: file.size
+        });
+      };
+      reader.readAsDataURL(file);
+    } else {
+      alert('Please select a valid image file.');
+    }
+    
+    // Clear the input so the same file can be selected again
+    if (event.target) {
+      event.target.value = '';
+    }
+  }, []);
+
+  // Handle attach image button click
+  const handleAttachImageClick = useCallback(() => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  }, []);
+
+  // Handle remove attached image
+  const handleRemoveAttachedImage = useCallback(() => {
+    setAttachedImage(null);
+  }, []);
+
+  // Handle text input with image submission
+  const handleTextWithImageSubmit = useCallback(async (buttonConfig = null) => {
+    if (!textInput.trim() && !attachedImage) {
+      return;
+    }
+
+    if (attachedImage) {
+      // Convert file to base64 for API call
+      const base64 = attachedImage.preview.split(',')[1];
+      
+      // Create vision prompt
+      const visionPrompt = textInput.trim() || 'Please analyze this image and describe what you see in detail.';
+      
+      const photoData = {
+        blob: attachedImage.file,
+        url: attachedImage.preview,
+        width: 0, // Will be set by image load
+        height: 0, // Will be set by image load
+        timestamp: new Date().toISOString(),
+        messageId: 'text-input-with-image',
+        contextText: visionPrompt
+      };
+
+      // Call the photo capture handler which will handle the API call
+      onPhotoCapture(photoData);
+      
+      // Clear the text input and attached image
+      onTextInputChange({ target: { value: '' } });
+      setAttachedImage(null);
+    } else if (buttonConfig && textInput.trim()) {
+      // Regular text-only submission
+      const customPrompt = buttonConfig.prompt.replace('{transcript}', textInput);
+      onAskAI(customPrompt);
+    }
+  }, [textInput, attachedImage, onPhotoCapture, onTextInputChange, onAskAI]);
+
   // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
@@ -396,12 +534,21 @@ const TranscriptPanel = ({
               disabled={isRecording}
               showRefresh={true}
             />
+
+            {/* Camera Selector */}
+            <CameraSelector
+              selectedDeviceId={selectedCamera}
+              onDeviceSelect={onCameraSelect}
+              disabled={false}
+              showRefresh={true}
+            />
             
             <div className="settings-info">
               <p>💡 Zero wake-up delay with continuous session management</p>
               <p>🎤 Enhanced noise suppression active</p>
               <p>🔇 Confidence filtering prevents random words</p>
               <p>📡 Keep-alive chunks maintain session during silence</p>
+              <p>📷 Camera integration with GPT-4 Vision for image analysis</p>
             </div>
           </div>
         )}
@@ -409,47 +556,108 @@ const TranscriptPanel = ({
         
         {/* Text Input Section */}
         <div className="text-input-section">
+          {/* Image Preview */}
+          {attachedImage && (
+            <div className="attached-image-preview">
+              <div className="image-preview-container">
+                <img 
+                  src={attachedImage.preview} 
+                  alt={attachedImage.name}
+                  className="preview-image"
+                />
+                <div className="image-info">
+                  <span className="image-name">{attachedImage.name}</span>
+                  <span className="image-size">{Math.round(attachedImage.size / 1024)}KB</span>
+                </div>
+                <button 
+                  onClick={handleRemoveAttachedImage}
+                  className="remove-image-btn"
+                  title="Remove image"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="text-input-form">
             <input
               type="text"
               value={textInput}
               onChange={onTextInputChange}
-              placeholder="Type your question here (e.g., 'What are Angular pipes?')"
+              placeholder={attachedImage ? "Ask a question about this image..." : "Type your question here (e.g., 'What are Angular pipes?')"}
               className="text-input-field"
               disabled={isLoadingAI}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && textInput.trim() && !isLoadingAI) {
+                if (e.key === 'Enter' && (textInput.trim() || attachedImage) && !isLoadingAI) {
                   e.preventDefault();
-                  // Automatically trigger the first button (100) on Enter
-                  const firstButton = buttonConfig[0];
-                  const customPrompt = firstButton.prompt.replace('{transcript}', textInput);
-                  onAskAI(customPrompt);
+                  if (attachedImage) {
+                    // Handle image + text submission
+                    handleTextWithImageSubmit();
+                  } else {
+                    // Regular text submission
+                    const firstButton = buttonConfig[0];
+                    handleTextWithImageSubmit(firstButton);
+                  }
                 }
               }}
             />
             
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageSelect}
+              style={{ display: 'none' }}
+            />
+            
             {/* Inline Action Buttons */}
             <div className="text-input-actions">
-              {buttonConfig.map((button) => {
-                const handleQuickAction = () => {
-                  if (textInput.trim()) {
-                    const customPrompt = button.prompt.replace('{transcript}', textInput);
-                    onAskAI(customPrompt);
-                  }
-                };
+              {/* Camera capture button for text input - now attaches to input */}
+              <button 
+                onClick={handleTextInputCameraCapture}
+                className="btn-icon-only btn-icon-camera"
+                disabled={isLoadingAI}
+                title="📷 Capture Photo - Take a photo and attach it to input box"
+              >
+                📷
+              </button>
+              
+              {!attachedImage ? (
+                // Regular text-only buttons
+                <>
+                  {buttonConfig.map((button) => {
+                    const handleQuickAction = () => {
+                      if (textInput.trim()) {
+                        handleTextWithImageSubmit(button);
+                      }
+                    };
 
-                return (
-                  <button 
-                    key={button.id}
-                    onClick={handleQuickAction}
-                    className={`btn-icon-only ${button.id === '100' ? 'btn-icon-primary' : 'btn-icon-secondary'}`}
-                    disabled={!textInput.trim() || isLoadingAI}
-                    title={`${button.icon} ${button.label} - ${button.description}${button.id === '100' ? ' (Press Enter)' : ''}`}
-                  >
-                    {button.icon}
-                  </button>
-                );
-              })}
+                    return (
+                      <button 
+                        key={button.id}
+                        onClick={handleQuickAction}
+                        className={`btn-icon-only ${button.id === '100' ? 'btn-icon-primary' : 'btn-icon-secondary'}`}
+                        disabled={!textInput.trim() || isLoadingAI}
+                        title={`${button.icon} ${button.label} - ${button.description}${button.id === '100' ? ' (Press Enter)' : ''}`}
+                      >
+                        {button.icon}
+                      </button>
+                    );
+                  })}
+                </>
+              ) : (
+                // Image analysis button when image is attached
+                <button 
+                  onClick={() => handleTextWithImageSubmit()}
+                  className="btn-icon-only btn-icon-primary"
+                  disabled={isLoadingAI}
+                  title="🔍 Analyze Image - Send image with text for AI analysis (Press Enter)"
+                >
+                  🔍
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -668,6 +876,16 @@ const TranscriptPanel = ({
                           </button>
                         );
                       })}
+                      
+                      {/* Camera capture button */}
+                      <button 
+                        onClick={() => handleCameraCapture(group.id)}
+                        className="btn-icon-only btn-icon-camera"
+                        disabled={isProcessing || !group.messages.some(msg => getDisplayText(msg)?.trim())}
+                        title="📷 Capture Photo - Take a photo and analyze it with AI"
+                      >
+                        📷
+                      </button>
                     </div>
                   )}
                 </div>
@@ -723,6 +941,16 @@ const TranscriptPanel = ({
           </div>
         )}
       </div>
+
+      {/* Camera Capture Modal */}
+      <CameraCapture
+        isOpen={isCameraOpen}
+        onClose={handleCameraClose}
+        selectedCameraId={selectedCamera}
+        onPhotoCapture={handlePhotoCapture}
+        onCodeAnalysis={onPhotoCapture} // Use same handler for code analysis
+        messageId={currentCaptureMessageId}
+      />
     </div>
   );
 };

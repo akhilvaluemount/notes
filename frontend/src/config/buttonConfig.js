@@ -7,7 +7,9 @@ import {
   explanationPrompt,
   processExplanationPrompt,
   shortAnswerPrompt,
-  typesListPrompt
+  typesListPrompt,
+  codeOutputExplanationPrompt,
+  codeExecutionStepsPrompt
 } from './prompts';
 
 // Button ID constants for consistency
@@ -19,7 +21,9 @@ const BUTTON_IDS = {
   EXPLAIN_ABOUT: "explain-about",
   PROCESS_OF: "process-of",
   SHORT_ANSWER: "short-answer",
-  TYPES_OF: "types-of"
+  TYPES_OF: "types-of",
+  CODE_OUTPUT: "code-output",
+  CODE_EXECUTION: "code-execution"
 };
 
 const buttonConfig = [
@@ -78,6 +82,20 @@ const buttonConfig = [
     icon: "⊢",
     prompt: typesListPrompt,
     description: "List of types/categories"
+  },
+  {
+    id: BUTTON_IDS.CODE_OUTPUT,
+    label: "Code Output",
+    icon: "🖥️",
+    prompt: codeOutputExplanationPrompt,
+    description: "Show output and explain execution"
+  },
+  {
+    id: BUTTON_IDS.CODE_EXECUTION,
+    label: "Code Steps",
+    icon: "🔍",
+    prompt: codeExecutionStepsPrompt,
+    description: "Step-by-step code execution"
   }
 ];
 

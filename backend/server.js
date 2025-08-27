@@ -4,6 +4,7 @@ const OpenAI = require('openai');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
+const multer = require('multer');
 require('dotenv').config();
 
 const app = express();
@@ -81,9 +82,26 @@ const rateLimit = {
   }
 };
 
+// Configure multer for image uploads
+const storage = multer.memoryStorage(); // Store in memory for processing
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept only image files
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  }
+});
+
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Increase JSON limit for base64 images
 
 
 
@@ -283,6 +301,198 @@ app.post('/api/ask-ai-stream', async (req, res) => {
       })}\n\n`);
       res.end();
     }
+  }
+});
+
+// Vision AI endpoint for image + text analysis
+app.post('/api/ask-ai-vision', upload.single('image'), async (req, res) => {
+  try {
+    // Rate limiting check
+    const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+    const rateLimitCheck = rateLimit.isAllowed(clientIP, 'ask-ai-vision');
+    
+    if (!rateLimitCheck.allowed) {
+      return res.status(429).json({ 
+        error: `Rate limit exceeded: ${rateLimitCheck.reason}`,
+        retryAfter: '60'
+      });
+    }
+
+    const { prompt, contextText } = req.body;
+    
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt is required' });
+    }
+
+    let imageBase64;
+    
+    // Handle image from either file upload or base64 in request body
+    if (req.file) {
+      // Image uploaded as file
+      imageBase64 = req.file.buffer.toString('base64');
+      console.log(`📷 Processing uploaded image: ${req.file.mimetype}, ${req.file.size} bytes`);
+    } else if (req.body.imageBase64) {
+      // Image sent as base64 string
+      imageBase64 = req.body.imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+      console.log(`📷 Processing base64 image: ${imageBase64.length} characters`);
+    } else {
+      return res.status(400).json({ error: 'Image is required (either as file upload or base64)' });
+    }
+
+    console.log('🧠 Vision AI Request:', { 
+      promptLength: prompt.length,
+      contextTextLength: contextText ? contextText.length : 0,
+      clientIP,
+      hasImage: !!imageBase64
+    });
+
+    // Construct the full prompt with context if provided
+    let fullPrompt = prompt;
+    if (contextText) {
+      fullPrompt = `Context: "${contextText}"\n\n${prompt}`;
+    }
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: fullPrompt
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${imageBase64}`,
+                detail: "high"
+              }
+            }
+          ]
+        }
+      ],
+      max_tokens: 1000,
+      temperature: 0.7,
+    });
+
+    const answer = response.choices[0].message.content;
+    
+    console.log('✅ Vision AI Response generated:', {
+      length: answer.length,
+      tokensUsed: response.usage?.total_tokens || 'unknown'
+    });
+
+    res.json({
+      success: true,
+      answer: answer,
+      usage: response.usage
+    });
+
+  } catch (error) {
+    console.error('Vision AI Error:', error);
+    
+    let errorMessage = 'Failed to analyze image';
+    if (error.response) {
+      errorMessage = `OpenAI API Error: ${error.response.data?.error?.message || error.message}`;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    res.status(500).json({ 
+      error: errorMessage,
+      success: false 
+    });
+  }
+});
+
+// Alternative vision endpoint that accepts JSON with base64 image
+app.post('/api/ask-ai-vision-json', async (req, res) => {
+  try {
+    // Rate limiting check
+    const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+    const rateLimitCheck = rateLimit.isAllowed(clientIP, 'ask-ai-vision');
+    
+    if (!rateLimitCheck.allowed) {
+      return res.status(429).json({ 
+        error: `Rate limit exceeded: ${rateLimitCheck.reason}`,
+        retryAfter: '60'
+      });
+    }
+
+    const { prompt, imageBase64, contextText } = req.body;
+    
+    if (!prompt || !imageBase64) {
+      return res.status(400).json({ error: 'Both prompt and imageBase64 are required' });
+    }
+
+    console.log('🧠 Vision AI JSON Request:', { 
+      promptLength: prompt.length,
+      contextTextLength: contextText ? contextText.length : 0,
+      imageBase64Length: imageBase64.length,
+      clientIP
+    });
+
+    // Clean base64 data if it includes the data URL prefix
+    const cleanBase64 = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+
+    // Construct the full prompt with context if provided
+    let fullPrompt = prompt;
+    if (contextText) {
+      fullPrompt = `Context from voice transcript: "${contextText}"\n\n${prompt}`;
+    }
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: fullPrompt
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${cleanBase64}`,
+                detail: "high"
+              }
+            }
+          ]
+        }
+      ],
+      max_tokens: 1000,
+      temperature: 0.7,
+    });
+
+    const answer = response.choices[0].message.content;
+    
+    console.log('✅ Vision AI JSON Response generated:', {
+      length: answer.length,
+      tokensUsed: response.usage?.total_tokens || 'unknown'
+    });
+
+    res.json({
+      success: true,
+      answer: answer,
+      usage: response.usage
+    });
+
+  } catch (error) {
+    console.error('Vision AI JSON Error:', error);
+    
+    let errorMessage = 'Failed to analyze image';
+    if (error.response) {
+      errorMessage = `OpenAI API Error: ${error.response.data?.error?.message || error.message}`;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    res.status(500).json({ 
+      error: errorMessage,
+      success: false 
+    });
   }
 });
 

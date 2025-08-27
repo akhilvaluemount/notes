@@ -54,6 +54,9 @@ function App() {
   
   // Microphone selection state (for compatibility - realtime uses default)
   const [selectedMicrophone, setSelectedMicrophone] = useState(null);
+  
+  // Camera selection state
+  const [selectedCamera, setSelectedCamera] = useState(null);
 
   // Simple recording functions for realtime system
   const handleStartRecording = async () => {
@@ -401,6 +404,77 @@ Question: ${userQuestion}`;
     }
   };
 
+  // Handle photo capture and AI analysis
+  const handlePhotoCapture = async (photoData) => {
+    try {
+      setError('');
+      setIsLoadingAI(true);
+
+      console.log('📷 Processing captured photo:', photoData);
+
+      // Convert blob to base64
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const result = reader.result;
+          // Remove the data URL prefix to get just the base64 string
+          const base64String = result.split(',')[1];
+          resolve(base64String);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(photoData.blob);
+      });
+
+      // Create a comprehensive prompt for image analysis
+      const visionPrompt = `Please analyze this image and provide a detailed, structured response. Consider these aspects:
+
+1. **What's in the image**: Describe what you see in detail
+2. **Context Analysis**: ${photoData.contextText ? `The user was discussing: "${photoData.contextText}". How does this image relate to their discussion?` : 'Analyze any relevant context or setting'}
+3. **Key Insights**: What are the most important or interesting aspects?
+4. **Technical Details**: If relevant, mention any technical specifications, measurements, or data visible
+5. **Actionable Information**: Are there any next steps, recommendations, or actions suggested by what you see?
+
+Please format your response in clear sections for easy reading.`;
+
+      // Call the vision API
+      const response = await fetch(`${API_BASE_URL}/api/ask-ai-vision-json`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: visionPrompt,
+          imageBase64: base64,
+          contextText: photoData.contextText || ''
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        setAiResponse(result.answer);
+        
+        // Save photo analysis to Q&A history
+        const photoQuestion = `📷 Photo Analysis${photoData.contextText ? ` (Context: ${photoData.contextText.substring(0, 50)}...)` : ''}`;
+        saveQAToHistory(photoQuestion, result.answer);
+
+        console.log('✅ Photo analysis completed successfully');
+      } else {
+        throw new Error(result.error || 'Failed to analyze photo');
+      }
+
+    } catch (err) {
+      console.error('Error analyzing photo:', err);
+      setError(`Failed to analyze photo: ${err.message}`);
+    } finally {
+      setIsLoadingAI(false);
+    }
+  };
+
   // Handle text input submission
   const handleTextSubmit = async (e) => {
     e.preventDefault();
@@ -550,6 +624,10 @@ Question: ${textInput}`;
           // Microphone props (for compatibility)
           selectedMicrophone={selectedMicrophone}
           onMicrophoneSelect={setSelectedMicrophone}
+          // Camera props
+          selectedCamera={selectedCamera}
+          onCameraSelect={setSelectedCamera}
+          onPhotoCapture={handlePhotoCapture}
           // Q&A history for tracking processed transcripts
           qaHistory={qaHistory}
           // Message management handlers

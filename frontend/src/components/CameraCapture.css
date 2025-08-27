@@ -1,0 +1,550 @@
+.camera-capture-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.camera-capture-modal {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 400px;
+  min-height: 300px;
+}
+
+.camera-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.camera-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #dc3545;
+}
+
+.camera-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-height: 300px;
+}
+
+.error-message {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8d7da;
+  color: #721c24;
+  padding: 0.75rem;
+  border-bottom: 1px solid #f5c6cb;
+  font-size: 0.9rem;
+}
+
+.error-dismiss {
+  background: transparent;
+  border: none;
+  color: #721c24;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.25rem;
+}
+
+.camera-preview {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+
+.video-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  max-width: 640px;
+  max-height: 480px;
+  border-radius: 8px;
+}
+
+.video-preview.loading {
+  opacity: 0.3;
+}
+
+.camera-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: white;
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.camera-loading p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.photo-preview {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  padding: 1rem;
+}
+
+.captured-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.camera-controls {
+  padding: 1rem;
+  background: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+}
+
+.camera-actions,
+.photo-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  align-items: center;
+}
+
+.capture-btn {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.capture-btn:hover:not(:disabled) {
+  background: #218838;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(40, 167, 69, 0.2);
+}
+
+.capture-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.send-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.send-btn:hover {
+  background: #0056b3;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2);
+}
+
+.retake-btn {
+  background: #ffc107;
+  color: #212529;
+  border: none;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.retake-btn:hover {
+  background: #e0a800;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(255, 193, 7, 0.2);
+}
+
+.cancel-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancel-btn:hover {
+  background: #545b62;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(108, 117, 125, 0.2);
+}
+
+.code-analysis-btn {
+  color: white;
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 120px;
+  justify-content: center;
+}
+
+.code-output-btn {
+  background: #17a2b8;
+}
+
+.code-output-btn:hover {
+  background: #138496;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(23, 162, 184, 0.2);
+}
+
+.code-steps-btn {
+  background: #6f42c1;
+}
+
+.code-steps-btn:hover {
+  background: #5a32a3;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(111, 66, 193, 0.2);
+}
+
+.photo-info {
+  padding: 0.5rem 1rem;
+  background: #e9ecef;
+  border-top: 1px solid #dee2e6;
+  text-align: center;
+}
+
+.photo-details {
+  font-size: 0.85rem;
+  color: #6c757d;
+  font-family: monospace;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .camera-capture-modal {
+    min-width: 350px;
+    margin: 1rem;
+  }
+  
+  .camera-actions,
+  .photo-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .camera-actions button,
+  .photo-actions button {
+    width: 100%;
+    margin: 0.25rem 0;
+  }
+  
+  .code-analysis-btn {
+    font-size: 0.85rem;
+    padding: 0.6rem 0.8rem;
+    min-width: 100px;
+  }
+}
+
+/* Selection Overlay Styles */
+.camera-preview {
+  position: relative;
+  cursor: crosshair;
+}
+
+.camera-preview.selection-mode {
+  cursor: crosshair;
+}
+
+.selection-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.selection-box {
+  position: absolute;
+  border: 2px solid #007bff;
+  background: rgba(0, 123, 255, 0.1);
+  pointer-events: all;
+  cursor: move;
+}
+
+.selection-box::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border: 2px dashed rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+}
+
+/* Resize Handles */
+.resize-handle {
+  position: absolute;
+  background: #007bff;
+  border: 2px solid white;
+  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  z-index: 11;
+}
+
+.resize-handle:hover {
+  background: #0056b3;
+  transform: translate(-50%, -50%) scale(1.2);
+}
+
+/* Corner handles */
+.nw-resize {
+  top: 0;
+  left: 0;
+  cursor: nw-resize;
+}
+
+.ne-resize {
+  top: 0;
+  right: 0;
+  transform: translate(50%, -50%);
+  cursor: ne-resize;
+}
+
+.sw-resize {
+  bottom: 0;
+  left: 0;
+  transform: translate(-50%, 50%);
+  cursor: sw-resize;
+}
+
+.se-resize {
+  bottom: 0;
+  right: 0;
+  transform: translate(50%, 50%);
+  cursor: se-resize;
+}
+
+/* Edge handles */
+.n-resize {
+  top: 0;
+  left: 50%;
+  cursor: n-resize;
+}
+
+.s-resize {
+  bottom: 0;
+  left: 50%;
+  transform: translate(-50%, 50%);
+  cursor: s-resize;
+}
+
+.w-resize {
+  top: 50%;
+  left: 0;
+  transform: translate(-50%, -50%);
+  cursor: w-resize;
+}
+
+.e-resize {
+  top: 50%;
+  right: 0;
+  transform: translate(50%, -50%);
+  cursor: e-resize;
+}
+
+/* Selection Mode Button */
+.selection-mode-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.selection-mode-btn:hover {
+  background: #545b62;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(108, 117, 125, 0.2);
+}
+
+.selection-mode-btn.active {
+  background: #007bff;
+  color: white;
+}
+
+.selection-mode-btn.active:hover {
+  background: #0056b3;
+}
+
+.clear-selection-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clear-selection-btn:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(220, 53, 69, 0.2);
+}
+
+/* Overlay dimming effect */
+.selection-overlay::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.selection-box {
+  z-index: 2;
+}
+
+/* Instructions overlay */
+.selection-instructions {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  z-index: 12;
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .camera-actions {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .selection-mode-btn,
+  .clear-selection-btn {
+    font-size: 0.9rem;
+    padding: 0.5rem 0.75rem;
+  }
+  
+  .resize-handle {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .camera-capture-modal {
+    min-width: 300px;
+    max-width: 95vw;
+  }
+  
+  .camera-header {
+    padding: 0.75rem;
+  }
+  
+  .camera-controls {
+    padding: 0.75rem;
+  }
+  
+  .selection-instructions {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.8rem;
+  }
+}

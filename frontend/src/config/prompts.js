@@ -148,3 +148,39 @@ Format:
 Only include relevant frontend concepts.
 
 Question: {transcript}`;
+
+export const codeOutputExplanationPrompt = `Analyze the code in this image and explain what it does.
+
+Provide the output of this code and explain the execution flow in very short bullet points.
+
+Use first-person style (I/my).
+Keep answers creamy and natural.
+Only give the important sentences — no dragging, no fillers.
+Use **bold keywords** for clarity.
+Make answers easy to speak aloud in an interview.
+
+Format:
+• **Output:** [Show the expected output]
+• **Execution:** [3-4 bullet points explaining the flow]
+Focus on frontend technologies (HTML, CSS, JS, TS, Angular, React, etc.).
+
+Please analyze the code in the image.`;
+
+export const codeExecutionStepsPrompt = `Analyze the code in this image and break down its execution step by step.
+
+Explain how this code executes in very very short bullet points.
+
+Use first-person style (I/my).
+Keep answers creamy and natural.
+Only give the important sentences — no dragging, no fillers.
+Use **bold keywords** for clarity.
+Make answers easy to speak aloud in an interview.
+
+Format:
+• **Step 1:** [Brief description]
+• **Step 2:** [Brief description]
+• **Step 3:** [Brief description]
+• **Result:** [Final outcome]
+Focus on frontend technologies and programming logic.
+
+Please analyze the code execution in the image.`;
