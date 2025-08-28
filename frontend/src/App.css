@@ -138,6 +138,16 @@ body {
   -webkit-backdrop-filter: blur(10px);
 }
 
+/* Camera Mode - Full Width Layout */
+.main-content.camera-mode {
+  gap: 0;
+}
+
+.main-content.camera-mode > *:first-child {
+  width: 100%;
+  max-width: none;
+}
+
 .main-content > * {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);

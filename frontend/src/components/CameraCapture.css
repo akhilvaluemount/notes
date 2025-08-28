@@ -16,22 +16,26 @@
   background: white;
   border-radius: 0;
   box-shadow: none;
-  width: 100vw;
-  height: 100vh;
+  width: 90vw;
+  height: 90vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   min-width: unset;
   min-height: unset;
+  margin: 5vh auto;
+  border-radius: 12px;
 }
 
 .camera-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
+  padding: 0.75rem 1rem;
   background: #f8f9fa;
   border-bottom: 1px solid #dee2e6;
+  flex-shrink: 0; /* Prevent header from shrinking */
+  min-height: 60px; /* Set consistent header height */
 }
 
 .camera-header h3 {
@@ -62,7 +66,9 @@
   display: flex;
   flex-direction: column;
   position: relative;
-  min-height: 300px;
+  min-height: 200px;
+  max-height: calc(90vh - 180px); /* Reserve space for header and controls */
+  overflow: hidden;
 }
 
 .error-message {
@@ -155,6 +161,8 @@
   padding: 1rem;
   background: #f8f9fa;
   border-top: 1px solid #dee2e6;
+  flex-shrink: 0; /* Prevent controls from shrinking */
+  min-height: 80px; /* Ensure minimum height for buttons */
 }
 
 .camera-actions,
@@ -529,16 +537,23 @@
 
 @media (max-width: 480px) {
   .camera-capture-modal {
-    min-width: 300px;
-    max-width: 95vw;
+    width: 95vw;
+    height: 95vh;
+    margin: 2.5vh auto;
   }
   
   .camera-header {
-    padding: 0.75rem;
+    padding: 0.5rem;
+    min-height: 50px;
   }
   
   .camera-controls {
     padding: 0.75rem;
+    min-height: 70px;
+  }
+  
+  .camera-content {
+    max-height: calc(95vh - 140px); /* Adjust for smaller screens */
   }
   
   .selection-instructions {
