@@ -442,8 +442,16 @@ Question: ${userQuestion}`;
         reader.readAsDataURL(photoData.blob);
       });
 
-      // Create a comprehensive prompt for image analysis
-      const visionPrompt = `Please analyze this image and provide a detailed, structured response. Consider these aspects:
+      // Use the button-specific prompt if provided, otherwise use default
+      let visionPrompt;
+      
+      if (photoData.prompt) {
+        // Use the specific prompt from the button and enhance with role context
+        visionPrompt = photoData.prompt.replace('{role}', selectedRole).replace('{technologies}', currentRoleData?.technologies || 'JavaScript, React');
+        console.log('📝 Using button-specific prompt:', visionPrompt);
+      } else {
+        // Default comprehensive prompt
+        visionPrompt = `Please analyze this image and provide a detailed, structured response. Consider these aspects:
 
 1. **What's in the image**: Describe what you see in detail
 2. **Context Analysis**: ${photoData.contextText ? `The user was discussing: "${photoData.contextText}". How does this image relate to their discussion?` : 'Analyze any relevant context or setting'}
@@ -452,6 +460,8 @@ Question: ${userQuestion}`;
 5. **Actionable Information**: Are there any next steps, recommendations, or actions suggested by what you see?
 
 Please format your response in clear sections for easy reading.`;
+        console.log('📝 Using default comprehensive prompt');
+      }
 
       // Call the vision API
       const response = await fetch(`${API_BASE_URL}/api/ask-ai-vision-json`, {
