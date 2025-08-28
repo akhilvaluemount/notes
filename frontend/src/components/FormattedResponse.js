@@ -240,10 +240,12 @@ const FormattedResponse = ({ response }) => {
         return { title: markdownMatch[1].trim(), remainingContent: null };
       }
       
-      // **Bold** headers  
-      const boldMatch = trimmed.match(/^\*\*(.+?)\*\*(:)?$/i);
+      // **Bold** headers (with optional content after colon)
+      const boldMatch = trimmed.match(/^\*\*(.+?)\*\*(:)?\s*(.*)$/i);
       if (boldMatch) {
-        return { title: boldMatch[1].trim(), remainingContent: null };
+        const title = boldMatch[1].trim();
+        const remainingContent = boldMatch[3] ? boldMatch[3].trim() : null;
+        return { title, remainingContent };
       }
       
       // Plain text headers ending with colon (must be substantial text)

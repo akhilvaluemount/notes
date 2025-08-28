@@ -14,15 +14,15 @@
 
 .camera-capture-modal {
   background: white;
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-  max-width: 90vw;
-  max-height: 90vh;
+  border-radius: 0;
+  box-shadow: none;
+  width: 100vw;
+  height: 100vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  min-width: 400px;
-  min-height: 300px;
+  min-width: unset;
+  min-height: unset;
 }
 
 .camera-header {
