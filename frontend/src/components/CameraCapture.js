@@ -19,8 +19,8 @@ const CameraCapture = ({
   const [capturedPhoto, setCapturedPhoto] = useState(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [videoConstraints, setVideoConstraints] = useState({
-    width: 640,
-    height: 480
+    width: { ideal: 1920, max: 1920 },
+    height: { ideal: 1080, max: 1080 }
   });
   
   // Selection/crop state
@@ -43,8 +43,8 @@ const CameraCapture = ({
       const constraints = {
         video: {
           deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined,
-          width: { ideal: videoConstraints.width },
-          height: { ideal: videoConstraints.height },
+          width: videoConstraints.width,
+          height: videoConstraints.height,
           facingMode: selectedCameraId ? undefined : 'user'
         }
       };
@@ -56,8 +56,10 @@ const CameraCapture = ({
         streamRef.current = stream;
         
         videoRef.current.onloadedmetadata = () => {
+          const video = videoRef.current;
+          console.log(`🎥 Camera stream started: ${video.videoWidth}x${video.videoHeight}`);
+          console.log(`📺 Video element size: ${video.clientWidth}x${video.clientHeight}`);
           setIsStreaming(true);
-          console.log('Camera stream started successfully');
         };
       }
     } catch (err) {

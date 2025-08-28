@@ -69,6 +69,7 @@
   min-height: 200px;
   max-height: calc(90vh - 180px); /* Reserve space for header and controls */
   overflow: hidden;
+  background: #000; /* Ensure black background */
 }
 
 .error-message {
@@ -95,16 +96,20 @@
   flex: 1;
   position: relative;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: stretch;
   background: #000;
+  overflow: hidden;
 }
 
 .video-preview {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 8px;
+  flex: 1;
+  display: block;
+  min-height: 0; /* Allow video to shrink */
+  min-width: 0; /* Allow video to shrink */
 }
 
 .video-preview.loading {
