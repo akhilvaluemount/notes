@@ -68,11 +68,19 @@ function App() {
 
   // Get current role data
   const currentRoleData = rolesConfig.roles.find(role => role.id === selectedRole) || rolesConfig.roles[0];
+  
+  // Camera modal state for layout adjustment
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
 
   // Handle role selection
   const handleRoleSelect = useCallback((roleId) => {
     setSelectedRole(roleId);
     localStorage.setItem('selectedRole', roleId);
+  }, []);
+
+  // Handle camera modal state changes
+  const handleCameraModalToggle = useCallback((isOpen) => {
+    setIsCameraModalOpen(isOpen);
   }, []);
 
   // Simple recording functions for realtime system
@@ -627,7 +635,7 @@ Question: ${textInput}`;
 
   return (
     <div className="app">
-      <div className="main-content">
+      <div className={`main-content ${isCameraModalOpen ? 'camera-mode' : ''}`}>
         <TranscriptPanel 
           conversation={conversationHistory}
           partialTranscript={partialTranscript}
@@ -671,14 +679,18 @@ Question: ${textInput}`;
           // Message management handlers
           onDeleteGroup={handleDeleteGroup}
           onMergeGroups={handleMergeGroups}
+          // Camera modal state handler
+          onCameraModalToggle={handleCameraModalToggle}
         />
-        <ResponsePanel 
-          response={aiResponse}
-          isLoading={isLoadingAI}
-          isStreaming={isStreaming}
-          qaHistory={qaHistory}
-          onToggleQA={toggleQAExpansion}
-        />
+        {!isCameraModalOpen && (
+          <ResponsePanel 
+            response={aiResponse}
+            isLoading={isLoadingAI}
+            isStreaming={isStreaming}
+            qaHistory={qaHistory}
+            onToggleQA={toggleQAExpansion}
+          />
+        )}
       </div>
     </div>
   );

@@ -48,7 +48,9 @@ const TranscriptPanel = ({
   qaHistory = [],
   // Message management props
   onDeleteGroup,
-  onMergeGroups
+  onMergeGroups,
+  // Camera modal toggle handler
+  onCameraModalToggle
 }) => {
   const panelRef = useRef(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -335,13 +337,21 @@ const TranscriptPanel = ({
   const handleCameraCapture = useCallback((groupId) => {
     setCurrentCaptureMessageId(groupId);
     setIsCameraOpen(true);
-  }, []);
+    // Notify parent about camera modal opening for layout adjustment
+    if (onCameraModalToggle) {
+      onCameraModalToggle(true);
+    }
+  }, [onCameraModalToggle]);
 
   // Handle camera capture from text input
   const handleTextInputCameraCapture = useCallback(() => {
     setCurrentCaptureMessageId('text-input'); // Special ID for text input captures
     setIsCameraOpen(true);
-  }, []);
+    // Notify parent about camera modal opening for layout adjustment
+    if (onCameraModalToggle) {
+      onCameraModalToggle(true);
+    }
+  }, [onCameraModalToggle]);
 
   // Handle photo captured
   const handlePhotoCapture = useCallback((photoData) => {
@@ -370,13 +380,21 @@ const TranscriptPanel = ({
     }
     setIsCameraOpen(false);
     setCurrentCaptureMessageId(null);
-  }, [onPhotoCapture, currentCaptureMessageId, messageGroups, setAttachedImage]);
+    // Notify parent about camera modal closing for layout reset
+    if (onCameraModalToggle) {
+      onCameraModalToggle(false);
+    }
+  }, [onPhotoCapture, currentCaptureMessageId, messageGroups, setAttachedImage, onCameraModalToggle]);
 
   // Handle camera modal close
   const handleCameraClose = useCallback(() => {
     setIsCameraOpen(false);
     setCurrentCaptureMessageId(null);
-  }, []);
+    // Notify parent about camera modal closing for layout reset
+    if (onCameraModalToggle) {
+      onCameraModalToggle(false);
+    }
+  }, [onCameraModalToggle]);
 
   // Handle image file selection
   const handleImageSelect = useCallback((event) => {
