@@ -19,9 +19,11 @@ const CameraCapture = ({
   const [capturedPhoto, setCapturedPhoto] = useState(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [videoConstraints, setVideoConstraints] = useState({
-    width: { ideal: 1920, max: 1920 },
-    height: { ideal: 1080, max: 1080 }
+    width: { ideal: 1920, max: 4096 },
+    height: { ideal: 1080, max: 4096 }
   });
+  const [actualVideoSize, setActualVideoSize] = useState(null);
+  const [deviceCapabilities, setDeviceCapabilities] = useState(null);
   
   // Selection/crop state
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -34,17 +36,69 @@ const CameraCapture = ({
   const videoContainerRef = useRef(null);
   const selectionOverlayRef = useRef(null);
 
+  // Get device capabilities to detect max resolution
+  const getDeviceCapabilities = useCallback(async () => {
+    if (!selectedCameraId) return null;
+    
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevice = devices.find(device => device.deviceId === selectedCameraId);
+      
+      if (videoDevice) {
+        // Try to get capabilities
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { deviceId: { exact: selectedCameraId } }
+        });
+        
+        const track = stream.getVideoTracks()[0];
+        const capabilities = track.getCapabilities();
+        
+        console.log('📊 Device capabilities:', capabilities);
+        
+        // Stop the temporary stream
+        stream.getTracks().forEach(track => track.stop());
+        
+        return capabilities;
+      }
+    } catch (err) {
+      console.log('⚠️ Could not get device capabilities:', err.message);
+    }
+    
+    return null;
+  }, [selectedCameraId]);
+
   // Start camera stream
   const startCamera = useCallback(async () => {
     try {
       setError(null);
       setIsStreaming(false);
 
+      // Get device capabilities first to optimize constraints
+      const capabilities = await getDeviceCapabilities();
+      setDeviceCapabilities(capabilities);
+      
+      let optimalConstraints = { ...videoConstraints };
+      
+      if (capabilities && capabilities.width && capabilities.height) {
+        // Use device's maximum supported resolution
+        optimalConstraints = {
+          width: { 
+            ideal: capabilities.width.max || videoConstraints.width.ideal,
+            max: capabilities.width.max || videoConstraints.width.max
+          },
+          height: { 
+            ideal: capabilities.height.max || videoConstraints.height.ideal,
+            max: capabilities.height.max || videoConstraints.height.max
+          }
+        };
+        console.log('🎯 Using optimal constraints:', optimalConstraints);
+      }
+
       const constraints = {
         video: {
           deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined,
-          width: videoConstraints.width,
-          height: videoConstraints.height,
+          width: optimalConstraints.width,
+          height: optimalConstraints.height,
           facingMode: selectedCameraId ? undefined : 'user'
         }
       };
@@ -57,8 +111,14 @@ const CameraCapture = ({
         
         videoRef.current.onloadedmetadata = () => {
           const video = videoRef.current;
+          const actualSize = {
+            width: video.videoWidth,
+            height: video.videoHeight
+          };
+          setActualVideoSize(actualSize);
           console.log(`🎥 Camera stream started: ${video.videoWidth}x${video.videoHeight}`);
           console.log(`📺 Video element size: ${video.clientWidth}x${video.clientHeight}`);
+          console.log(`📐 Aspect ratio: ${(video.videoWidth / video.videoHeight).toFixed(2)}`);
           setIsStreaming(true);
         };
       }
@@ -66,7 +126,7 @@ const CameraCapture = ({
       console.error('Error starting camera:', err);
       setError(`Failed to start camera: ${err.message}`);
     }
-  }, [selectedCameraId, videoConstraints]);
+  }, [selectedCameraId, videoConstraints, getDeviceCapabilities]);
 
   // Stop camera stream
   const stopCamera = useCallback(() => {
@@ -90,37 +150,89 @@ const CameraCapture = ({
     return videoRef.current.getBoundingClientRect();
   }, []);
 
-  // Convert screen coordinates to video coordinates
-  const screenToVideoCoords = useCallback((screenX, screenY) => {
-    const videoRect = getVideoRect();
+  // Get the actual video display area within the video element (accounting for object-fit: contain)
+  const getVideoDisplayRect = useCallback(() => {
     const video = videoRef.current;
+    if (!video) return null;
     
-    if (!videoRect || !video) return { x: 0, y: 0 };
+    const videoRect = video.getBoundingClientRect();
+    const videoAspectRatio = video.videoWidth / video.videoHeight;
+    const elementAspectRatio = videoRect.width / videoRect.height;
     
-    const scaleX = video.videoWidth / videoRect.width;
-    const scaleY = video.videoHeight / videoRect.height;
+    let displayWidth, displayHeight, offsetX, offsetY;
+    
+    if (videoAspectRatio > elementAspectRatio) {
+      // Video is wider than container - letterbox top/bottom
+      displayWidth = videoRect.width;
+      displayHeight = videoRect.width / videoAspectRatio;
+      offsetX = 0;
+      offsetY = (videoRect.height - displayHeight) / 2;
+    } else {
+      // Video is taller than container - letterbox left/right
+      displayWidth = videoRect.height * videoAspectRatio;
+      displayHeight = videoRect.height;
+      offsetX = (videoRect.width - displayWidth) / 2;
+      offsetY = 0;
+    }
     
     return {
-      x: (screenX - videoRect.left) * scaleX,
-      y: (screenY - videoRect.top) * scaleY
+      left: videoRect.left + offsetX,
+      top: videoRect.top + offsetY,
+      width: displayWidth,
+      height: displayHeight
     };
-  }, [getVideoRect]);
+  }, []);
+
+  // Convert screen coordinates to video coordinates
+  const screenToVideoCoords = useCallback((screenX, screenY) => {
+    const video = videoRef.current;
+    const displayRect = getVideoDisplayRect();
+    
+    if (!displayRect || !video) return { x: 0, y: 0 };
+    
+    // Convert screen position to position within the actual video display area
+    const relativeX = (screenX - displayRect.left) / displayRect.width;
+    const relativeY = (screenY - displayRect.top) / displayRect.height;
+    
+    // Clamp to [0, 1] range
+    const clampedX = Math.max(0, Math.min(1, relativeX));
+    const clampedY = Math.max(0, Math.min(1, relativeY));
+    
+    const result = {
+      x: clampedX * video.videoWidth,
+      y: clampedY * video.videoHeight
+    };
+    
+    // Debug log for coordinate conversion
+    if (relativeX < 0 || relativeX > 1 || relativeY < 0 || relativeY > 1) {
+      console.log('🔍 Coordinate conversion:', {
+        screen: { x: screenX, y: screenY },
+        displayRect,
+        relative: { x: relativeX, y: relativeY },
+        clamped: { x: clampedX, y: clampedY },
+        video: result
+      });
+    }
+    
+    return result;
+  }, [getVideoDisplayRect]);
 
   // Convert video coordinates to screen coordinates
   const videoToScreenCoords = useCallback((videoX, videoY) => {
-    const videoRect = getVideoRect();
     const video = videoRef.current;
+    const displayRect = getVideoDisplayRect();
     
-    if (!videoRect || !video) return { x: 0, y: 0 };
+    if (!displayRect || !video) return { x: 0, y: 0 };
     
-    const scaleX = videoRect.width / video.videoWidth;
-    const scaleY = videoRect.height / video.videoHeight;
+    // Convert video position to relative position [0, 1]
+    const relativeX = videoX / video.videoWidth;
+    const relativeY = videoY / video.videoHeight;
     
     return {
-      x: videoX * scaleX + videoRect.left,
-      y: videoY * scaleY + videoRect.top
+      x: relativeX * displayRect.width + displayRect.left,
+      y: relativeY * displayRect.height + displayRect.top
     };
-  }, [getVideoRect]);
+  }, [getVideoDisplayRect]);
 
   // Handle mouse down on video for selection
   const handleMouseDown = useCallback((e) => {
@@ -301,17 +413,33 @@ const CameraCapture = ({
 
       if (isSelectionMode && selection && selection.width > 0 && selection.height > 0) {
         // Capture only the selected area
-        canvas.width = selection.width;
-        canvas.height = selection.height;
+        console.log('🎯 Capturing selection:', {
+          selection,
+          videoSize: { width: video.videoWidth, height: video.videoHeight },
+          videoElement: { width: video.clientWidth, height: video.clientHeight }
+        });
+        
+        // Ensure selection coordinates are within video bounds
+        const clampedSelection = {
+          x: Math.max(0, Math.min(selection.x, video.videoWidth - 1)),
+          y: Math.max(0, Math.min(selection.y, video.videoHeight - 1)),
+          width: Math.max(1, Math.min(selection.width, video.videoWidth - selection.x)),
+          height: Math.max(1, Math.min(selection.height, video.videoHeight - selection.y))
+        };
+        
+        console.log('📐 Clamped selection:', clampedSelection);
+        
+        canvas.width = clampedSelection.width;
+        canvas.height = clampedSelection.height;
 
         // Draw only the selected portion
         context.drawImage(
           video,
-          selection.x, selection.y, selection.width, selection.height, // Source rectangle
-          0, 0, selection.width, selection.height // Destination rectangle
+          clampedSelection.x, clampedSelection.y, clampedSelection.width, clampedSelection.height, // Source rectangle
+          0, 0, clampedSelection.width, clampedSelection.height // Destination rectangle
         );
 
-        console.log('Capturing cropped area:', selection);
+        console.log('✅ Cropped capture complete');
       } else {
         // Capture full video frame
         canvas.width = video.videoWidth;
@@ -488,16 +616,37 @@ const CameraCapture = ({
                   ref={selectionOverlayRef}
                   className="selection-overlay"
                 >
-                  {selection && (
-                    <div 
-                      className="selection-box"
-                      style={{
-                        left: `${(selection.x / videoRef.current?.videoWidth || 1) * 100}%`,
-                        top: `${(selection.y / videoRef.current?.videoHeight || 1) * 100}%`,
-                        width: `${(selection.width / videoRef.current?.videoWidth || 1) * 100}%`,
-                        height: `${(selection.height / videoRef.current?.videoHeight || 1) * 100}%`,
-                      }}
-                    >
+                  {selection && (() => {
+                    const video = videoRef.current;
+                    const displayRect = getVideoDisplayRect();
+                    const videoRect = getVideoRect();
+                    
+                    if (!video || !displayRect || !videoRect) {
+                      return null;
+                    }
+                    
+                    // Calculate position relative to the displayed video area
+                    const relativeX = selection.x / video.videoWidth;
+                    const relativeY = selection.y / video.videoHeight;
+                    const relativeWidth = selection.width / video.videoWidth;
+                    const relativeHeight = selection.height / video.videoHeight;
+                    
+                    // Convert to percentages of the video element
+                    const offsetX = (displayRect.left - videoRect.left) / videoRect.width;
+                    const offsetY = (displayRect.top - videoRect.top) / videoRect.height;
+                    const scaleX = displayRect.width / videoRect.width;
+                    const scaleY = displayRect.height / videoRect.height;
+                    
+                    return (
+                      <div 
+                        className="selection-box"
+                        style={{
+                          left: `${(offsetX + relativeX * scaleX) * 100}%`,
+                          top: `${(offsetY + relativeY * scaleY) * 100}%`,
+                          width: `${relativeWidth * scaleX * 100}%`,
+                          height: `${relativeHeight * scaleY * 100}%`,
+                        }}
+                      >
                       {/* Resize handles */}
                       <div className="resize-handle nw-resize" data-handle="nw"></div>
                       <div className="resize-handle ne-resize" data-handle="ne"></div>
@@ -508,7 +657,8 @@ const CameraCapture = ({
                       <div className="resize-handle w-resize" data-handle="w"></div>
                       <div className="resize-handle e-resize" data-handle="e"></div>
                     </div>
-                  )}
+                    );
+                  })()}
                 </div>
               )}
               
@@ -624,6 +774,30 @@ const CameraCapture = ({
             </div>
           )}
         </div>
+
+        {/* Stream info */}
+        {actualVideoSize && isStreaming && !capturedPhoto && (
+          <div className="stream-info">
+            <span className="stream-details">
+              📹 Stream: {actualVideoSize.width} × {actualVideoSize.height} • Ratio: {(actualVideoSize.width / actualVideoSize.height).toFixed(2)}
+              {deviceCapabilities && deviceCapabilities.width && deviceCapabilities.height && (
+                <> • Max: {deviceCapabilities.width.max} × {deviceCapabilities.height.max}</>
+              )}
+            </span>
+            {deviceCapabilities && (actualVideoSize.width < deviceCapabilities.width.max || actualVideoSize.height < deviceCapabilities.height.max) && (
+              <button 
+                className="refresh-stream-btn"
+                onClick={() => {
+                  stopCamera();
+                  setTimeout(startCamera, 100);
+                }}
+                title="Restart stream with maximum resolution"
+              >
+                🔄 Use Max Resolution
+              </button>
+            )}
+          </div>
+        )}
 
         {capturedPhoto && (
           <div className="photo-info">

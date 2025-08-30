@@ -395,7 +395,8 @@ const FormattedResponse = ({ response }) => {
       marginLeft: `${(item.indent || 0) * 1}rem`,
       position: 'relative',
       paddingLeft: '1rem',
-      marginBottom: '0.1rem',
+      marginBottom: '0.7rem',
+      lineHeight: '1.7',
       color: '#2c3e50'
     };
     
@@ -418,7 +419,8 @@ const FormattedResponse = ({ response }) => {
       return (
         <div key={index} className="dynamic-numbered" style={{
           paddingLeft: '1.5rem',
-          margin: '0.1rem 0',
+          margin: '0.7rem 0',
+          lineHeight: '1.7',
           counterIncrement: 'list-counter',
           position: 'relative'
         }}>
@@ -485,8 +487,8 @@ const FormattedResponse = ({ response }) => {
         <p key={index} className="dynamic-text" style={{
           fontSize: '1rem',
           color: '#2c3e50',
-          margin: '0.1rem 0',
-          lineHeight: '1.4',
+          margin: '0.8rem 0',
+          lineHeight: '1.7',
           padding: '0.1rem'
         }}>
           {parseFormattedText(item.content)}
@@ -661,12 +663,32 @@ const FormattedResponse = ({ response }) => {
   // Parse the response using dynamic section detection
   const dynamicSections = parseResponse(response);
 
+  // Sort sections to show answers before questions
+  const sortedSections = dynamicSections.sort((a, b) => {
+    const aIsAnswer = a.title.toLowerCase().startsWith('answer');
+    const bIsAnswer = b.title.toLowerCase().startsWith('answer');
+    const aIsQuestion = a.title.toLowerCase().startsWith('question');
+    const bIsQuestion = b.title.toLowerCase().startsWith('question');
+    
+    // If both are answers or both are questions, maintain original order
+    if ((aIsAnswer && bIsAnswer) || (aIsQuestion && bIsQuestion)) {
+      return 0;
+    }
+    
+    // Answers come first (return negative if a is answer and b is question)
+    if (aIsAnswer && bIsQuestion) return -1;
+    if (aIsQuestion && bIsAnswer) return 1;
+    
+    // For other section types, maintain original order
+    return 0;
+  });
+
   // Render dynamic sections or fallback content
   return (
     <div className="formatted-response ai-response-content">
-      {dynamicSections.length > 0 ? (
-        // Render all detected sections dynamically
-        dynamicSections.map((section, sectionIndex) => {
+      {sortedSections.length > 0 ? (
+        // Render all detected sections dynamically (answers first, then questions)
+        sortedSections.map((section, sectionIndex) => {
           const colorData = SECTION_COLORS[section.colorIndex];
           
           return (

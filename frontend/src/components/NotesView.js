@@ -101,48 +101,6 @@ const NotesView = () => {
 
   return (
     <div className="notes-view">
-      <div className="notes-header">
-        <h1>📝 Mokita Notes</h1>
-        <div className="header-controls">
-          <div className="sync-status">
-            <span className={`sync-indicator ${isStreaming ? 'streaming' : ''}`}></span>
-            <span>{syncStatus}</span>
-          </div>
-          
-          {/* Font Size Controls in Header */}
-          <div className="font-size-controls-header">
-            <button 
-              className={`font-btn-header ${fontSize === 'small' ? 'active' : ''}`}
-              onClick={() => handleFontSizeChange('small')}
-              title="Small"
-            >
-              <span style={{ fontSize: '16px' }}>A</span>
-            </button>
-            <button 
-              className={`font-btn-header ${fontSize === 'medium' ? 'active' : ''}`}
-              onClick={() => handleFontSizeChange('medium')}
-              title="Medium"
-            >
-              <span style={{ fontSize: '20px' }}>A</span>
-            </button>
-            <button 
-              className={`font-btn-header ${fontSize === 'large' ? 'active' : ''}`}
-              onClick={() => handleFontSizeChange('large')}
-              title="Large"
-            >
-              <span style={{ fontSize: '24px' }}>A</span>
-            </button>
-            <button 
-              className={`font-btn-header ${fontSize === 'extra-large' ? 'active' : ''}`}
-              onClick={() => handleFontSizeChange('extra-large')}
-              title="Extra Large"
-            >
-              <span style={{ fontSize: '28px' }}>A</span>
-            </button>
-          </div>
-        </div>
-      </div>
-      
       <div className="notes-container">
         <div className={`notes-content-area ${getFontSizeClass()}`}>
           <div className="formatted-content">
@@ -162,11 +120,54 @@ const NotesView = () => {
             )}
           </div>
         </div>
-        
-        <div className="timestamp">
-          <span className="last-updated">
-            Last updated: <span>{lastUpdate}</span>
-          </span>
+      </div>
+      
+      <div className="notes-footer">
+        <div className="footer-left">
+          <h1>📝 Mokita Notes</h1>
+          <div className="timestamp-footer">
+            <span className="last-updated">
+              Last updated: <span>{lastUpdate}</span>
+            </span>
+          </div>
+        </div>
+        <div className="footer-controls">
+          <div className="sync-status">
+            <span className={`sync-indicator ${isStreaming ? 'streaming' : ''}`}></span>
+            <span>{syncStatus}</span>
+          </div>
+          
+          {/* Font Size Controls in Footer */}
+          <div className="font-size-controls-footer">
+            <button 
+              className={`font-btn-footer ${fontSize === 'small' ? 'active' : ''}`}
+              onClick={() => handleFontSizeChange('small')}
+              title="Small"
+            >
+              <span style={{ fontSize: '16px' }}>A</span>
+            </button>
+            <button 
+              className={`font-btn-footer ${fontSize === 'medium' ? 'active' : ''}`}
+              onClick={() => handleFontSizeChange('medium')}
+              title="Medium"
+            >
+              <span style={{ fontSize: '20px' }}>A</span>
+            </button>
+            <button 
+              className={`font-btn-footer ${fontSize === 'large' ? 'active' : ''}`}
+              onClick={() => handleFontSizeChange('large')}
+              title="Large"
+            >
+              <span style={{ fontSize: '24px' }}>A</span>
+            </button>
+            <button 
+              className={`font-btn-footer ${fontSize === 'extra-large' ? 'active' : ''}`}
+              onClick={() => handleFontSizeChange('extra-large')}
+              title="Extra Large"
+            >
+              <span style={{ fontSize: '28px' }}>A</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

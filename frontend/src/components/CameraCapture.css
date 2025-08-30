@@ -105,11 +105,12 @@
 .video-preview {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain; /* Show entire stream without cropping */
   flex: 1;
   display: block;
   min-height: 0; /* Allow video to shrink */
   min-width: 0; /* Allow video to shrink */
+  background: #000; /* Ensure black background for letterboxing */
 }
 
 .video-preview.loading {
@@ -295,6 +296,7 @@
   box-shadow: 0 4px 8px rgba(111, 66, 193, 0.2);
 }
 
+.stream-info,
 .photo-info {
   padding: 0.5rem 1rem;
   background: #e9ecef;
@@ -302,10 +304,40 @@
   text-align: center;
 }
 
+.stream-details,
 .photo-details {
   font-size: 0.85rem;
   color: #6c757d;
   font-family: monospace;
+}
+
+.stream-info {
+  background: #d4edda;
+}
+
+.stream-details {
+  color: #155724;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.refresh-stream-btn {
+  background: #17a2b8;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 0.3rem;
+}
+
+.refresh-stream-btn:hover {
+  background: #138496;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(23, 162, 184, 0.2);
 }
 
 /* Responsive design */
