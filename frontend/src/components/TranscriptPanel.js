@@ -50,7 +50,12 @@ const TranscriptPanel = ({
   onDeleteGroup,
   onMergeGroups,
   // Camera modal toggle handler
-  onCameraModalToggle
+  onCameraModalToggle,
+  // Interview session props
+  currentSession,
+  onBackToDashboard,
+  onPauseSession,
+  onEndSession
 }) => {
   const panelRef = useRef(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -487,7 +492,25 @@ const TranscriptPanel = ({
       {/* Header Section */}
       <div className="transcript-header">
         <div className="header-title-row">
-          <h1>MOKITA</h1>
+          {/* Interview Session Info */}
+          {currentSession ? (
+            <div className="session-header-info">
+              {onBackToDashboard && (
+                <button className="back-btn" onClick={onBackToDashboard}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <polyline points="15,18 9,12 15,6"></polyline>
+                  </svg>
+                  Back
+                </button>
+              )}
+              <div className="session-info-compact">
+                <h2>{currentSession.user_name} @ {currentSession.company_name}</h2>
+                <p>{currentSession.role} • {currentSession.interviewer_name}</p>
+              </div>
+            </div>
+          ) : (
+            <h1>MOKITA</h1>
+          )}
           <div className="header-controls">
             {/* All control icons in header */}
             <AudioRecorder
@@ -543,6 +566,30 @@ const TranscriptPanel = ({
                 </span>
               )}
             </div>
+            
+            {/* Session Control Buttons */}
+            {currentSession && (
+              <div className="session-controls">
+                {onPauseSession && (
+                  <button 
+                    className="session-control-btn pause-btn"
+                    onClick={onPauseSession}
+                    title="Pause Session"
+                  >
+                    ⏸️
+                  </button>
+                )}
+                {onEndSession && (
+                  <button 
+                    className="session-control-btn end-btn"
+                    onClick={onEndSession}
+                    title="End Session"
+                  >
+                    ⏹️
+                  </button>
+                )}
+              </div>
+            )}
             
             <button 
               className={`settings-btn ${showSettings ? 'active' : ''}`}

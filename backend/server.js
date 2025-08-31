@@ -5,10 +5,15 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const multer = require('multer');
+const connectDB = require('./config/database');
+const sessionsRouter = require('./routes/sessions');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5001;
+
+// Connect to MongoDB
+connectDB();
 
 // Create custom HTTPS agent with keep-alive
 const httpsAgent = new https.Agent({
@@ -102,6 +107,9 @@ const upload = multer({
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '10mb' })); // Increase JSON limit for base64 images
+
+// Routes
+app.use('/api/sessions', sessionsRouter);
 
 
 

@@ -9,7 +9,15 @@
       "Bash(rm:*)",
       "Bash(git checkout:*)",
       "Bash(git add:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(npm install)",
+      "Bash(lsof:*)",
+      "Bash(kill:*)",
+      "Bash(curl:*)",
+      "Bash(npm run build:*)",
+      "Read(/Users/akhilgangavarapu/Documents/Projects/interview/**)",
+      "Bash(node:*)",
+      "Bash(open http://localhost:3000)"
     ],
     "deny": [],
     "ask": []
