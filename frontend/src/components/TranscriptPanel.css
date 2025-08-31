@@ -822,6 +822,16 @@
   position: relative;
 }
 
+/* Message timestamp */
+.message-timestamp {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-bottom: 4px;
+  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  opacity: 0.7;
+  user-select: none;
+}
+
 .message-text-content {
   color: var(--text-primary);
   line-height: 1.6;
@@ -990,4 +1000,43 @@
   .message-block {
     padding: 1rem;
   }
+}
+/* Save Controls */
+.save-btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.save-btn:hover:not(:disabled) {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.save-btn.saving {
+  background: var(--success);
+  animation: pulse 1s infinite;
+}
+
+.last-saved {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  opacity: 0.8;
+  white-space: nowrap;
 }

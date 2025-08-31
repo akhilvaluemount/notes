@@ -2034,8 +2034,8 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false, qaHistory = [
                           {qa.splitIndex + 1}/{qa.totalSplits}
                         </span>
                       )}
-                      <span className="qa-question-text">{qa.question}</span>
-                      <MetadataChips language={qa.language} topic={qa.topic} className="compact" />
+                      <span className="qa-question-text">{qa.question.replace(/^This is the raw text spoken by an interviewer:\s*/i, '').replace(/^This is the.*?text.*?spoken.*?by.*?interviewer[:\s]*/i, '')}</span>
+                      <MetadataChips language={qa.language} topic={qa.topic} className="qa-question" />
                       <span className="qa-timestamp">
                         {new Date(qa.timestamp).toLocaleTimeString()}
                       </span>
@@ -2048,9 +2048,9 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false, qaHistory = [
                             <span className="qa-section-title">Question:</span>
                           </div>
                           <div className="qa-question-content">
-                            {qa.question}
+                            {qa.question.replace(/^This is the raw text spoken by an interviewer:\s*/i, '').replace(/^This is the.*?text.*?spoken.*?by.*?interviewer[:\s]*/i, '')}
                           </div>
-                          <MetadataChips language={qa.language} topic={qa.topic} className="compact" />
+                          <MetadataChips language={qa.language} topic={qa.topic} className="qa-question" />
                         </div>
                         <div className="qa-answer-section">
                           <div className="qa-section-header">

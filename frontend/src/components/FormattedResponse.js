@@ -771,8 +771,8 @@ const FormattedResponse = ({ response, language = null, topic = null }) => {
                     {section.title}
                   </h3>
                 </div>
-                {(section.title.toLowerCase().includes('question') || section.title.toLowerCase().includes('answer')) && (language || topic) && (
-                  <MetadataChips language={language} topic={topic} className="compact" />
+                {section.title.toLowerCase().includes('question') && (language || topic) && (
+                  <MetadataChips language={language} topic={topic} className="qa-question" />
                 )}
               </div>
               

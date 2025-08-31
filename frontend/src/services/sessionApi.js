@@ -80,6 +80,55 @@ const sessionApi = {
       console.error('Error deleting session:', error);
       throw error;
     }
+  },
+
+  // Save transcript messages to session
+  saveTranscriptMessages: async (sessionId, messages) => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/api/sessions/${sessionId}/transcript`, {
+        messages
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error saving transcript messages:', error);
+      throw error;
+    }
+  },
+
+  // Get transcript messages for session
+  getTranscriptMessages: async (sessionId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/sessions/${sessionId}/transcript`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching transcript messages:', error);
+      // Return empty result instead of throwing to prevent runtime errors
+      return { messages: [], total_count: 0 };
+    }
+  },
+
+  // Update transcript messages in session
+  updateTranscriptMessages: async (sessionId, messages) => {
+    try {
+      const response = await axios.put(`${API_BASE_URL}/api/sessions/${sessionId}/transcript`, {
+        messages
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating transcript messages:', error);
+      throw error;
+    }
+  },
+
+  // Delete specific transcript message from session
+  deleteTranscriptMessage: async (sessionId, messageId) => {
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/api/sessions/${sessionId}/transcript/${messageId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting transcript message:', error);
+      throw error;
+    }
   }
 };
 

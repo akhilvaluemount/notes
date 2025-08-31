@@ -28,6 +28,37 @@ const questionSchema = new mongoose.Schema({
   }
 });
 
+const transcriptMessageSchema = new mongoose.Schema({
+  message_id: {
+    type: String,
+    required: true
+  },
+  text: {
+    type: String,
+    required: true
+  },
+  timestamp: {
+    type: Date,
+    required: true
+  },
+  is_partial: {
+    type: Boolean,
+    default: false
+  },
+  silence_segmented: {
+    type: Boolean,
+    default: false
+  },
+  has_silence_gap: {
+    type: Boolean,
+    default: false
+  },
+  last_activity_time: {
+    type: Date,
+    default: null
+  }
+});
+
 const sessionSchema = new mongoose.Schema({
   user_name: {
     type: String,
@@ -49,6 +80,7 @@ const sessionSchema = new mongoose.Schema({
     type: String
   }],
   questions: [questionSchema],
+  transcript_messages: [transcriptMessageSchema],
   created_at: {
     type: Date,
     default: Date.now

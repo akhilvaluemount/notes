@@ -55,7 +55,12 @@ const TranscriptPanel = ({
   currentSession,
   onBackToDashboard,
   onPauseSession,
-  onEndSession
+  onEndSession,
+  // Save functionality props
+  onSaveTranscript,
+  isSaving,
+  lastSaveTime,
+  getLastSavedText
 }) => {
   const panelRef = useRef(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -163,10 +168,46 @@ const TranscriptPanel = ({
     return editedTexts[message.id] !== undefined ? editedTexts[message.id] : message.text;
   };
 
-  // Frontend logic: Group messages by 10-second gaps for display
-  const groupMessagesByTimeGap = useCallback((messages) => {
+  // Format timestamp for display
+  const formatTimestamp = (timestamp) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    
+    if (isToday) {
+      // Show time only for today's messages
+      return date.toLocaleTimeString([], { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    } else {
+      // Show date and time for older messages
+      return date.toLocaleString([], { 
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+    }
+  };
+
+  // Frontend logic: Group messages by time gaps for display
+  const groupMessagesByTimeGap = useCallback((messages, isRestoredData = false) => {
     if (!messages || messages.length === 0) return [];
     
+    // For restored data, create separate groups for each message for better readability
+    if (isRestoredData) {
+      return messages.map((message, index) => ({
+        id: `group_${index}`,
+        messages: [message],
+        startTime: message.timestamp,
+        endTime: message.timestamp,
+        hasTimeGap: index > 0
+      }));
+    }
+    
+    // For live messages, use time-based grouping
     const GAP_THRESHOLD = 10000; // 10 seconds in milliseconds
     const groups = [];
     let currentGroup = [];
@@ -183,8 +224,13 @@ const TranscriptPanel = ({
         const lastTime = new Date(lastMessage.timestamp).getTime();
         const timeDifference = messageTime - lastTime;
         
-        if (timeDifference > GAP_THRESHOLD) {
-          // Gap is more than 10 seconds, start new group
+        // Check for natural speech breaks (silence_segmented) or time gaps
+        const shouldStartNewGroup = timeDifference > GAP_THRESHOLD || 
+                                  message.silenceSegmented || 
+                                  lastMessage.silenceSegmented;
+        
+        if (shouldStartNewGroup) {
+          // Start new group due to time gap or speech segmentation
           groups.push({
             id: `group_${groups.length}`,
             messages: [...currentGroup],
@@ -194,7 +240,7 @@ const TranscriptPanel = ({
           });
           currentGroup = [message];
         } else {
-          // Gap is less than 10 seconds, add to current group
+          // Add to current group
           currentGroup.push(message);
         }
       }
@@ -214,8 +260,23 @@ const TranscriptPanel = ({
     return groups;
   }, []);
 
+  // Detect if we're displaying restored messages (vs live messages)
+  // Restored messages typically have older timestamps and are loaded all at once
+  const isRestoredData = messageHistory.length > 1 && 
+    messageHistory.some(msg => {
+      const messageAge = Date.now() - new Date(msg.timestamp).getTime();
+      return messageAge > 30000; // Messages older than 30 seconds are likely restored
+    });
+
+
   // Get grouped messages for display
-  const messageGroups = groupMessagesByTimeGap(messageHistory);
+  let messageGroups = groupMessagesByTimeGap(messageHistory, isRestoredData);
+  
+  // For restored data, ensure correct chronological order (oldest first)
+  if (isRestoredData && messageGroups.length > 1) {
+    // Sort groups by startTime to ensure oldest first
+    messageGroups = messageGroups.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+  }
 
   // Handle mouse enter with 2-second delay
   const handleMouseEnter = useCallback((groupId, isLatest) => {
@@ -783,6 +844,22 @@ const TranscriptPanel = ({
       <div className="transcript-section-header">
         <h2>Discussion</h2>
         <div className="transcript-header-buttons">
+          {/* Save Controls */}
+          {onSaveTranscript && (
+            <>
+              <button 
+                className={`save-btn btn-icon ${isSaving ? 'saving' : ''}`}
+                onClick={onSaveTranscript}
+                disabled={isSaving}
+                title="Save transcript messages"
+              >
+                {isSaving ? '💾 Saving...' : '💾 Save'}
+              </button>
+              <div className="last-saved">
+                {getLastSavedText ? getLastSavedText() : 'Never saved'}
+              </div>
+            </>
+          )}
           <button 
             onClick={onCreateNewMessage}
             className="btn-icon btn-icon-secondary"
@@ -858,6 +935,10 @@ const TranscriptPanel = ({
                     </div>
 
                   <div className="message-content">
+                    {/* Message timestamp */}
+                    <div className="message-timestamp">
+                      {formatTimestamp(group.startTime)}
+                    </div>
                     <div className="message-text-content">
                       {group.messages.map((message, messageIndex) => {
                         const isCurrentMessage = message.id === currentMessageId;

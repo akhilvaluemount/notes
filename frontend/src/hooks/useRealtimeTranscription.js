@@ -644,6 +644,25 @@ const useRealtimeTranscription = () => {
     });
   }, []);
 
+  // Restore messages from database
+  const restoreMessages = useCallback((restoredMessages) => {
+    if (!restoredMessages || restoredMessages.length === 0) {
+      console.log('⚠️ No messages to restore or empty array provided');
+      return;
+    }
+    
+    console.log('📂 Restoring', restoredMessages.length, 'messages to transcript display');
+    setMessageHistory(restoredMessages);
+    setMessageCount(restoredMessages.length);
+    
+    // Update conversation history for compatibility
+    const conversationText = restoredMessages
+      .filter(msg => !msg.isPartial)
+      .map(msg => msg.text)
+      .join(' ');
+    setConversationHistory(conversationText);
+  }, []);
+
   // Disconnect WebSocket
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -709,6 +728,7 @@ const useRealtimeTranscription = () => {
     createNewMessage,
     deleteMessages,
     mergeMessages,
+    restoreMessages,
     connect: connectWebSocket,
     disconnect,
 

@@ -41,12 +41,23 @@ function InterviewInterface() {
     pauseSession,
     resumeSession,
     hasActiveSession,
-    isSessionActive
+    isSessionActive,
+    saveTranscriptMessages,
+    getTranscriptMessages,
+    updateTranscriptMessages,
+    deleteTranscriptMessage
   } = useSessionManager();
   
   // Session loading state
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [sessionError, setSessionError] = useState('');
+  
+  // Transcript save state
+  const [lastSaveTime, setLastSaveTime] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSavedMessageCount, setLastSavedMessageCount] = useState(0);
+  const inactivityTimerRef = useRef(null);
+  const saveTimerRef = useRef(null);
   
   // Auto question detection state
   const [autoQuestionProcessing, setAutoQuestionProcessing] = useState(false);
@@ -71,6 +82,7 @@ function InterviewInterface() {
     createNewMessage,
     deleteMessages,
     mergeMessages,
+    restoreMessages,
     connect: connectRealtime,
     disconnect: disconnectRealtime
   } = useRealtimeTranscription();
@@ -93,6 +105,32 @@ function InterviewInterface() {
 
   // Get current role data
   const currentRoleData = rolesConfig.roles.find(role => role.id === selectedRole) || rolesConfig.roles[0];
+  
+  // Format last saved time for display
+  const getLastSavedText = () => {
+    if (!lastSaveTime) return 'Never saved';
+    
+    const now = new Date();
+    const diffMs = now - lastSaveTime;
+    const diffSeconds = Math.floor(diffMs / 1000);
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    const diffHours = Math.floor(diffMinutes / 60);
+    
+    if (diffSeconds < 60) {
+      return `${diffSeconds} sec ago`;
+    } else if (diffMinutes < 60) {
+      return `${diffMinutes} min ago`;
+    } else {
+      return `${diffHours}h ${diffMinutes % 60}m ago`;
+    }
+  };
+  
+  // Update last saved text every second
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setTick(prev => prev + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
   
   // Camera modal state for layout adjustment
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
@@ -142,6 +180,7 @@ function InterviewInterface() {
 
   // Load session on component mount
   useEffect(() => {
+    console.log('🚀 Session useEffect triggered with sessionId:', sessionId);
     const initializeSession = async () => {
       if (!sessionId) {
         setSessionError('No session ID provided');
@@ -154,6 +193,7 @@ function InterviewInterface() {
         setSessionError('');
         
         const session = await loadSession(sessionId);
+        console.log('📋 Session loaded:', session);
         if (session) {
           // Load Q&A history from the session
           if (session.questions) {
@@ -169,6 +209,48 @@ function InterviewInterface() {
             }));
             setQaHistory(qaEntries);
           }
+
+          // Load transcript messages from the session
+          try {
+            console.log('🔄 Attempting to load transcript messages for session:', sessionId);
+            const transcriptData = await getTranscriptMessages(sessionId);
+            console.log('📦 Raw transcript data received:', transcriptData);
+            
+            if (transcriptData && transcriptData.length > 0) {
+              // Convert database format to frontend messageHistory format
+              const restoredMessages = transcriptData.map(msg => ({
+                id: msg.message_id,
+                text: msg.text,
+                timestamp: msg.timestamp,
+                isPartial: msg.is_partial,
+                silenceSegmented: msg.silence_segmented,
+                hasSilenceGap: msg.has_silence_gap,
+                lastActivityTime: msg.last_activity_time
+              }));
+              
+              // Sort messages by timestamp (oldest first -> newest last for natural conversation flow)
+              restoredMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+              
+              console.log('📂 Restored transcript messages:', restoredMessages.length, 'messages in chronological order');
+              
+              // Restore messages to the transcript display
+              restoreMessages(restoredMessages);
+              
+              // Update save state
+              setLastSavedMessageCount(restoredMessages.length);
+              
+              // Set last save time to the most recent message timestamp
+              if (restoredMessages.length > 0) {
+                const lastMessage = restoredMessages.sort((a, b) => 
+                  new Date(b.timestamp) - new Date(a.timestamp)
+                )[0];
+                setLastSaveTime(new Date(lastMessage.timestamp));
+              }
+            }
+          } catch (error) {
+            console.error('Error loading transcript messages:', error);
+            // Don't fail session loading if transcript loading fails
+          }
         } else {
           setSessionError('Session not found');
         }
@@ -181,6 +263,7 @@ function InterviewInterface() {
     };
 
     initializeSession();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, loadSession]);
 
   // Session management handlers
@@ -190,12 +273,16 @@ function InterviewInterface() {
 
   const handleEndSession = async () => {
     if (window.confirm('Are you sure you want to end this session? This will mark it as completed.')) {
+      // Save transcript before ending session
+      await saveTranscriptToSession(true); // Immediate save
       await endSession();
       navigate('/');
     }
   };
 
   const handlePauseSession = async () => {
+    // Save transcript before pausing session
+    await saveTranscriptToSession(true); // Immediate save
     await pauseSession();
     navigate('/');
   };
@@ -759,6 +846,83 @@ Question: ${textInput}`;
     }
   }, [connectionError]);
 
+  // Auto-save transcript messages when messageHistory changes
+  // Manual save transcript function
+  const saveTranscriptToSession = useCallback(async (immediate = false) => {
+    if (!hasActiveSession || !messageHistory || messageHistory.length === 0) {
+      return;
+    }
+
+    // Filter out partial messages - only save finalized ones
+    const finalizedMessages = messageHistory.filter(msg => !msg.isPartial);
+    
+    if (finalizedMessages.length === 0 || finalizedMessages.length === lastSavedMessageCount) {
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await saveTranscriptMessages(finalizedMessages);
+      const now = new Date();
+      setLastSaveTime(now);
+      setLastSavedMessageCount(finalizedMessages.length);
+      console.log('💾 Saved transcript messages:', finalizedMessages.length);
+    } catch (error) {
+      console.error('Failed to save transcript messages:', error);
+      setError('Failed to save transcript');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [messageHistory, hasActiveSession, saveTranscriptMessages, lastSavedMessageCount]);
+
+  // Auto-save on new messages (immediate)
+  useEffect(() => {
+    const finalizedMessages = messageHistory?.filter(msg => !msg.isPartial) || [];
+    
+    if (finalizedMessages.length > lastSavedMessageCount && hasActiveSession) {
+      // Clear existing timer
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+      
+      // Save immediately when new finalized messages appear
+      saveTimerRef.current = setTimeout(() => {
+        saveTranscriptToSession();
+      }, 500); // Small delay to batch rapid messages
+    }
+    
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, [messageHistory, hasActiveSession, lastSavedMessageCount, saveTranscriptToSession]);
+
+  // 30-second inactivity timer
+  useEffect(() => {
+    const resetInactivityTimer = () => {
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+      
+      if (hasActiveSession && messageHistory && messageHistory.length > 0) {
+        inactivityTimerRef.current = setTimeout(() => {
+          saveTranscriptToSession();
+          console.log('💾 Auto-saved due to 30s inactivity');
+        }, 30000); // 30 seconds
+      }
+    };
+
+    // Reset timer when new messages arrive or user interacts
+    resetInactivityTimer();
+    
+    return () => {
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+    };
+  }, [messageHistory, partialTranscript, hasActiveSession, saveTranscriptToSession]);
+
   // Handle delete group - remove messages by IDs
   const handleDeleteGroup = useCallback((messageIds) => {
     deleteMessages(messageIds);
@@ -860,6 +1024,11 @@ Question: ${textInput}`;
           onBackToDashboard={handleBackToDashboard}
           onPauseSession={handlePauseSession}
           onEndSession={handleEndSession}
+          // Save functionality props
+          onSaveTranscript={() => saveTranscriptToSession(true)}
+          isSaving={isSaving}
+          lastSaveTime={lastSaveTime}
+          getLastSavedText={getLastSavedText}
         />
         {!isCameraModalOpen && (
           <ResponsePanel 

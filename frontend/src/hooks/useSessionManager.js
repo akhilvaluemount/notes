@@ -165,6 +165,78 @@ const useSessionManager = () => {
     };
   }, [currentSession]);
 
+  // Save transcript messages to current session
+  const saveTranscriptMessages = useCallback(async (messages) => {
+    if (!currentSession || !messages || messages.length === 0) {
+      console.warn('No active session or messages to save');
+      return null;
+    }
+
+    try {
+      const result = await sessionApi.saveTranscriptMessages(currentSession._id, messages);
+      console.log('Transcript messages saved:', result);
+      return result;
+    } catch (error) {
+      console.error('Error saving transcript messages:', error);
+      setSessionError('Failed to save transcript messages');
+      return null;
+    }
+  }, [currentSession]);
+
+  // Get transcript messages for current session
+  const getTranscriptMessages = useCallback(async (sessionId = null) => {
+    const targetSessionId = sessionId || currentSession?._id;
+    if (!targetSessionId) {
+      console.warn('No session ID provided to get transcript from');
+      return [];
+    }
+
+    try {
+      const result = await sessionApi.getTranscriptMessages(targetSessionId);
+      return result.messages || [];
+    } catch (error) {
+      console.error('Error fetching transcript messages:', error);
+      setSessionError('Failed to fetch transcript messages');
+      return [];
+    }
+  }, [currentSession]);
+
+  // Update transcript messages in current session
+  const updateTranscriptMessages = useCallback(async (messages) => {
+    if (!currentSession || !messages || messages.length === 0) {
+      console.warn('No active session or messages to update');
+      return null;
+    }
+
+    try {
+      const result = await sessionApi.updateTranscriptMessages(currentSession._id, messages);
+      console.log('Transcript messages updated:', result);
+      return result;
+    } catch (error) {
+      console.error('Error updating transcript messages:', error);
+      setSessionError('Failed to update transcript messages');
+      return null;
+    }
+  }, [currentSession]);
+
+  // Delete specific transcript message from current session
+  const deleteTranscriptMessage = useCallback(async (messageId) => {
+    if (!currentSession || !messageId) {
+      console.warn('No active session or message ID provided');
+      return null;
+    }
+
+    try {
+      const result = await sessionApi.deleteTranscriptMessage(currentSession._id, messageId);
+      console.log('Transcript message deleted:', result);
+      return result;
+    } catch (error) {
+      console.error('Error deleting transcript message:', error);
+      setSessionError('Failed to delete transcript message');
+      return null;
+    }
+  }, [currentSession]);
+
   // Load existing sessions on mount
   useEffect(() => {
     const initializeSessions = async () => {
@@ -203,6 +275,12 @@ const useSessionManager = () => {
     deleteSession,
     clearCurrentSession,
     loadExistingSessions,
+    
+    // Transcript Actions
+    saveTranscriptMessages,
+    getTranscriptMessages,
+    updateTranscriptMessages,
+    deleteTranscriptMessage,
     
     // Computed
     getSessionStats,

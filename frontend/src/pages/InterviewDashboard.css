@@ -1,7 +1,10 @@
 .interview-dashboard {
   min-height: 100vh;
+  height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .dashboard-header {
@@ -60,12 +63,45 @@
   padding: 24px;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+/* Custom Scrollbar Styles */
+.interview-dashboard::-webkit-scrollbar,
+.sessions-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.interview-dashboard::-webkit-scrollbar-track,
+.sessions-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.interview-dashboard::-webkit-scrollbar-thumb,
+.sessions-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.interview-dashboard::-webkit-scrollbar-thumb:hover,
+.sessions-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Firefox scrollbar */
+.interview-dashboard,
+.sessions-container {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);
 }
 
 .sessions-grid {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 20px;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
 }
 
 .error-message {
@@ -174,7 +210,6 @@
 /* Responsive Design */
 @media (max-width: 1024px) {
   .sessions-grid {
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
     gap: 16px;
   }
   
@@ -186,6 +221,8 @@
 @media (max-width: 768px) {
   .interview-dashboard {
     padding: 16px;
+    height: 100vh;
+    overflow-y: auto;
   }
   
   .dashboard-header {
@@ -209,13 +246,13 @@
   }
   
   .sessions-grid {
-    grid-template-columns: 1fr;
     gap: 16px;
   }
   
   .sessions-container {
     padding: 16px;
     margin: 0 -4px;
+    max-height: calc(100vh - 180px);
   }
   
   .empty-state {

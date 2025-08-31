@@ -190,6 +190,30 @@
   font-size: 0.7rem;
 }
 
+/* Question chips - no border, no icon, thick gray text */
+.metadata-chips.qa-question {
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.metadata-chips.qa-question .metadata-chip {
+  padding: 0.15rem 0.4rem;
+  font-size: 0.7rem;
+  border: none !important;
+  background: transparent !important;
+  color: #4b5563 !important;
+  font-weight: 600 !important;
+}
+
+.metadata-chips.qa-question .chip-icon {
+  display: none;
+}
+
+.metadata-chips.qa-question .chip-text {
+  color: #4b5563 !important;
+  font-weight: 600 !important;
+}
+
 /* Dark theme support */
 @media (prefers-color-scheme: dark) {
   .metadata-chip {
