@@ -10,6 +10,7 @@ import useRealtimeTranscription from '../hooks/useRealtimeTranscription';
 import useSessionManager from '../hooks/useSessionManager';
 import { processTranscriptForQuestions, DebouncedQuestionProcessor } from '../utils/autoQuestionDetection';
 import { processQAHistoryEntry, parseMultiQAResponse, hasMultipleQA } from '../utils/multiQAParser';
+import { extractMetadataFromResponse, extractMetadataFromMultiQA, hasMetadata } from '../utils/metadataExtractor';
 import buttonConfig from '../config/buttonConfig';
 import rolesConfig from '../config/rolesAndTechnologies.json';
 
@@ -27,6 +28,9 @@ function InterviewInterface() {
   
   // Q&A History state for preserving questions and answers
   const [qaHistory, setQaHistory] = useState([]);
+  
+  // Current metadata state for the latest response
+  const [currentMetadata, setCurrentMetadata] = useState({ language: null, topic: null });
   
   // Session management
   const {
@@ -157,6 +161,8 @@ function InterviewInterface() {
               id: `session_${q._id || index}`,
               question: q.question,
               answer: q.answer,
+              language: q.language,
+              topic: q.topic,
               timestamp: q.timestamp,
               isExpanded: false,
               sessionId: session._id
@@ -221,14 +227,23 @@ function InterviewInterface() {
     
     console.log('💾 Saving Q&A to history:', { originalQuestion, answer });
     
+    // Extract metadata from the AI response
+    const { language, topic, cleanedContent } = extractMetadataFromResponse(answer);
+    console.log('📊 Extracted metadata:', { language, topic });
+    
+    // Update current metadata for the ResponsePanel
+    setCurrentMetadata({ language, topic });
+    
     // Helper function to save to MongoDB session
-    const saveToSession = async (question, answer, questionType = 'general') => {
+    const saveToSession = async (question, answer, questionType = 'general', lang = null, topicName = null) => {
       if (hasActiveSession && isSessionActive) {
         try {
           await addQuestionToSession({
             question,
             answer,
-            question_type: questionType
+            question_type: questionType,
+            language: lang,
+            topic: topicName
           });
         } catch (error) {
           console.error('Failed to save Q&A to session:', error);
@@ -237,20 +252,22 @@ function InterviewInterface() {
     };
     
     // Check if the AI response contains multiple Q&A pairs
-    if (hasMultipleQA(answer)) {
+    if (hasMultipleQA(cleanedContent)) {
       console.log('💾 Detected multiple Q&A in response, splitting...');
       
-      // Parse the response into separate Q&A pairs
-      const multiQAList = parseMultiQAResponse(answer);
+      // Use metadata-aware parsing for multi Q&A
+      const multiQAList = extractMetadataFromMultiQA(answer);
       
       if (multiQAList.length > 1) {
-        console.log('💾 Successfully parsed', multiQAList.length, 'Q&A pairs');
+        console.log('💾 Successfully parsed', multiQAList.length, 'Q&A pairs with metadata');
         
         // Create separate Q&A entries for each parsed pair
         const qaEntries = multiQAList.map((qa, index) => ({
           id: `${generateQAId()}_multi_${index}`,
           question: qa.question, // Use the polished question from AI response
           answer: qa.answer,
+          language: qa.language,
+          topic: qa.topic,
           timestamp: new Date().toISOString(),
           isExpanded: index === 0, // Only first one expanded
           originalQuestion: originalQuestion, // Keep original transcript for reference
@@ -259,9 +276,9 @@ function InterviewInterface() {
           totalSplits: multiQAList.length
         }));
         
-        // Save each Q&A pair to MongoDB session
+        // Save each Q&A pair to MongoDB session with metadata
         for (const qa of multiQAList) {
-          await saveToSession(qa.question, qa.answer);
+          await saveToSession(qa.question, qa.answer, 'general', qa.language, qa.topic);
         }
         
         setQaHistory(prev => {
@@ -271,6 +288,28 @@ function InterviewInterface() {
         });
         
         return; // Exit early since we handled the multi-Q&A case
+      } else if (multiQAList.length === 1) {
+        // Single Q&A from multi-QA extraction, use the parsed data
+        const qa = multiQAList[0];
+        const qaEntry = {
+          id: generateQAId(),
+          question: qa.question,
+          answer: qa.answer,
+          language: qa.language,
+          topic: qa.topic,
+          timestamp: new Date().toISOString(),
+          isExpanded: true
+        };
+        
+        // Save to MongoDB session with metadata
+        await saveToSession(qa.question, qa.answer, 'general', qa.language, qa.topic);
+        
+        setQaHistory(prev => {
+          const collapsedPrevious = prev.map(qa => ({ ...qa, isExpanded: false }));
+          return [qaEntry, ...collapsedPrevious];
+        });
+        
+        return; // Exit early
       }
     }
     
@@ -279,13 +318,15 @@ function InterviewInterface() {
     const qaEntry = {
       id: generateQAId(),
       question: originalQuestion,
-      answer: answer,
+      answer: cleanedContent, // Use cleaned content without metadata lines
+      language: language,
+      topic: topic,
       timestamp: new Date().toISOString(),
       isExpanded: true
     };
     
-    // Save to MongoDB session
-    await saveToSession(originalQuestion, answer);
+    // Save to MongoDB session with metadata
+    await saveToSession(originalQuestion, cleanedContent, 'general', language, topic);
     
     setQaHistory(prev => {
       const collapsedPrevious = prev.map(qa => ({ ...qa, isExpanded: false }));
@@ -827,6 +868,8 @@ Question: ${textInput}`;
             isStreaming={isStreaming}
             qaHistory={qaHistory}
             onToggleQA={toggleQAExpansion}
+            currentLanguage={currentMetadata.language}
+            currentTopic={currentMetadata.topic}
           />
         )}
       </div>

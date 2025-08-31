@@ -86,7 +86,7 @@ router.put('/:id', async (req, res) => {
 // POST /api/sessions/:id/questions - Add question/answer to session
 router.post('/:id/questions', async (req, res) => {
   try {
-    const { question, answer, question_type } = req.body;
+    const { question, answer, question_type, language, topic } = req.body;
     
     if (!question || !answer) {
       return res.status(400).json({ 
@@ -103,6 +103,8 @@ router.post('/:id/questions', async (req, res) => {
       question,
       answer,
       question_type: question_type || 'general',
+      language: language || null,
+      topic: topic || null,
       timestamp: new Date()
     });
 

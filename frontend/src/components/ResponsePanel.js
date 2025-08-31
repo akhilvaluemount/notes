@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import './ResponsePanel.css';
 import FormattedResponse from './FormattedResponse';
+import MetadataChips from './MetadataChips';
 import { parseResponseWithFallback, parseFormattedText, generateFormattedHTML } from '../utils/responseParser';
 
 // Import the same color palette and icons as FormattedResponse
@@ -239,7 +240,7 @@ const getFormattedResponseCSS = () => {
   `;
 };
 
-const ResponsePanel = ({ response, isLoading, isStreaming = false, qaHistory = [], onToggleQA }) => {
+const ResponsePanel = ({ response, isLoading, isStreaming = false, qaHistory = [], onToggleQA, currentLanguage = null, currentTopic = null }) => {
   const responseContainerRef = useRef(null);
   const [showStickyHeader, setShowStickyHeader] = useState(false);
   const [showScrollIndicator, setShowScrollIndicator] = useState(false);
@@ -1983,7 +1984,7 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false, qaHistory = [
             </div>
           ) : response ? (
             <div className="response-content">
-              <FormattedResponse response={response} />
+              <FormattedResponse response={response} language={currentLanguage} topic={currentTopic} />
               {isStreaming && (
                 <div className="streaming-cursor">
                   <span className="typing-cursor">|</span>
@@ -2034,6 +2035,7 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false, qaHistory = [
                         </span>
                       )}
                       <span className="qa-question-text">{qa.question}</span>
+                      <MetadataChips language={qa.language} topic={qa.topic} className="compact" />
                       <span className="qa-timestamp">
                         {new Date(qa.timestamp).toLocaleTimeString()}
                       </span>
@@ -2048,6 +2050,7 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false, qaHistory = [
                           <div className="qa-question-content">
                             {qa.question}
                           </div>
+                          <MetadataChips language={qa.language} topic={qa.topic} className="compact" />
                         </div>
                         <div className="qa-answer-section">
                           <div className="qa-section-header">
@@ -2055,7 +2058,7 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false, qaHistory = [
                             <span className="qa-section-title">Answer:</span>
                           </div>
                           <div className="qa-answer-content">
-                            <FormattedResponse response={qa.answer} />
+                            <FormattedResponse response={qa.answer} language={qa.language} topic={qa.topic} />
                           </div>
                         </div>
                       </div>

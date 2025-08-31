@@ -11,9 +11,18 @@ technologes: {technologies}
 Your tasks:
 
   Convert the text into clear interview-style single question
+  
+  **IMPORTANT**: First analyze the question content to identify the correct programming language/framework:
+  - If question mentions CSS concepts (selectors, flexbox, grid, etc.) → Language: CSS
+  - If question mentions HTML concepts (elements, tags, semantic, etc.) → Language: HTML  
+  - If question mentions Angular concepts (directives, pipes, services, etc.) → Language: Angular
+  - If question mentions React concepts (hooks, components, JSX, etc.) → Language: React
+  - If question mentions JavaScript concepts (closures, promises, etc.) → Language: JavaScript
+  - If behavioral question (introduce yourself, experience, etc.) → Language: General
 
-  Strictly write each answer in bullet points.
-  Use bold keywords for clarity.
+  **IMPORTANT**: 
+  - Strictly write each answer in bullet points.
+  - Use bold keywords for clarity.
   Use first-person style when it requires(I/my/we).
 
   natural speech usually includes a bit of hesitation or context.
@@ -30,6 +39,8 @@ Your tasks:
   Make answers easy to speak aloud in an interview.
 
 Format:
+  Language: [If technical question: identify the specific programming language/framework (CSS, HTML, JavaScript, Angular, React, Vue, Python, Java, etc.). If behavioral/personal question: use 'General']
+  Topic: [Brief topic name]
   Question 1: ...
   Answer 1: ...
 
@@ -53,6 +64,8 @@ Provide a structured answer to the following question. Break the answer down int
   Use bullet points and easy-to-read language.
 
   Format:
+    Language: [If technical question: identify the specific programming language/framework (CSS, HTML, JavaScript, Angular, React, Vue, Python, Java, etc.). If behavioral/personal question: use 'General']
+    Topic: [Brief topic name]
     Question 1: ...
     Answer 1: ...
 
@@ -83,6 +96,8 @@ Use **bold keywords** for clarity.
 Make answers easy to speak aloud in an interview.
 
 Format:
+Language: [If technical question: identify the specific programming language/framework (CSS, HTML, JavaScript, Angular, React, Vue, Python, Java, etc.). If behavioral/personal question: use 'General']
+Topic: [Brief topic name]
 • Start with TL;DR: Brief summary of the key difference
 • Follow with a comparison table showing features and how they differ between the two options
 • Use clean markdown table format for easy reading
@@ -100,6 +115,8 @@ Use **bold keywords** for clarity.
 Make answers easy to speak aloud in an interview.
 
 Format:
+Language: [If technical question: identify the specific programming language/framework (CSS, HTML, JavaScript, Angular, React, Vue, Python, Java, etc.). If behavioral/personal question: use 'General']
+Topic: [Brief topic name]
 • Definition (1–2 lines)
 • Core Concept (3–4 bullet points)
 • Short Example (optional, ≤3 lines)
@@ -117,6 +134,8 @@ Use **bold keywords** for clarity.
 Make answers easy to speak aloud in an interview.
 
 Format:
+Language: [If technical question: identify the specific programming language/framework (CSS, HTML, JavaScript, Angular, React, Vue, Python, Java, etc.). If behavioral/personal question: use 'General']
+Topic: [Brief topic name]
 • Step-by-step (numbered, 4–6 steps max)
 • Key Tip (1 line)
 Keep it relevant to {technologies}.
@@ -159,6 +178,8 @@ Use only **simple, natural, spoken words**.
 each paragraph should contain 1 or 2 sentences based on meaning. devide in to multiple paragraphs.
 
 Format:
+  Language: [If technical question: identify the specific programming language/framework (CSS, HTML, JavaScript, Angular, React, Vue, Python, Java, etc.). If behavioral/personal question: use 'General']
+  Topic: [Brief topic name]
   Answer 1: ...
   Question 1: ...
 
@@ -176,6 +197,8 @@ Use **bold keywords** for clarity.
 Make answers easy to speak aloud in an interview.
 
 Format:
+Language: [If technical question: identify the specific programming language/framework (CSS, HTML, JavaScript, Angular, React, Vue, Python, Java, etc.). If behavioral/personal question: use 'General']
+Topic: [Brief topic name]
 • 1-line intro
 • Bullet list of types (3–6 max) with 1 short phrase each
 Only include relevant {technologies} concepts.
@@ -203,6 +226,8 @@ Your tasks:
   Make answers easy to speak aloud in an interview.
 
 Format:
+  Language: [If technical question: identify the specific programming language/framework (CSS, HTML, JavaScript, Angular, React, Vue, Python, Java, etc.). If behavioral/personal question: use 'General']
+  Topic: [Brief topic name]
   **Output:** [What I expect this code to produce]
   **why this happens:**
   **Execution:** [How I see this code running - 3-4 bullet points]

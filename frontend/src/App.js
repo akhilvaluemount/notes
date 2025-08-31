@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import InterviewDashboard from './pages/InterviewDashboard';
 import InterviewInterface from './pages/InterviewInterface';
+import NotesView from './components/NotesView';
 import ErrorBoundary from './components/ErrorBoundary';
 import './App.css';
 
@@ -16,6 +17,9 @@ function App() {
             
             {/* Interview interface route - handles specific session */}
             <Route path="/interview/:sessionId" element={<InterviewInterface />} />
+            
+            {/* Notes view route - for formatted AI responses in new tab */}
+            <Route path="/notes" element={<NotesView />} />
             
             {/* Redirect any unknown routes to dashboard */}
             <Route path="*" element={<Navigate to="/" replace />} />

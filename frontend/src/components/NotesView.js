@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import FormattedResponse from './FormattedResponse';
+import { extractMetadataFromResponse } from '../utils/metadataExtractor';
 import './NotesView.css';
 
 const NotesView = () => {
@@ -8,6 +9,7 @@ const NotesView = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [syncStatus, setSyncStatus] = useState('Connected - Real-time sync active');
   const [fontSize, setFontSize] = useState('medium');
+  const [currentMetadata, setCurrentMetadata] = useState({ language: null, topic: null });
   
   const broadcastChannelRef = useRef(null);
 
@@ -16,17 +18,33 @@ const NotesView = () => {
     const sessionResponse = sessionStorage.getItem('initialAiResponse');
     if (sessionResponse) {
       setAiResponse(sessionResponse);
+      
+      // Extract metadata
+      const { language, topic } = extractMetadataFromResponse(sessionResponse);
+      setCurrentMetadata({ language, topic });
+      
       // Save to localStorage for persistence
       localStorage.setItem('notesAiResponse', sessionResponse);
+      localStorage.setItem('notesMetadata', JSON.stringify({ language, topic }));
       localStorage.setItem('notesLastUpdate', new Date().toLocaleString());
       // Clear sessionStorage after reading
       sessionStorage.removeItem('initialAiResponse');
     } else {
       // Try to restore from localStorage (for refresh)
       const savedResponse = localStorage.getItem('notesAiResponse');
+      const savedMetadata = localStorage.getItem('notesMetadata');
       const savedLastUpdate = localStorage.getItem('notesLastUpdate');
+      
       if (savedResponse) {
         setAiResponse(savedResponse);
+        if (savedMetadata) {
+          try {
+            const metadata = JSON.parse(savedMetadata);
+            setCurrentMetadata(metadata);
+          } catch (e) {
+            console.log('Failed to parse saved metadata:', e);
+          }
+        }
         if (savedLastUpdate) {
           setLastUpdate(savedLastUpdate);
         }
@@ -49,11 +67,16 @@ const NotesView = () => {
         const newResponse = event.data.response;
         const newUpdateTime = new Date().toLocaleString();
         
+        // Extract metadata
+        const { language, topic } = extractMetadataFromResponse(newResponse);
+        
         setAiResponse(newResponse);
+        setCurrentMetadata({ language, topic });
         setLastUpdate(newUpdateTime);
         
         // Save to localStorage for persistence
         localStorage.setItem('notesAiResponse', newResponse);
+        localStorage.setItem('notesMetadata', JSON.stringify({ language, topic }));
         localStorage.setItem('notesLastUpdate', newUpdateTime);
         
         // Flash sync indicator
@@ -106,7 +129,11 @@ const NotesView = () => {
           <div className="formatted-content">
             {aiResponse ? (
               <>
-                <FormattedResponse response={aiResponse} />
+                <FormattedResponse 
+                  response={aiResponse} 
+                  language={currentMetadata.language} 
+                  topic={currentMetadata.topic} 
+                />
                 {isStreaming && (
                   <div className="streaming-indicator">
                     <span className="typing-cursor">|</span>

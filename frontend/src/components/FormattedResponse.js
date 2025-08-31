@@ -1,5 +1,6 @@
 import React from 'react';
 import './FormattedResponse.css';
+import MetadataChips from './MetadataChips';
 
 // Dynamic color palette for sections
 const SECTION_COLORS = [
@@ -72,10 +73,11 @@ const SECTION_ICONS = {
   'default': '💬'
 };
 
-const FormattedResponse = ({ response }) => {
+const FormattedResponse = ({ response, language = null, topic = null }) => {
   console.log('FormattedResponse received response:', response);
   console.log('Response type:', typeof response);
   console.log('Response length:', response?.length);
+  console.log('Metadata props:', { language, topic });
   
   // Simple fallback if response is empty or just whitespace
   if (!response || !response.trim()) {
@@ -86,6 +88,33 @@ const FormattedResponse = ({ response }) => {
       </div>
     );
   }
+
+  // Clean the response by removing metadata lines
+  const cleanResponse = (text) => {
+    if (!text) return text;
+    
+    let cleanedText = text;
+    
+    // Remove bullet-point metadata: - Language: line
+    cleanedText = cleanedText.replace(/^-\s*Language:\s*[^\n]+\n?/im, '');
+    
+    // Remove bullet-point metadata: - Topic: line
+    cleanedText = cleanedText.replace(/^-\s*Topic:\s*[^\n]+\n?/im, '');
+    
+    // Remove regular metadata lines (fallback)
+    cleanedText = cleanedText.replace(/Language:\s*[^\n]+\n?/i, '');
+    cleanedText = cleanedText.replace(/Topic:\s*[^\n]+\n?/i, '');
+    
+    // Clean up any extra whitespace
+    cleanedText = cleanedText.trim();
+    
+    return cleanedText;
+  };
+
+  const cleanedResponse = cleanResponse(response);
+  console.log('Original response:', response);
+  console.log('Cleaned response:', cleanedResponse);
+  console.log('Cleaned response length:', cleanedResponse?.length);
 
   // Function to detect if lines form a markdown table
   const detectMarkdownTable = (lines, startIndex) => {
@@ -225,12 +254,23 @@ const FormattedResponse = ({ response }) => {
     // Helper function to detect if line is a section header
     const detectSectionHeader = (line) => {
       const trimmed = line.trim();
+      console.log('Checking line for section header:', trimmed);
+      
+      // Handle bullet-point format: - Question 1: or - Answer 1:
+      const bulletQAMatch = trimmed.match(/^-\s*(Question|Answer)\s+\d+\s*:\s*(.*)$/i);
+      if (bulletQAMatch) {
+        const sectionTitle = bulletQAMatch[1] + ' ' + bulletQAMatch[0].match(/\d+/)[0];
+        const remainingContent = bulletQAMatch[2].trim();
+        console.log('Found bullet Q&A section:', sectionTitle, 'with content:', remainingContent);
+        return { title: sectionTitle, remainingContent };
+      }
       
       // Question 1: or Answer 1: patterns (may have content after colon)
       const qaMatch = trimmed.match(/^(Question|Answer)\s+\d+\s*:(.*)$/i);
       if (qaMatch) {
         const sectionTitle = qaMatch[1] + ' ' + qaMatch[0].match(/\d+/)[0];
         const remainingContent = qaMatch[2].trim();
+        console.log('Found Q&A section:', sectionTitle, 'with content:', remainingContent);
         return { title: sectionTitle, remainingContent };
       }
       
@@ -660,8 +700,11 @@ const FormattedResponse = ({ response }) => {
     );
   };
 
-  // Parse the response using dynamic section detection
-  const dynamicSections = parseResponse(response);
+  // Parse the response using dynamic section detection  
+  const dynamicSections = parseResponse(cleanedResponse);
+  
+  console.log('Dynamic sections found:', dynamicSections.length);
+  console.log('Dynamic sections:', dynamicSections);
 
   // Sort sections to show answers before questions
   const sortedSections = dynamicSections.sort((a, b) => {
@@ -708,22 +751,29 @@ const FormattedResponse = ({ response }) => {
               <div className="section-header" style={{
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'space-between',
                 marginBottom: '0.3rem',
                 gap: '0.3rem',
                 paddingBottom: '0.2rem',
-                borderBottom: '1px solid rgba(0, 0, 0, 0.1)'
+                borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
+                flexWrap: 'wrap'
               }}>
-                <span className="section-icon" style={{ fontSize: '1.2rem' }}>
-                  {section.icon}
-                </span>
-                <h3 style={{
-                  fontSize: '1.1rem',
-                  fontWeight: 600,
-                  color: '#2c3e50',
-                  margin: 0
-                }}>
-                  {section.title}
-                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                  <span className="section-icon" style={{ fontSize: '1.2rem' }}>
+                    {section.icon}
+                  </span>
+                  <h3 style={{
+                    fontSize: '1.1rem',
+                    fontWeight: 600,
+                    color: '#2c3e50',
+                    margin: 0
+                  }}>
+                    {section.title}
+                  </h3>
+                </div>
+                {(section.title.toLowerCase().includes('question') || section.title.toLowerCase().includes('answer')) && (language || topic) && (
+                  <MetadataChips language={language} topic={topic} className="compact" />
+                )}
               </div>
               
               <div className="section-content" style={{ paddingLeft: '0.5rem' }}>
@@ -763,7 +813,7 @@ const FormattedResponse = ({ response }) => {
             </h3>
           </div>
           <div className="fallback-content" style={{ padding: '0.75rem', counterReset: 'list-counter' }}>
-            {renderFallbackContent(response)}
+            {renderFallbackContent(cleanedResponse)}
           </div>
         </div>
       )}

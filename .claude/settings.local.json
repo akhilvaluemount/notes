@@ -17,7 +17,8 @@
       "Bash(npm run build:*)",
       "Read(/Users/akhilgangavarapu/Documents/Projects/interview/**)",
       "Bash(node:*)",
-      "Bash(open http://localhost:3000)"
+      "Bash(open http://localhost:3000)",
+      "Bash(npm run lint)"
     ],
     "deny": [],
     "ask": []

@@ -17,6 +17,14 @@ const questionSchema = new mongoose.Schema({
     type: String,
     enum: ['behavioral', 'technical', 'system_design', 'coding', 'general'],
     default: 'general'
+  },
+  language: {
+    type: String,
+    default: null
+  },
+  topic: {
+    type: String,
+    default: null
   }
 });
 
