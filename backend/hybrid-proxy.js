@@ -337,14 +337,23 @@ class AssemblyAIRealtimeProxy {
           audioCallReset = currentTime;
         }
         
-        if (audioCallCount >= throttleLimit) {
+        // Detect keep-alive chunks (small silence chunks)
+        // Keep-alive chunks are typically very small (< 1024 bytes)
+        // Real speech chunks are usually larger
+        const isKeepAlive = data && data.length < 1024;
+        
+        // Only apply throttle to real audio, not keep-alive chunks
+        if (!isKeepAlive && audioCallCount >= throttleLimit) {
           console.log(`⚠️ Audio throttle limit reached (${throttleLimit}/min), dropping audio chunk`);
           return;
         }
         
         if (data && data.length > 0) {
           connection.sendAudio(data);
-          audioCallCount++;
+          // Only increment counter for non-keep-alive chunks
+          if (!isKeepAlive) {
+            audioCallCount++;
+          }
         }
       }
     });

@@ -427,7 +427,7 @@ const useRealtimeTranscription = () => {
         shouldCreateNewMessage = true;
       }
       
-      // For final transcripts, replace the message text completely (don't accumulate)
+      // For final transcripts, we need to ACCUMULATE text, not replace
       const finalText = message.text;
       
       setMessageHistory(prev => {
@@ -443,10 +443,14 @@ const useRealtimeTranscription = () => {
             hasSilenceGap: false
           });
         } else if (currentIndex !== -1) {
-          // Replace the text completely, don't accumulate
+          // ACCUMULATE the text with the existing message
+          // Add a space between previous text and new text if both exist
+          const existingText = messages[currentIndex].text || '';
+          const separator = existingText && finalText ? ' ' : '';
+          
           messages[currentIndex] = {
             ...messages[currentIndex],
-            text: finalText,
+            text: existingText + separator + finalText,
             isPartial: false, // Mark as final
             hasSilenceGap: false
           };
@@ -470,9 +474,8 @@ const useRealtimeTranscription = () => {
       setFinalTranscript(finalText);
       setMessageCount(prev => prev + 1);
       
-      // Start a new message for the next speech segment
-      setCurrentMessageId(null);
-      currentMessageIdRef.current = null;
+      // DON'T reset currentMessageId here - keep using the same message
+      // Only the silence detection (after 10 seconds) should create a new message
     } else {
       console.log('❓ Unknown message type received:', message.type, message);
     }
