@@ -28,6 +28,7 @@ function InterviewInterface() {
   const [autopilotMode, setAutopilotMode] = useState(false);
   const autopilotTimerRef = useRef(null);
   const abortControllerRef = useRef(null);
+  const lastQAPairsRef = useRef([]); // Store last 3 Q&A pairs for context
   
   // Q&A History state for preserving questions and answers
   const [qaHistory, setQaHistory] = useState([]);
@@ -313,6 +314,12 @@ function InterviewInterface() {
 
   // Save Q&A pair to history - automatically split multi-question responses
   const saveQAToHistory = async (prompt, answer) => {
+    // Check if AI response is "IGNORE" - if so, don't save to history
+    if (answer && answer.trim().toUpperCase() === 'IGNORE') {
+      console.log('🚫 AI response is "IGNORE" - skipping save to history');
+      return;
+    }
+    
     const originalQuestion = extractQuestionFromPrompt(prompt);
     
     console.log('💾 Saving Q&A to history:', { originalQuestion, answer });
@@ -859,6 +866,7 @@ Question: ${textInput}`;
   // Track last processed message to avoid duplicate API calls
   const lastProcessedMessageRef = useRef(null);
   const lastPartialStateRef = useRef(false);
+  const lastQuestionTextRef = useRef(''); // Store the question text for Q&A pairing
 
   // Autopilot mode logic - trigger API call after 1 second of silence
   useEffect(() => {
@@ -920,14 +928,33 @@ Question: ${textInput}`;
             return;
           }
           
-          // Create prompt with the latest message text
-          const autoPrompt = hundredButtonConfig.prompt.replace('{transcript}', currentLatestMessage.text);
+          // Build context history from last 3 Q&A pairs
+          let contextHistory = '';
+          if (lastQAPairsRef.current.length > 0) {
+            contextHistory = '=== CONVERSATION HISTORY (Last 3 exchanges) ===\n';
+            lastQAPairsRef.current.forEach((qa, index) => {
+              contextHistory += `\n[Exchange ${index + 1}]\n`;
+              contextHistory += `Interviewer: ${qa.question}\n`;
+              contextHistory += `Your Answer: ${qa.answer.substring(0, 200)}${qa.answer.length > 200 ? '...' : ''}\n`;
+            });
+            contextHistory += '\n=== END OF HISTORY ===\n\nNEW TRANSCRIPT: ';
+          } else {
+            contextHistory = 'CONVERSATION HISTORY: This is the first question.\n\nNEW TRANSCRIPT: ';
+          }
+          
+          // Create prompt with context and latest message text
+          let autoPrompt = hundredButtonConfig.prompt
+            .replace('{contextHistory}', contextHistory)
+            .replace('{transcript}', currentLatestMessage.text);
           
           // Create a new abort controller for this specific API call
           const localAbortController = new AbortController();
           abortControllerRef.current = localAbortController;
           
           try {
+            // Store the question text for Q&A pairing
+            lastQuestionTextRef.current = currentLatestMessage.text;
+            
             // Trigger API call with the most current message content
             await handleAskAI(autoPrompt, localAbortController.signal);
           } catch (error) {
@@ -960,6 +987,28 @@ Question: ${textInput}`;
 
     // No cleanup needed here - we handle cleanup when autopilot is disabled
   }, [autopilotMode, partialTranscript, messageHistory]);
+
+  // Update Q&A pairs when we get a new AI response from autopilot
+  useEffect(() => {
+    if (autopilotMode && aiResponse && lastQuestionTextRef.current) {
+      // Don't store if response is IGNORE
+      if (aiResponse.trim().toUpperCase() !== 'IGNORE') {
+        // Add to Q&A pairs (keep only last 3)
+        lastQAPairsRef.current = [
+          { 
+            question: lastQuestionTextRef.current, 
+            answer: aiResponse 
+          },
+          ...lastQAPairsRef.current.slice(0, 2)
+        ];
+        
+        console.log('📚 Updated Q&A context history:', lastQAPairsRef.current.length, 'pairs stored');
+      }
+      
+      // Clear the stored question
+      lastQuestionTextRef.current = '';
+    }
+  }, [aiResponse, autopilotMode]);
 
   // Auto-save transcript messages when messageHistory changes
   // Manual save transcript function
