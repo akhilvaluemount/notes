@@ -60,7 +60,10 @@ const TranscriptPanel = ({
   onSaveTranscript,
   isSaving,
   lastSaveTime,
-  getLastSavedText
+  getLastSavedText,
+  // Autopilot mode props
+  autopilotMode,
+  onToggleAutopilot
 }) => {
   const panelRef = useRef(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -586,6 +589,17 @@ const TranscriptPanel = ({
               title={`Auto-Scroll: ${autoScroll ? 'ON' : 'OFF'}`}
             >
               {autoScroll ? '⬇️' : '⏸️'}
+            </button>
+            <button 
+              onClick={onToggleAutopilot} 
+              className={`btn-icon ${autopilotMode ? 'btn-icon-active' : 'btn-icon-inactive'}`}
+              title={`Autopilot Mode: ${autopilotMode ? 'ON' : 'OFF'} - Auto-responds after 1 second of silence`}
+              style={{
+                backgroundColor: autopilotMode ? '#4CAF50' : 'transparent',
+                color: autopilotMode ? 'white' : 'inherit'
+              }}
+            >
+              {autopilotMode ? '🤖' : '🤖'}
             </button>
             
             {/* Status indicators */}

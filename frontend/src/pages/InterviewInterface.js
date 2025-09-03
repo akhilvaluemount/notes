@@ -25,6 +25,9 @@ function InterviewInterface() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [autoScroll, setAutoScroll] = useState(true);
   const [error, setError] = useState('');
+  const [autopilotMode, setAutopilotMode] = useState(false);
+  const autopilotTimerRef = useRef(null);
+  const abortControllerRef = useRef(null);
   
   // Q&A History state for preserving questions and answers
   const [qaHistory, setQaHistory] = useState([]);
@@ -464,8 +467,8 @@ function InterviewInterface() {
   const [useStreaming] = useState(true);
   const [isStreaming, setIsStreaming] = useState(false);
 
-  // Handle Ask AI (with streaming support)
-  const handleAskAI = async (customPrompt = null) => {
+  // Handle Ask AI (with streaming support and abort signal)
+  const handleAskAI = async (customPrompt = null, abortSignal = null) => {
     try {
       setError('');
       
@@ -524,13 +527,20 @@ Question: ${userQuestion}`;
         let firstChunk = true;
         
         try {
-          const response = await fetch(`${API_BASE_URL}/api/ask-ai-stream`, {
+          const fetchOptions = {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ prompt: fullPrompt }),
-          });
+            body: JSON.stringify({ prompt: fullPrompt })
+          };
+          
+          // Only add signal if it's provided and not aborted
+          if (abortSignal && !abortSignal.aborted) {
+            fetchOptions.signal = abortSignal;
+          }
+          
+          const response = await fetch(`${API_BASE_URL}/api/ask-ai-stream`, fetchOptions);
 
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -846,6 +856,111 @@ Question: ${textInput}`;
     }
   }, [connectionError]);
 
+  // Track last processed message to avoid duplicate API calls
+  const lastProcessedMessageRef = useRef(null);
+  const lastPartialStateRef = useRef(false);
+
+  // Autopilot mode logic - trigger API call after 1 second of silence
+  useEffect(() => {
+    if (!autopilotMode) {
+      lastProcessedMessageRef.current = null;
+      lastPartialStateRef.current = false;
+      // Clean up any pending operations when autopilot is disabled
+      if (autopilotTimerRef.current) {
+        clearTimeout(autopilotTimerRef.current);
+        autopilotTimerRef.current = null;
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      return;
+    }
+
+    const hadPartialBefore = lastPartialStateRef.current;
+    const hasPartialNow = !!partialTranscript;
+    lastPartialStateRef.current = hasPartialNow;
+
+    // Detect transition from speech to silence (partial -> no partial)
+    if (hadPartialBefore && !hasPartialNow && messageHistory.length > 0) {
+      // Speech just ended
+      const latestMessage = messageHistory[messageHistory.length - 1];
+      
+      // Only process if the latest message has content
+      if (latestMessage && latestMessage.text) {
+        // Cancel any previous API call if running
+        if (abortControllerRef.current) {
+          console.log('🛑 Cancelling previous API call for updated message');
+          abortControllerRef.current.abort();
+          abortControllerRef.current = null;
+        }
+
+        // Clear any existing timer
+        if (autopilotTimerRef.current) {
+          clearTimeout(autopilotTimerRef.current);
+          autopilotTimerRef.current = null;
+        }
+
+        // Set 1-second timer for API call
+        console.log('🤖 Autopilot: Starting 1-second timer after speech ended');
+        autopilotTimerRef.current = setTimeout(async () => {
+          console.log('🤖 Autopilot: Triggering API call after 1 second of silence');
+          
+          // Get the most current message (in case it was updated during the delay)
+          const currentLatestMessage = messageHistory[messageHistory.length - 1];
+          if (!currentLatestMessage || !currentLatestMessage.text) {
+            console.log('🤖 Autopilot: No valid message found, skipping API call');
+            return;
+          }
+          
+          // Get the 100 button config for the prompt
+          const hundredButtonConfig = buttonConfig.find(btn => btn.id === "100");
+          if (!hundredButtonConfig) {
+            console.error('100 button config not found for autopilot');
+            return;
+          }
+          
+          // Create prompt with the latest message text
+          const autoPrompt = hundredButtonConfig.prompt.replace('{transcript}', currentLatestMessage.text);
+          
+          // Create a new abort controller for this specific API call
+          const localAbortController = new AbortController();
+          abortControllerRef.current = localAbortController;
+          
+          try {
+            // Trigger API call with the most current message content
+            await handleAskAI(autoPrompt, localAbortController.signal);
+          } catch (error) {
+            if (error.name === 'AbortError') {
+              console.log('🛑 API call was aborted');
+            } else {
+              console.error('Autopilot API call error:', error);
+            }
+          } finally {
+            // Only clear if this is still the current abort controller
+            if (abortControllerRef.current === localAbortController) {
+              abortControllerRef.current = null;
+            }
+          }
+        }, 1000); // 1 second delay
+      }
+    } else if (!hadPartialBefore && hasPartialNow) {
+      // New speech just started - cancel any pending autopilot action
+      if (autopilotTimerRef.current) {
+        console.log('🤖 Autopilot: Cancelled timer due to new speech starting');
+        clearTimeout(autopilotTimerRef.current);
+        autopilotTimerRef.current = null;
+      }
+      if (abortControllerRef.current) {
+        console.log('🛑 Cancelling ongoing API call due to new speech');
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    }
+
+    // No cleanup needed here - we handle cleanup when autopilot is disabled
+  }, [autopilotMode, partialTranscript, messageHistory]);
+
   // Auto-save transcript messages when messageHistory changes
   // Manual save transcript function
   const saveTranscriptToSession = useCallback(async (immediate = false) => {
@@ -1029,6 +1144,9 @@ Question: ${textInput}`;
           isSaving={isSaving}
           lastSaveTime={lastSaveTime}
           getLastSavedText={getLastSavedText}
+          // Autopilot mode props
+          autopilotMode={autopilotMode}
+          onToggleAutopilot={() => setAutopilotMode(!autopilotMode)}
         />
         {!isCameraModalOpen && (
           <ResponsePanel 

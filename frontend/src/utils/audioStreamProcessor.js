@@ -18,7 +18,7 @@ class AudioStreamProcessor {
     this.silenceThreshold = 0.01; // Volume threshold for speech detection
     this.backgroundNoiseThreshold = 0.003; // Background noise level
     this.minSpeechDuration = 200; // Min ms of speech to start streaming
-    this.keepAliveInterval = 200; // Send keep-alive chunks every 200ms for ultra-responsive silence handling
+    this.keepAliveInterval = 500; // Send keep-alive chunks every 500ms to maintain session
     this.speechStartTime = null;
     this.lastSpeechTime = null;
     this.lastKeepAlive = 0;
