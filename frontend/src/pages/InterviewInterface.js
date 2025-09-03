@@ -315,7 +315,7 @@ function InterviewInterface() {
   // Save Q&A pair to history - automatically split multi-question responses
   const saveQAToHistory = async (prompt, answer) => {
     // Check if AI response is "IGNORE" - if so, don't save to history
-    if (answer && answer.trim().toUpperCase() === 'IGNORE') {
+    if (answer && answer === 'IGNORE') {
       console.log('🚫 AI response is "IGNORE" - skipping save to history');
       return;
     }
@@ -573,20 +573,26 @@ Question: ${userQuestion}`;
                   if (data.type === 'chunk') {
                     fullResponse += data.content;
                     
-                    // Update AI response immediately for real-time display
-                    setAiResponse(fullResponse);
-                    
-                    // Broadcast updates during streaming
-                    if (broadcastChannelRef.current) {
-                      broadcastChannelRef.current.postMessage({
-                        type: 'ai-response-update',
-                        response: fullResponse,
-                        timestamp: new Date().toISOString(),
-                        streaming: true
-                      });
+                    // Check if response is exactly "IGNORE" - if so, don't update view
+                    if (fullResponse !== 'IGNORE') {
+                      // Update AI response immediately for real-time display
+                      setAiResponse(fullResponse);
+                      
+                      // Broadcast updates during streaming
+                      if (broadcastChannelRef.current) {
+                        broadcastChannelRef.current.postMessage({
+                          type: 'ai-response-update',
+                          response: fullResponse,
+                          timestamp: new Date().toISOString(),
+                          streaming: true
+                        });
+                      }
                     }
                   } else if (data.type === 'complete') {
-                    setAiResponse(data.fullResponse);
+                    // Check if response is exactly "IGNORE" - if so, don't update view
+                    if (data.fullResponse !== 'IGNORE') {
+                      setAiResponse(data.fullResponse);
+                    }
                     setIsStreaming(false);
                     
                     // Save Q&A pair to history when response is complete
@@ -636,21 +642,24 @@ Question: ${userQuestion}`;
         const response = await axios.post(`${API_BASE_URL}/api/ask-ai`, { prompt: fullPrompt });
         
         if (response.data.success) {
-          setAiResponse(response.data.answer);
+          // Check if response is exactly "IGNORE" - if so, don't update view
+          if (response.data.answer !== 'IGNORE') {
+            setAiResponse(response.data.answer);
+            
+            // Broadcast AI response update to other tabs
+            if (broadcastChannelRef.current) {
+              broadcastChannelRef.current.postMessage({
+                type: 'ai-response-update',
+                response: response.data.answer,
+                timestamp: new Date().toISOString()
+              });
+            }
+          }
           
           // Save Q&A pair to history for non-streaming responses
           saveQAToHistory(originalPrompt, response.data.answer).catch(error => {
             console.error('Error saving Q&A to history:', error);
           });
-          
-          // Broadcast AI response update to other tabs
-          if (broadcastChannelRef.current) {
-            broadcastChannelRef.current.postMessage({
-              type: 'ai-response-update',
-              response: response.data.answer,
-              timestamp: new Date().toISOString()
-            });
-          }
         } else {
           setError('AI request was not successful');
         }
@@ -992,7 +1001,7 @@ Question: ${textInput}`;
   useEffect(() => {
     if (autopilotMode && aiResponse && lastQuestionTextRef.current) {
       // Don't store if response is IGNORE
-      if (aiResponse.trim().toUpperCase() !== 'IGNORE') {
+      if (aiResponse !== 'IGNORE') {
         // Add to Q&A pairs (keep only last 3)
         lastQAPairsRef.current = [
           { 
