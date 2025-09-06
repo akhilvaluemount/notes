@@ -6,7 +6,7 @@ import './KeywordManager.css';
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 const KeywordManager = () => {
-  const { sessionId } = useParams();
+  const { sessionId } = useParams(); // Will be undefined for /keywords route
   const [keywordAnswers, setKeywordAnswers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
@@ -26,10 +26,45 @@ const KeywordManager = () => {
     loadKeywordAnswers();
   }, [sessionId]);
 
+  // Auto-expand all languages and topics when data loads
+  useEffect(() => {
+    if (keywordAnswers.length > 0) {
+      const hierarchy = {};
+      
+      keywordAnswers.forEach(answer => {
+        const language = answer.metadata?.language || 'Uncategorized';
+        const topic = answer.metadata?.topic || 'General';
+        
+        if (!hierarchy[language]) {
+          hierarchy[language] = {};
+        }
+        if (!hierarchy[language][topic]) {
+          hierarchy[language][topic] = {};
+        }
+      });
+      
+      const allLanguages = new Set(Object.keys(hierarchy));
+      const allTopics = new Set();
+      
+      Object.entries(hierarchy).forEach(([language, topics]) => {
+        Object.keys(topics).forEach(topic => {
+          allTopics.add(`${language}-${topic}`);
+        });
+      });
+      
+      
+      setExpandedLanguages(allLanguages);
+      setExpandedTopics(allTopics);
+    }
+  }, [keywordAnswers]);
+
   const loadKeywordAnswers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/api/keyword-answers/session/${sessionId}`);
+      const endpoint = sessionId 
+        ? `${API_BASE_URL}/api/keyword-answers/session/${sessionId}`
+        : `${API_BASE_URL}/api/keyword-answers/all`;
+      const response = await axios.get(endpoint);
       setKeywordAnswers(response.data);
     } catch (error) {
       console.error('Error loading keyword answers:', error);
@@ -144,9 +179,11 @@ const KeywordManager = () => {
   return (
     <div className="keyword-manager">
       <div className="manager-header">
-        <h2>Keyword Answer Manager</h2>
+        <h2>{sessionId ? 'Keyword Answer Manager' : 'All Keywords Manager'}</h2>
         <div className="header-info">
-          <span className="session-info">Session: {sessionId?.substring(0, 8)}...</span>
+          <span className="session-info">
+            {sessionId ? `Session: ${sessionId.substring(0, 8)}...` : 'All Sessions'}
+          </span>
           <span className="count-info">{keywordAnswers.length} stored answers</span>
         </div>
       </div>
@@ -155,7 +192,7 @@ const KeywordManager = () => {
         {/* Sidebar Menu */}
         <div className="sidebar">
           <div className="sidebar-header">
-            <h3>📚 Knowledge Base</h3>
+            <h3>📚 {sessionId ? 'Knowledge Base' : 'Global Knowledge Base'}</h3>
             <input
               type="text"
               placeholder="Search..."
@@ -317,6 +354,9 @@ const KeywordManager = () => {
                     <div className="metadata-info">
                       <span className="language-badge">{selectedAnswer.metadata?.language || 'Uncategorized'}</span>
                       <span className="topic-badge">{selectedAnswer.metadata?.topic || 'General'}</span>
+                      {!sessionId && (
+                        <span className="session-badge">Session: {selectedAnswer.sessionId?.substring(0, 8)}...</span>
+                      )}
                     </div>
                     
                     <div className="answer-actions">

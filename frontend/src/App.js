@@ -22,7 +22,8 @@ function App() {
             {/* Notes view route - for formatted AI responses in new tab */}
             <Route path="/notes" element={<NotesView />} />
             
-            {/* Keyword Manager route - for managing stored keyword answers */}
+            {/* Keyword Manager routes */}
+            <Route path="/keywords" element={<KeywordManager />} />
             <Route path="/keywords/:sessionId" element={<KeywordManager />} />
             
             {/* Redirect any unknown routes to dashboard */}

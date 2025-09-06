@@ -256,6 +256,17 @@ router.get('/session/:sessionId', async (req, res) => {
   }
 });
 
+// Get all keyword answers from all sessions
+router.get('/all', async (req, res) => {
+  try {
+    const keywordAnswers = await KeywordAnswer.find({}).sort({ createdAt: -1 });
+    res.json(keywordAnswers);
+  } catch (error) {
+    console.error('Error fetching all keyword answers:', error);
+    res.status(500).json({ error: 'Failed to fetch all keyword answers' });
+  }
+});
+
 // Update a keyword answer
 router.put('/:id', async (req, res) => {
   try {

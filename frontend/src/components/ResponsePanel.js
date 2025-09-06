@@ -2020,6 +2020,13 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false, qaHistory = [
                 💾 Save
               </button>
               <button 
+                className="btn-view-all-keywords" 
+                onClick={() => window.open('/keywords', '_blank')}
+                title="View all keywords from all sessions"
+              >
+                📚 All Keywords
+              </button>
+              <button 
                 className="btn-open-tab" 
                 onClick={openInNewTab}
                 title="Open response in new tab"

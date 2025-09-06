@@ -56,6 +56,7 @@
 
 .btn-keyword-manager,
 .btn-save-answer,
+.btn-view-all-keywords,
 .btn-open-tab {
   background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(10px);
