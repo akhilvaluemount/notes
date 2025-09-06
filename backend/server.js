@@ -7,6 +7,7 @@ const https = require('https');
 const multer = require('multer');
 const connectDB = require('./config/database');
 const sessionsRouter = require('./routes/sessions');
+const keywordAnswersRouter = require('./routes/keywordAnswers');
 require('dotenv').config();
 
 const app = express();
@@ -110,6 +111,7 @@ app.use(express.json({ limit: '10mb' })); // Increase JSON limit for base64 imag
 
 // Routes
 app.use('/api/sessions', sessionsRouter);
+app.use('/api/keyword-answers', keywordAnswersRouter);
 
 
 

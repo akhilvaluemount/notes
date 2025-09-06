@@ -475,6 +475,25 @@ function InterviewInterface() {
   const [isStreaming, setIsStreaming] = useState(false);
 
   // Handle Ask AI (with streaming support and abort signal)
+  // Handle keyword suggestion click - load answer to notes
+  const handleSuggestionClick = (answer, question, metadata) => {
+    // Set the AI response to the selected answer
+    setAiResponse(answer);
+    
+    // Update current metadata with the loaded answer's metadata
+    if (metadata) {
+      setCurrentMetadata({
+        language: metadata.language || currentMetadata.language,
+        topic: metadata.topic || currentMetadata.topic
+      });
+    }
+    
+    // Optionally save to Q&A history
+    if (question) {
+      saveQAToHistory(`Question: ${question}`, answer, metadata?.language || currentMetadata.language, metadata?.topic || currentMetadata.topic);
+    }
+  };
+
   const handleAskAI = async (customPrompt = null, abortSignal = null) => {
     try {
       setError('');
@@ -1205,6 +1224,8 @@ Question: ${textInput}`;
           // Autopilot mode props
           autopilotMode={autopilotMode}
           onToggleAutopilot={() => setAutopilotMode(!autopilotMode)}
+          // Keyword suggestion props
+          onSuggestionClick={handleSuggestionClick}
         />
         {!isCameraModalOpen && (
           <ResponsePanel 

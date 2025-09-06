@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
 import './TranscriptPanel.css';
 import AudioRecorder from './AudioRecorder';
 import MicrophoneSelector from './MicrophoneSelector';
 import CameraSelector from './CameraSelector';
 import CameraCapture from './CameraCapture';
+import KeywordSuggestions from './KeywordSuggestions';
 import buttonConfig from '../config/buttonConfig';
 
 const TranscriptPanel = ({ 
@@ -63,8 +65,11 @@ const TranscriptPanel = ({
   getLastSavedText,
   // Autopilot mode props
   autopilotMode,
-  onToggleAutopilot
+  onToggleAutopilot,
+  // Callback for handling keyword suggestion clicks
+  onSuggestionClick
 }) => {
+  const { sessionId } = useParams();
   const panelRef = useRef(null);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -335,8 +340,11 @@ const TranscriptPanel = ({
   }, [clickedGroupId]);
 
   // Check if buttons should be visible for a group
-  const shouldShowButtons = useCallback((groupId, isLatest) => {
-    return isLatest || hoveredGroupId === groupId || clickedGroupId === groupId;
+  const shouldShowButtons = useCallback((groupId, isLatest, groupIndex, totalGroups) => {
+    // Always show buttons for the latest 2 message groups or when hovering/clicking
+    const isRecentMessage = groupIndex >= Math.max(0, totalGroups - 2);
+    // Also always show for the very latest message
+    return isLatest || isRecentMessage || hoveredGroupId === groupId || clickedGroupId === groupId;
   }, [hoveredGroupId, clickedGroupId]);
 
   // Check if a group has been automatically processed by comparing with Q&A history
@@ -900,7 +908,7 @@ const TranscriptPanel = ({
           <div className="messages-container">
             {messageGroups.map((group, groupIndex) => {
               const isLatest = groupIndex === messageGroups.length - 1;
-              const showButtons = shouldShowButtons(group.id, isLatest);
+              const showButtons = shouldShowButtons(group.id, isLatest, groupIndex, messageGroups.length);
               const isManuallyProcessed = processedGroups.has(group.id);
               const isAutomaticallyProcessed = isAutoProcessed(group);
               const isProcessed = isManuallyProcessed || isAutomaticallyProcessed;
@@ -1097,13 +1105,22 @@ const TranscriptPanel = ({
                       </button>
                     </div>
                   )}
+                  
+                  {/* Keyword Suggestions for this message group */}
+                  {group.messages.length > 0 && (
+                    <KeywordSuggestions
+                      sessionId={sessionId}
+                      messageText={group.messages.map(m => m.text).join(' ')}
+                      onSuggestionClick={onSuggestionClick}
+                    />
+                  )}
                 </div>
               </div>
             );
             })}
             
-            {/* Show current partial transcript if there's no message for it yet */}
-            {partialTranscript && !messageHistory.find(m => m.id === currentMessageId) && (
+            {/* Show current partial transcript - always show when there's partial text */}
+            {partialTranscript && partialTranscript.trim().length > 0 && (
               <div className="message-block latest-message partial-message">
                 <div className="message-content">
                   <span className="typing-indicator">
@@ -1145,6 +1162,49 @@ const TranscriptPanel = ({
                     })()}
                   </span>
                 </div>
+                
+                {/* Show actions for partial transcript when there's any text */}
+                {partialTranscript && partialTranscript.trim().length > 3 && (
+                  <div className="message-actions always-visible">
+                    {buttonConfig.map((button) => {
+                      const handleButtonClick = () => {
+                        const customPrompt = replacePromptPlaceholders(button.prompt, partialTranscript.trim());
+                        onAskAI(customPrompt);
+                      };
+
+                      return (
+                        <button 
+                          key={button.id}
+                          onClick={handleButtonClick}
+                          className={`btn-icon-only ${button.id === '100' ? 'btn-icon-primary' : 'btn-icon-secondary'}`}
+                          disabled={isProcessing || !partialTranscript.trim()}
+                          title={`${button.icon} ${button.label} - ${button.description}`}
+                        >
+                          {button.icon}
+                        </button>
+                      );
+                    })}
+                    
+                    {/* Camera capture button for partial transcript */}
+                    <button 
+                      onClick={() => handleCameraCapture(currentMessageId || 'partial')}
+                      className="btn-icon-only btn-icon-camera"
+                      disabled={isProcessing || !partialTranscript.trim()}
+                      title="📷 Capture Photo - Take a photo and analyze it with AI"
+                    >
+                      📷
+                    </button>
+                  </div>
+                )}
+                
+                {/* Keyword Suggestions for partial transcript */}
+                {partialTranscript && partialTranscript.trim().length > 5 && (
+                  <KeywordSuggestions
+                    sessionId={sessionId}
+                    messageText={partialTranscript}
+                    onSuggestionClick={onSuggestionClick}
+                  />
+                )}
               </div>
             )}
           </div>

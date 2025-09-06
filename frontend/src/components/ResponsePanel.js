@@ -1,8 +1,12 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import axios from 'axios';
 import './ResponsePanel.css';
 import FormattedResponse from './FormattedResponse';
 import MetadataChips from './MetadataChips';
 import { parseResponseWithFallback, parseFormattedText, generateFormattedHTML } from '../utils/responseParser';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 // Import the same color palette and icons as FormattedResponse
 const SECTION_COLORS = [
@@ -241,9 +245,14 @@ const getFormattedResponseCSS = () => {
 };
 
 const ResponsePanel = ({ response, isLoading, isStreaming = false, qaHistory = [], onToggleQA, currentLanguage = null, currentTopic = null }) => {
+  const { sessionId } = useParams();
   const responseContainerRef = useRef(null);
   const [showStickyHeader, setShowStickyHeader] = useState(false);
   const [showScrollIndicator, setShowScrollIndicator] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [keywordInput, setKeywordInput] = useState('');
+  const [savingAnswer, setSavingAnswer] = useState(false);
+  const [currentSaveData, setCurrentSaveData] = useState(null);
 
   // Handle scroll to show/hide sticky header and scroll indicator
   useEffect(() => {
@@ -269,6 +278,36 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false, qaHistory = [
     return () => container.removeEventListener('scroll', handleScroll);
   }, [qaHistory, response]);
   
+  const handleSaveAnswer = (answer, question = '') => {
+    setCurrentSaveData({ answer, question });
+    setShowSaveModal(true);
+    setKeywordInput(currentTopic || '');
+  };
+
+  const submitSaveAnswer = async () => {
+    if (!keywordInput.trim() || !currentSaveData) return;
+    
+    setSavingAnswer(true);
+    try {
+      await axios.post(`${API_BASE_URL}/api/keyword-answers/save`, {
+        sessionId,
+        keywords: keywordInput,
+        answer: currentSaveData.answer,
+        question: currentSaveData.question,
+        metadata: { language: currentLanguage, topic: currentTopic }
+      });
+      
+      setShowSaveModal(false);
+      setKeywordInput('');
+      setCurrentSaveData(null);
+    } catch (error) {
+      console.error('Error saving answer:', error);
+      alert('Failed to save answer. Please try again.');
+    } finally {
+      setSavingAnswer(false);
+    }
+  };
+
   const openInNewTab = () => {
     if (!response) return;
     
@@ -1963,15 +2002,33 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false, qaHistory = [
     <div className="response-panel">
       <div className="response-header">
         <h2>Notes {isStreaming && <span className="streaming-indicator">🔴 Streaming...</span>}</h2>
-        {response && !isLoading && (
+        <div className="response-actions">
           <button 
-            className="btn-open-tab" 
-            onClick={openInNewTab}
-            title="Open response in new tab"
+            className="btn-keyword-manager" 
+            onClick={() => window.open(`/keywords/${sessionId}`, '_blank')}
+            title="Manage saved keyword answers"
           >
-            🗂️ Open in New Tab
+            🗂️ Manage Keywords
           </button>
-        )}
+          {response && !isLoading && (
+            <>
+              <button 
+                className="btn-save-answer" 
+                onClick={() => handleSaveAnswer(response)}
+                title="Save answer with keywords"
+              >
+                💾 Save
+              </button>
+              <button 
+                className="btn-open-tab" 
+                onClick={openInNewTab}
+                title="Open response in new tab"
+              >
+                📝 Open in New Tab
+              </button>
+            </>
+          )}
+        </div>
       </div>
       
       <div className="response-container" ref={responseContainerRef}>
@@ -2001,6 +2058,36 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false, qaHistory = [
             </div>
           )}
         </div>
+        
+        {/* Save Modal */}
+        {showSaveModal && (
+          <div className="save-modal-overlay" onClick={() => setShowSaveModal(false)}>
+            <div className="save-modal" onClick={(e) => e.stopPropagation()}>
+              <h3>Save Answer with Keywords</h3>
+              <p>Enter keywords (comma-separated, max 3 words each):</p>
+              <input
+                type="text"
+                value={keywordInput}
+                onChange={(e) => setKeywordInput(e.target.value)}
+                placeholder="e.g., react hooks, useState, component lifecycle"
+                className="keyword-input"
+                autoFocus
+              />
+              <div className="modal-buttons">
+                <button 
+                  onClick={submitSaveAnswer} 
+                  disabled={!keywordInput.trim() || savingAnswer}
+                  className="btn-save"
+                >
+                  {savingAnswer ? 'Saving...' : 'Save'}
+                </button>
+                <button onClick={() => setShowSaveModal(false)} className="btn-cancel">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* 10% area for previous Q&A history */}
         {qaHistory.length > 1 && (
@@ -2056,6 +2143,16 @@ const ResponsePanel = ({ response, isLoading, isStreaming = false, qaHistory = [
                           <div className="qa-section-header">
                             <span className="qa-section-icon">💡</span>
                             <span className="qa-section-title">Answer:</span>
+                            <button 
+                              className="btn-save-qa" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSaveAnswer(qa.answer, qa.question);
+                              }}
+                              title="Save this answer"
+                            >
+                              💾
+                            </button>
                           </div>
                           <div className="qa-answer-content">
                             <FormattedResponse response={qa.answer} language={qa.language} topic={qa.topic} />
