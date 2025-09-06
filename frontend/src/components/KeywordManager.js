@@ -20,41 +20,22 @@ const KeywordManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [expandedLanguages, setExpandedLanguages] = useState(new Set());
-  const [expandedTopics, setExpandedTopics] = useState(new Set());
 
   useEffect(() => {
     loadKeywordAnswers();
   }, [sessionId]);
 
-  // Auto-expand all languages and topics when data loads
+  // Auto-expand all languages when data loads
   useEffect(() => {
     if (keywordAnswers.length > 0) {
-      const hierarchy = {};
+      const allLanguages = new Set();
       
       keywordAnswers.forEach(answer => {
         const language = answer.metadata?.language || 'Uncategorized';
-        const topic = answer.metadata?.topic || 'General';
-        
-        if (!hierarchy[language]) {
-          hierarchy[language] = {};
-        }
-        if (!hierarchy[language][topic]) {
-          hierarchy[language][topic] = {};
-        }
+        allLanguages.add(language);
       });
-      
-      const allLanguages = new Set(Object.keys(hierarchy));
-      const allTopics = new Set();
-      
-      Object.entries(hierarchy).forEach(([language, topics]) => {
-        Object.keys(topics).forEach(topic => {
-          allTopics.add(`${language}-${topic}`);
-        });
-      });
-      
       
       setExpandedLanguages(allLanguages);
-      setExpandedTopics(allTopics);
     }
   }, [keywordAnswers]);
 
@@ -107,26 +88,22 @@ const KeywordManager = () => {
     setEditForm({ keywords: '', question: '', answer: '', language: '', topic: '' });
   };
 
-  // Build hierarchical structure: Language -> Topic -> Keywords -> Answers
+  // Build hierarchical structure: Language -> Keywords -> Answers
   const buildHierarchy = () => {
     const hierarchy = {};
     
     keywordAnswers.forEach(answer => {
       const language = answer.metadata?.language || 'Uncategorized';
-      const topic = answer.metadata?.topic || 'General';
       
       if (!hierarchy[language]) {
         hierarchy[language] = {};
       }
-      if (!hierarchy[language][topic]) {
-        hierarchy[language][topic] = {};
-      }
       
       answer.keywords.forEach(keyword => {
-        if (!hierarchy[language][topic][keyword]) {
-          hierarchy[language][topic][keyword] = [];
+        if (!hierarchy[language][keyword]) {
+          hierarchy[language][keyword] = [];
         }
-        hierarchy[language][topic][keyword].push(answer);
+        hierarchy[language][keyword].push(answer);
       });
     });
     
@@ -143,16 +120,6 @@ const KeywordManager = () => {
     setExpandedLanguages(newExpanded);
   };
 
-  const toggleTopic = (language, topic) => {
-    const topicKey = `${language}-${topic}`;
-    const newExpanded = new Set(expandedTopics);
-    if (newExpanded.has(topicKey)) {
-      newExpanded.delete(topicKey);
-    } else {
-      newExpanded.add(topicKey);
-    }
-    setExpandedTopics(newExpanded);
-  };
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this keyword answer?')) {
@@ -206,7 +173,7 @@ const KeywordManager = () => {
             {Object.keys(hierarchy).length === 0 ? (
               <div className="empty-sidebar">No keyword answers stored yet.</div>
             ) : (
-              Object.entries(hierarchy).map(([language, topics]) => (
+              Object.entries(hierarchy).map(([language, keywords]) => (
                 <div key={language} className="language-node">
                   <div 
                     className="language-header"
@@ -217,52 +184,26 @@ const KeywordManager = () => {
                     </span>
                     <span className="language-name">{language}</span>
                     <span className="count-badge">
-                      {Object.values(topics).reduce((acc, keywords) => 
-                        acc + Object.values(keywords).reduce((acc2, answers) => acc2 + answers.length, 0), 0
-                      )}
+                      {Object.values(keywords).reduce((acc, answers) => acc + answers.length, 0)}
                     </span>
                   </div>
 
                   {expandedLanguages.has(language) && (
-                    <div className="topics-container">
-                      {Object.entries(topics).map(([topic, keywords]) => {
-                        const topicKey = `${language}-${topic}`;
-                        return (
-                          <div key={topicKey} className="topic-node">
-                            <div 
-                              className="topic-header"
-                              onClick={() => toggleTopic(language, topic)}
-                            >
-                              <span className="expand-icon">
-                                {expandedTopics.has(topicKey) ? '📖' : '📘'}
-                              </span>
-                              <span className="topic-name">{topic}</span>
-                              <span className="count-badge">
-                                {Object.values(keywords).reduce((acc, answers) => acc + answers.length, 0)}
-                              </span>
-                            </div>
-
-                            {expandedTopics.has(topicKey) && (
-                              <div className="keywords-container">
-                                {Object.entries(keywords).map(([keyword, answers]) => (
-                                  <div key={keyword} className="keyword-node">
-                                    <div 
-                                      className={`keyword-item ${selectedAnswer && answers.includes(selectedAnswer) ? 'active' : ''}`}
-                                      onClick={() => handleSelectAnswer(answers[0])}
-                                    >
-                                      <span className="keyword-icon">🔖</span>
-                                      <span className="keyword-text">{keyword}</span>
-                                      {answers.length > 1 && (
-                                        <span className="count-badge">{answers.length}</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
+                    <div className="keywords-container">
+                      {Object.entries(keywords).map(([keyword, answers]) => (
+                        <div key={keyword} className="keyword-node">
+                          <div 
+                            className={`keyword-item ${selectedAnswer && answers.includes(selectedAnswer) ? 'active' : ''}`}
+                            onClick={() => handleSelectAnswer(answers[0])}
+                          >
+                            <span className="keyword-icon">🔖</span>
+                            <span className="keyword-text">{keyword}</span>
+                            {answers.length > 1 && (
+                              <span className="count-badge">{answers.length}</span>
                             )}
                           </div>
-                        );
-                      })}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
