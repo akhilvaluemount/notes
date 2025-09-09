@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
+import FormattedResponse from './FormattedResponse';
 import './KeywordManager.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
@@ -274,13 +275,25 @@ const KeywordManager = () => {
                   
                   <div className="form-group">
                     <label>Answer:</label>
-                    <textarea
-                      value={editForm.answer}
-                      onChange={(e) => setEditForm({...editForm, answer: e.target.value})}
-                      className="form-textarea"
-                      rows="12"
-                      placeholder="Answer content..."
-                    />
+                    <div className="answer-editor-container">
+                      <textarea
+                        value={editForm.answer}
+                        onChange={(e) => setEditForm({...editForm, answer: e.target.value})}
+                        className="form-textarea"
+                        rows="12"
+                        placeholder="Answer content..."
+                      />
+                      <div className="answer-preview">
+                        <h5 className="preview-label">Preview:</h5>
+                        <div className="formatted-answer-preview">
+                          <FormattedResponse 
+                            response={editForm.answer} 
+                            language={editForm.language} 
+                            topic={editForm.topic} 
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                   
                   <div className="form-actions">
@@ -336,7 +349,13 @@ const KeywordManager = () => {
                   
                   <div className="answer-display-section">
                     <h4>💡 Answer:</h4>
-                    <div className="answer-text">{selectedAnswer.answer}</div>
+                    <div className="formatted-answer-container">
+                      <FormattedResponse 
+                        response={selectedAnswer.answer} 
+                        language={selectedAnswer.metadata?.language} 
+                        topic={selectedAnswer.metadata?.topic} 
+                      />
+                    </div>
                   </div>
                   
                   <div className="answer-footer">

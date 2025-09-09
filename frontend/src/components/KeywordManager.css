@@ -418,6 +418,125 @@
   font-size: 0.95rem;
 }
 
+/* Formatted Answer Container */
+.formatted-answer-container {
+  background: linear-gradient(to bottom, #ffffff, #fafafa);
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  overflow-y: auto;
+  max-height: 600px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Answer Editor with Preview */
+.answer-editor-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.answer-preview {
+  background: white;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.preview-label {
+  margin: 0 0 1rem 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.formatted-answer-preview {
+  padding: 0.5rem;
+  background: #fafafa;
+  border-radius: 6px;
+  min-height: 300px;
+}
+
+/* FormattedResponse Integration Styles */
+.formatted-answer-container .response-section,
+.formatted-answer-preview .response-section {
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  padding: 1rem;
+  animation: fadeIn 0.3s ease-in;
+}
+
+/* Section-specific background colors matching the notes panel */
+.formatted-answer-container .definition-section,
+.formatted-answer-preview .definition-section {
+  background: #f0f9f0;
+}
+
+.formatted-answer-container .explanation-section,
+.formatted-answer-preview .explanation-section {
+  background: #fff8f0;
+}
+
+.formatted-answer-container .examples-section,
+.formatted-answer-preview .examples-section {
+  background: #f0f8ff;
+}
+
+.formatted-answer-container .keypoints-section,
+.formatted-answer-preview .keypoints-section {
+  background: #fdf0f5;
+}
+
+/* Maintain consistent text formatting */
+.formatted-answer-container h3,
+.formatted-answer-preview h3 {
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  margin: 0 0 0.75rem 0;
+  font-weight: 600;
+}
+
+.formatted-answer-container ul,
+.formatted-answer-preview ul {
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+.formatted-answer-container li,
+.formatted-answer-preview li {
+  margin: 0.5rem 0;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+/* Animation for formatted response sections */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive layout for editor */
+@media (max-width: 1200px) {
+  .answer-editor-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .answer-preview {
+    margin-top: 1rem;
+  }
+}
+
 .answer-footer {
   margin-top: 2rem;
   padding-top: 1rem;
