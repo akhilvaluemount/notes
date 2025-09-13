@@ -4,6 +4,7 @@ import './TranscriptPanel.css';
 import AudioRecorder from './AudioRecorder';
 import MicrophoneSelector from './MicrophoneSelector';
 import CameraSelector from './CameraSelector';
+import AIModelDropdown from './AIModelDropdown';
 import CameraCapture from './CameraCapture';
 import KeywordSuggestions from './KeywordSuggestions';
 import buttonConfig from '../config/buttonConfig';
@@ -712,6 +713,11 @@ const TranscriptPanel = ({
               onDeviceSelect={onCameraSelect}
               disabled={false}
               showRefresh={true}
+            />
+
+            {/* AI Model Selector */}
+            <AIModelDropdown
+              disabled={isRecording}
             />
 
             {/* Role Selector */}

@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const OpenAI = require('openai');
+const Anthropic = require('@anthropic-ai/sdk');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
@@ -29,9 +30,17 @@ const openai = new OpenAI({
   httpAgent: httpsAgent,
 });
 
+// Initialize Claude (Anthropic) client
+const anthropic = new Anthropic({
+  apiKey: process.env.CLAUDE_API_KEY,
+});
+
 // Log API key status (first few chars only for security)
-console.log('API Key configured:', process.env.OPENAI_API_KEY ? 
+console.log('OpenAI API Key configured:', process.env.OPENAI_API_KEY ? 
   `Yes (starts with ${process.env.OPENAI_API_KEY.substring(0, 10)}...)` : 
+  'No - Please check your .env file');
+console.log('Claude API Key configured:', process.env.CLAUDE_API_KEY ? 
+  `Yes (starts with ${process.env.CLAUDE_API_KEY.substring(0, 10)}...)` : 
   'No - Please check your .env file');
 
 // Rate limiting for AI API calls
@@ -135,7 +144,7 @@ app.post('/api/ask-ai', async (req, res) => {
       });
     }
 
-    const { prompt } = req.body;
+    const { prompt, model = 'chatgpt' } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ error: 'No prompt provided' });
@@ -143,23 +152,48 @@ app.post('/api/ask-ai', async (req, res) => {
 
     // Performance monitoring
     console.time('Total AI Response Time');
-    console.time('OpenAI API Call');
+    console.log(`Using AI Model: ${model}`);
     
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 400,
-      stream: false,
-    });
+    let answer;
     
-    console.timeEnd('OpenAI API Call');
-    const answer = completion.choices[0].message.content.trim();
+    if (model === 'claude') {
+      // Use Claude API
+      console.time('Claude API Call');
+      
+      const message = await anthropic.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 400,
+        temperature: 0.7,
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ]
+      });
+      
+      console.timeEnd('Claude API Call');
+      answer = message.content[0].text.trim();
+    } else {
+      // Use OpenAI API (default)
+      console.time('OpenAI API Call');
+      
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 400,
+        stream: false,
+      });
+      
+      console.timeEnd('OpenAI API Call');
+      answer = completion.choices[0].message.content.trim();
+    }
     
     console.timeEnd('Total AI Response Time');
     console.log(`Response length: ${answer.length} chars, ${answer.split(' ').length} words`);
@@ -209,7 +243,7 @@ app.post('/api/ask-ai-stream', async (req, res) => {
       });
     }
 
-    const { prompt } = req.body;
+    const { prompt, model = 'chatgpt' } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ error: 'No prompt provided' });
@@ -226,64 +260,123 @@ app.post('/api/ask-ai-stream', async (req, res) => {
     // Performance monitoring
     console.time('Stream: Total Response Time');
     console.time('Stream: First Token');
+    console.log(`Using AI Model (Stream): ${model}`);
     let firstToken = true;
     let fullResponse = '';
     let tokenCount = 0;
 
     try {
-      // Create streaming completion
-      const stream = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 400,
-        stream: true,
-      });
-
-      // Process stream
-      for await (const chunk of stream) {
-        const content = chunk.choices[0]?.delta?.content || '';
-        
-        if (content) {
-          if (firstToken) {
-            console.timeEnd('Stream: First Token');
-            firstToken = false;
-          }
-          
-          tokenCount++;
-          fullResponse += content;
-          
-          // Send chunk to client
-          res.write(`data: ${JSON.stringify({ 
-            type: 'chunk', 
-            content: content,
-            tokenCount: tokenCount
-          })}\n\n`);
-        }
-        
-        // Check if stream is finished
-        if (chunk.choices[0]?.finish_reason) {
-          console.timeEnd('Stream: Total Response Time');
-          console.log(`Stream complete: ${fullResponse.length} chars, ${fullResponse.split(' ').length} words, ${tokenCount} chunks`);
-          
-          // Send completion event
-          res.write(`data: ${JSON.stringify({ 
-            type: 'complete', 
-            fullResponse: fullResponse,
-            timestamp: new Date().toISOString(),
-            stats: {
-              chars: fullResponse.length,
-              words: fullResponse.split(' ').length,
-              chunks: tokenCount
+      if (model === 'claude') {
+        // Create Claude streaming completion
+        const stream = await anthropic.messages.create({
+          model: 'claude-3-5-sonnet-20241022',
+          max_tokens: 400,
+          temperature: 0.7,
+          messages: [
+            {
+              role: 'user',
+              content: prompt
             }
-          })}\n\n`);
+          ],
+          stream: true,
+        });
+
+        // Process Claude stream
+        for await (const chunk of stream) {
+          if (chunk.type === 'content_block_delta') {
+            const content = chunk.delta?.text || '';
+            
+            if (content) {
+              if (firstToken) {
+                console.timeEnd('Stream: First Token');
+                firstToken = false;
+              }
+              
+              tokenCount++;
+              fullResponse += content;
+              
+              // Send chunk to client
+              res.write(`data: ${JSON.stringify({ 
+                type: 'chunk', 
+                content: content,
+                tokenCount: tokenCount
+              })}\n\n`);
+            }
+          } else if (chunk.type === 'message_stop') {
+            // Claude stream finished
+            console.timeEnd('Stream: Total Response Time');
+            console.log(`Stream complete: ${fullResponse.length} chars, ${fullResponse.split(' ').length} words, ${tokenCount} chunks`);
+            
+            // Send completion event
+            res.write(`data: ${JSON.stringify({ 
+              type: 'complete', 
+              fullResponse: fullResponse,
+              timestamp: new Date().toISOString(),
+              stats: {
+                chars: fullResponse.length,
+                words: fullResponse.split(' ').length,
+                chunks: tokenCount
+              }
+            })}\n\n`);
+            
+            res.end();
+          }
+        }
+      } else {
+        // Create OpenAI streaming completion
+        const stream = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 400,
+          stream: true,
+        });
+
+        // Process OpenAI stream
+        for await (const chunk of stream) {
+          const content = chunk.choices[0]?.delta?.content || '';
           
-          res.end();
+          if (content) {
+            if (firstToken) {
+              console.timeEnd('Stream: First Token');
+              firstToken = false;
+            }
+            
+            tokenCount++;
+            fullResponse += content;
+            
+            // Send chunk to client
+            res.write(`data: ${JSON.stringify({ 
+              type: 'chunk', 
+              content: content,
+              tokenCount: tokenCount
+            })}\n\n`);
+          }
+          
+          // Check if stream is finished
+          if (chunk.choices[0]?.finish_reason) {
+            console.timeEnd('Stream: Total Response Time');
+            console.log(`Stream complete: ${fullResponse.length} chars, ${fullResponse.split(' ').length} words, ${tokenCount} chunks`);
+            
+            // Send completion event
+            res.write(`data: ${JSON.stringify({ 
+              type: 'complete', 
+              fullResponse: fullResponse,
+              timestamp: new Date().toISOString(),
+              stats: {
+                chars: fullResponse.length,
+                words: fullResponse.split(' ').length,
+                chunks: tokenCount
+              }
+            })}\n\n`);
+            
+            res.end();
+          }
         }
       }
     } catch (streamError) {

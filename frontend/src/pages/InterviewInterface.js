@@ -97,6 +97,11 @@ function InterviewInterface() {
   // Microphone selection state (for compatibility - realtime uses default)
   const [selectedMicrophone, setSelectedMicrophone] = useState(null);
   
+  // AI Model selection state
+  const [selectedAIModel, setSelectedAIModel] = useState(() => {
+    return localStorage.getItem('selectedAIModel') || 'chatgpt';
+  });
+  
   // Camera selection state
   const [selectedCamera, setSelectedCamera] = useState(null);
   
@@ -558,7 +563,10 @@ Question: ${userQuestion}`;
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ prompt: fullPrompt })
+            body: JSON.stringify({ 
+              prompt: fullPrompt,
+              model: selectedAIModel 
+            })
           };
           
           // Only add signal if it's provided and not aborted
@@ -657,8 +665,11 @@ Question: ${userQuestion}`;
           }
         }
       } else {
-        // Use traditional non-streaming endpoint - OpenAI API call
-        const response = await axios.post(`${API_BASE_URL}/api/ask-ai`, { prompt: fullPrompt });
+        // Use traditional non-streaming endpoint - OpenAI/Claude API call
+        const response = await axios.post(`${API_BASE_URL}/api/ask-ai`, { 
+          prompt: fullPrompt,
+          model: selectedAIModel 
+        });
         
         if (response.data.success) {
           // Check if response is exactly "IGNORE" - if so, don't update view
@@ -1131,6 +1142,18 @@ Question: ${textInput}`;
     connectRealtime();
   }, [connectRealtime]);
 
+  // Listen for AI model changes
+  useEffect(() => {
+    const handleModelChange = (event) => {
+      setSelectedAIModel(event.detail.model);
+    };
+    
+    window.addEventListener('aiModelChanged', handleModelChange);
+    return () => {
+      window.removeEventListener('aiModelChanged', handleModelChange);
+    };
+  }, []);
+  
   // Cleanup on unmount
   useEffect(() => {
     return () => {

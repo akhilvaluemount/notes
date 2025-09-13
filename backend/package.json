@@ -10,6 +10,7 @@
     "proxy-dev": "nodemon hybrid-proxy.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.62.0",
     "assemblyai": "^4.15.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.1",
