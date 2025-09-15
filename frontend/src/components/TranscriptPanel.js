@@ -68,7 +68,11 @@ const TranscriptPanel = ({
   autopilotMode,
   onToggleAutopilot,
   // Callback for handling keyword suggestion clicks
-  onSuggestionClick
+  onSuggestionClick,
+  // Context history for prompt replacement
+  contextHistory = '',
+  // Questions history for prompt replacement
+  questionsHistory = ''
 }) => {
   const { sessionId } = useParams();
   const panelRef = useRef(null);
@@ -85,12 +89,14 @@ const TranscriptPanel = ({
   }, [conversation, partialTranscript, messageHistory]);
 
   // Helper function to replace all prompt placeholders
-  const replacePromptPlaceholders = useCallback((prompt, transcript) => {
+  const replacePromptPlaceholders = useCallback((prompt, transcript, contextHistoryOverride = '', questionsHistoryOverride = '') => {
     return prompt
       .replace('{transcript}', transcript)
       .replace('{role}', currentRoleData?.name || 'Developer')
-      .replace('{technologies}', currentRoleData?.technologies || 'various technologies');
-  }, [currentRoleData]);
+      .replace('{technologies}', currentRoleData?.technologies || 'various technologies')
+      .replace('{contextHistory}', contextHistoryOverride || contextHistory)
+      .replace('{questions}', questionsHistoryOverride || questionsHistory);
+  }, [currentRoleData, contextHistory, questionsHistory]);
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editedTexts, setEditedTexts] = useState({});
   const [hoveredGroupId, setHoveredGroupId] = useState(null);
@@ -546,10 +552,10 @@ const TranscriptPanel = ({
       setAttachedImage(null);
     } else if (buttonConfig && textInput.trim()) {
       // Regular text-only submission
-      const customPrompt = replacePromptPlaceholders(buttonConfig.prompt, textInput);
+      const customPrompt = replacePromptPlaceholders(buttonConfig.prompt, textInput, contextHistory);
       onAskAI(customPrompt);
     }
-  }, [textInput, attachedImage, onPhotoCapture, onTextInputChange, onAskAI, replacePromptPlaceholders]);
+  }, [textInput, attachedImage, onPhotoCapture, onTextInputChange, onAskAI, replacePromptPlaceholders, contextHistory, questionsHistory]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -1079,7 +1085,7 @@ const TranscriptPanel = ({
                             .map(msg => getDisplayText(msg))
                             .filter(text => text?.trim())
                             .join(' ');
-                          const customPrompt = replacePromptPlaceholders(button.prompt, combinedText);
+                          const customPrompt = replacePromptPlaceholders(button.prompt, combinedText, contextHistory);
                           
                           // Mark this group as processed
                           setProcessedGroups(prev => new Set([...prev, group.id]));
@@ -1174,7 +1180,7 @@ const TranscriptPanel = ({
                   <div className="message-actions always-visible">
                     {buttonConfig.map((button) => {
                       const handleButtonClick = () => {
-                        const customPrompt = replacePromptPlaceholders(button.prompt, partialTranscript.trim());
+                        const customPrompt = replacePromptPlaceholders(button.prompt, partialTranscript.trim(), contextHistory);
                         onAskAI(customPrompt);
                       };
 

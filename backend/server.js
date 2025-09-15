@@ -198,9 +198,18 @@ app.post('/api/ask-ai', async (req, res) => {
     console.timeEnd('Total AI Response Time');
     console.log(`Response length: ${answer.length} chars, ${answer.split(' ').length} words`);
 
-    res.json({ 
+    // Check if response contains isAcknowledgment flag
+    let isAcknowledgment = false;
+    const ackMatch = answer.match(/isAcknowledgment:\s*(true|false)/i);
+    if (ackMatch) {
+      isAcknowledgment = ackMatch[1].toLowerCase() === 'true';
+      console.log(`🔍 Acknowledgment detected: ${isAcknowledgment}`);
+    }
+
+    res.json({
       success: true,
       answer: answer,
+      isAcknowledgment: isAcknowledgment,
       timestamp: new Date().toISOString()
     });
 
@@ -306,11 +315,20 @@ app.post('/api/ask-ai-stream', async (req, res) => {
             // Claude stream finished
             console.timeEnd('Stream: Total Response Time');
             console.log(`Stream complete: ${fullResponse.length} chars, ${fullResponse.split(' ').length} words, ${tokenCount} chunks`);
-            
+
+            // Check if response contains isAcknowledgment flag
+            let isAcknowledgment = false;
+            const ackMatch = fullResponse.match(/isAcknowledgment:\s*(true|false)/i);
+            if (ackMatch) {
+              isAcknowledgment = ackMatch[1].toLowerCase() === 'true';
+              console.log(`🔍 Acknowledgment detected: ${isAcknowledgment}`);
+            }
+
             // Send completion event
-            res.write(`data: ${JSON.stringify({ 
-              type: 'complete', 
+            res.write(`data: ${JSON.stringify({
+              type: 'complete',
               fullResponse: fullResponse,
+              isAcknowledgment: isAcknowledgment,
               timestamp: new Date().toISOString(),
               stats: {
                 chars: fullResponse.length,
@@ -362,11 +380,20 @@ app.post('/api/ask-ai-stream', async (req, res) => {
           if (chunk.choices[0]?.finish_reason) {
             console.timeEnd('Stream: Total Response Time');
             console.log(`Stream complete: ${fullResponse.length} chars, ${fullResponse.split(' ').length} words, ${tokenCount} chunks`);
-            
+
+            // Check if response contains isAcknowledgment flag
+            let isAcknowledgment = false;
+            const ackMatch = fullResponse.match(/isAcknowledgment:\s*(true|false)/i);
+            if (ackMatch) {
+              isAcknowledgment = ackMatch[1].toLowerCase() === 'true';
+              console.log(`🔍 Acknowledgment detected: ${isAcknowledgment}`);
+            }
+
             // Send completion event
-            res.write(`data: ${JSON.stringify({ 
-              type: 'complete', 
+            res.write(`data: ${JSON.stringify({
+              type: 'complete',
               fullResponse: fullResponse,
+              isAcknowledgment: isAcknowledgment,
               timestamp: new Date().toISOString(),
               stats: {
                 chars: fullResponse.length,

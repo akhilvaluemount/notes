@@ -458,8 +458,8 @@ function InterviewInterface() {
         return;
       }
       
-      // Create the prompt using the 100 button template
-      const autoPrompt = hundredButtonConfig.prompt.replace('{transcript}', questionText);
+      // Create the prompt using the 100 button template with all variables replaced
+      const autoPrompt = replaceAllPromptPlaceholders(hundredButtonConfig.prompt, questionText);
       
       // Automatically trigger AI response using the 100 button prompt
       await handleAskAI(autoPrompt);
@@ -481,10 +481,63 @@ function InterviewInterface() {
 
   // Handle Ask AI (with streaming support and abort signal)
   // Handle keyword suggestion click - load answer to notes
+  // Function to build context history from last 3-5 message groups
+  const buildContextHistory = useCallback(() => {
+    if (!messageHistory || messageHistory.length === 0) {
+      return 'No previous conversation messages.';
+    }
+
+    // Get the last 5 messages (excluding the current/latest one) for better context
+    const recentMessages = messageHistory.slice(-6, -1).map((msg, index) => {
+      const text = (msg.text || '').trim();
+      if (!text) return null;
+
+      // Add conversational flow indicators
+      return `[${index + 1}] ${text}`;
+    }).filter(Boolean);
+
+    if (recentMessages.length === 0) {
+      return 'No previous conversation messages.';
+    }
+
+    return recentMessages.join('\n');
+  }, [messageHistory]);
+
+  // Function to build questions from Q&A history
+  const buildQuestionsHistory = useCallback(() => {
+    if (!lastQAPairsRef.current || lastQAPairsRef.current.length === 0) {
+      return 'No structured questions extracted yet.';
+    }
+
+    // Extract questions from the last 5 Q&A pairs for better context
+    const questionsList = lastQAPairsRef.current.slice(-5).map((qa, index) => {
+      const question = (qa.question || '').trim();
+      if (!question) return null;
+
+      // Add topic context if available
+      const topic = qa.topic ? ` [${qa.topic}]` : '';
+      return `Q${index + 1}: ${question}${topic}`;
+    }).filter(Boolean);
+
+    return questionsList.length > 0 ? questionsList.join('\n') : 'No structured questions extracted yet.';
+  }, []);
+
+  // Centralized function to replace all prompt placeholders
+  const replaceAllPromptPlaceholders = useCallback((prompt, transcript, contextHistory = null, questions = null) => {
+    const context = contextHistory !== null ? contextHistory : buildContextHistory();
+    const questionsList = questions !== null ? questions : buildQuestionsHistory();
+    return prompt
+      .replace('{transcript}', transcript)
+      .replace('{role}', currentRoleData?.name || 'Developer')
+      .replace('{technologies}', currentRoleData?.technologies || 'various technologies')
+      .replace('{contextHistory}', context)
+      .replace('{questions}', questionsList);
+  }, [currentRoleData, buildContextHistory, buildQuestionsHistory]);
+
   const handleSuggestionClick = (answer, question, metadata) => {
     // Set the AI response to the selected answer
     setAiResponse(answer);
-    
+
     // Update current metadata with the loaded answer's metadata
     if (metadata) {
       setCurrentMetadata({
@@ -538,9 +591,10 @@ Question: ${userQuestion}`;
       // Store the prompt for saving to Q&A history later
       const originalPrompt = fullPrompt;
 
+      // Store current response to restore if acknowledgment is detected
+      const previousResponse = aiResponse;
 
-      // Clear previous response and set loading state
-      setAiResponse('');
+      // Set loading state but DON'T clear response yet (wait to see if it's acknowledgment)
       setIsLoadingAI(true);
       
       if (useStreaming) {
@@ -556,6 +610,8 @@ Question: ${userQuestion}`;
         }
         
         let firstChunk = true;
+        let hasStartedValidResponse = false;
+        let isAcknowledgmentDetected = false;
         
         try {
           const fetchOptions = {
@@ -599,12 +655,33 @@ Question: ${userQuestion}`;
                   
                   if (data.type === 'chunk') {
                     fullResponse += data.content;
-                    
-                    // Check if response is exactly "IGNORE" - if so, don't update view
-                    if (fullResponse !== 'IGNORE') {
+
+                    // Early acknowledgment detection - check ONLY for TRUE acknowledgment
+                    const hasAckPattern = fullResponse.includes('isAcknowledgment: true');
+
+                    if (hasAckPattern && !isAcknowledgmentDetected) {
+                      isAcknowledgmentDetected = true;
+                      console.log('🔍 Early acknowledgment detected - preserving previous response');
+                      // Only restore if we have previous content, otherwise just keep current state
+                      if (previousResponse && previousResponse.trim()) {
+                        setAiResponse(previousResponse); // Restore previous content immediately
+                      }
+                      setIsStreaming(false);
+                      setIsLoadingAI(false);
+                      return; // Stop processing
+                    }
+
+                    // Only update view if it's not acknowledgment and not "IGNORE"
+                    if (fullResponse !== 'IGNORE' && !isAcknowledgmentDetected && !hasAckPattern) {
+                      // Clear old content only on first valid chunk (delayed clearing)
+                      if (!hasStartedValidResponse) {
+                        setAiResponse(''); // Now it's safe to clear - we know it's not acknowledgment
+                        hasStartedValidResponse = true;
+                      }
+
                       // Update AI response immediately for real-time display
                       setAiResponse(fullResponse);
-                      
+
                       // Broadcast updates during streaming
                       if (broadcastChannelRef.current) {
                         broadcastChannelRef.current.postMessage({
@@ -616,10 +693,23 @@ Question: ${userQuestion}`;
                       }
                     }
                   } else if (data.type === 'complete') {
-                    // Check if response is exactly "IGNORE" - if so, don't update view
-                    if (data.fullResponse !== 'IGNORE') {
-                      setAiResponse(data.fullResponse);
+                    // Handle acknowledgment flag from AI analysis
+                    if (data.isAcknowledgment || data.fullResponse === 'IGNORE' || isAcknowledgmentDetected) {
+                      console.log('🔍 AI detected acknowledgment - preserving previous response');
+                      // Only restore if we have previous content, otherwise just keep current state
+                      if (previousResponse && previousResponse.trim()) {
+                        setAiResponse(previousResponse); // Ensure previous response is restored
+                      }
+                      setIsStreaming(false);
+                      setIsLoadingAI(false);
+                      return; // Skip further processing including Q&A history
                     }
+
+                    // Normal response processing - clear old content if not done yet
+                    if (!hasStartedValidResponse) {
+                      setAiResponse(''); // Clear old content for complete non-streaming response
+                    }
+                    setAiResponse(data.fullResponse);
                     setIsStreaming(false);
                     
                     // Save Q&A pair to history when response is complete
@@ -672,20 +762,29 @@ Question: ${userQuestion}`;
         });
         
         if (response.data.success) {
-          // Check if response is exactly "IGNORE" - if so, don't update view
-          if (response.data.answer !== 'IGNORE') {
-            setAiResponse(response.data.answer);
-            
-            // Broadcast AI response update to other tabs
-            if (broadcastChannelRef.current) {
-              broadcastChannelRef.current.postMessage({
-                type: 'ai-response-update',
-                response: response.data.answer,
-                timestamp: new Date().toISOString()
-              });
+          // Check if AI detected acknowledgment - if so, restore previous response
+          if (response.data.isAcknowledgment || response.data.answer === 'IGNORE') {
+            console.log('🔍 AI detected acknowledgment - preserving previous response');
+            // Only restore if we have previous content, otherwise just keep current state
+            if (previousResponse && previousResponse.trim()) {
+              setAiResponse(previousResponse); // Restore previous content
             }
+            return; // Skip further processing including Q&A history
           }
-          
+
+          // Clear old content and set new response for valid responses
+          setAiResponse(''); // Clear old content
+          setAiResponse(response.data.answer);
+
+          // Broadcast AI response update to other tabs
+          if (broadcastChannelRef.current) {
+            broadcastChannelRef.current.postMessage({
+              type: 'ai-response-update',
+              response: response.data.answer,
+              timestamp: new Date().toISOString()
+            });
+          }
+
           // Save Q&A pair to history for non-streaming responses
           saveQAToHistory(originalPrompt, response.data.answer).catch(error => {
             console.error('Error saving Q&A to history:', error);
@@ -745,7 +844,7 @@ Question: ${userQuestion}`;
       
       if (photoData.prompt) {
         // Use the specific prompt from the button and enhance with role context
-        visionPrompt = photoData.prompt.replace('{role}', selectedRole).replace('{technologies}', currentRoleData?.technologies || 'JavaScript, React');
+        visionPrompt = replaceAllPromptPlaceholders(photoData.prompt, photoData.contextText || 'Please analyze this image');
         console.log('📝 Using button-specific prompt:', visionPrompt);
       } else {
         // Default comprehensive prompt
@@ -817,11 +916,12 @@ Examples
 
 Key Points
 
-This is for a frontend developer with knowledge of HTML, CSS, JavaScript, TypeScript, and Angular. Focus on these technologies specifically. Ensure the answer is brief, to the point, and focuses on the technical details, while avoiding lengthy explanations or over-explanation. Use bullet points and easy-to-read language to make the answer clear and accessible.
+This is for a {role} with knowledge of {technologies}. Focus on these technologies specifically. Ensure the answer is brief, to the point, and focuses on the technical details, while avoiding lengthy explanations or over-explanation. Use bullet points and easy-to-read language to make the answer clear and accessible.
 
-Question: ${textInput}`;
-      
-      await handleAskAI(textPrompt);
+Question: {transcript}`;
+
+      const processedPrompt = replaceAllPromptPlaceholders(textPrompt, textInput);
+      await handleAskAI(processedPrompt);
       setTextInput('');
     }
   };
@@ -967,24 +1067,8 @@ Question: ${textInput}`;
             return;
           }
           
-          // Build context history from last 3 Q&A pairs
-          let contextHistory = '';
-          if (lastQAPairsRef.current.length > 0) {
-            contextHistory = '=== CONVERSATION HISTORY (Last 3 exchanges) ===\n';
-            lastQAPairsRef.current.forEach((qa, index) => {
-              contextHistory += `\n[Exchange ${index + 1}]\n`;
-              contextHistory += `Interviewer: ${qa.question}\n`;
-              contextHistory += `Your Answer: ${qa.answer.substring(0, 200)}${qa.answer.length > 200 ? '...' : ''}\n`;
-            });
-            contextHistory += '\n=== END OF HISTORY ===\n\nNEW TRANSCRIPT: ';
-          } else {
-            contextHistory = 'CONVERSATION HISTORY: This is the first question.\n\nNEW TRANSCRIPT: ';
-          }
-          
-          // Create prompt with context and latest message text
-          let autoPrompt = hundredButtonConfig.prompt
-            .replace('{contextHistory}', contextHistory)
-            .replace('{transcript}', currentLatestMessage.text);
+          // Create prompt with context and latest message text using centralized function
+          let autoPrompt = replaceAllPromptPlaceholders(hundredButtonConfig.prompt, currentLatestMessage.text);
           
           // Create a new abort controller for this specific API call
           const localAbortController = new AbortController();
@@ -1249,6 +1333,10 @@ Question: ${textInput}`;
           onToggleAutopilot={() => setAutopilotMode(!autopilotMode)}
           // Keyword suggestion props
           onSuggestionClick={handleSuggestionClick}
+          // Context history for prompt replacement
+          contextHistory={buildContextHistory()}
+          // Questions history for prompt replacement
+          questionsHistory={buildQuestionsHistory()}
         />
         {!isCameraModalOpen && (
           <ResponsePanel 
