@@ -1225,6 +1225,7 @@ Question: ${textInput}`;
           autopilotMode={autopilotMode}
           onToggleAutopilot={() => setAutopilotMode(!autopilotMode)}
           // Keyword suggestion props
+          sessionId={sessionId}
           onSuggestionClick={handleSuggestionClick}
         />
         {!isCameraModalOpen && (
