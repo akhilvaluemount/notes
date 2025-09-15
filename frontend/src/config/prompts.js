@@ -336,7 +336,7 @@ Problem: [what we're solving]
 - **Q:** Trade-offs vs **[alternative]**? **A:** [1-liner]
 
 OPTIONAL JSON MODE
-If the input includes `mode=json`, return this exact JSON instead of Markdown:
+If the input includes mode=json, return this exact JSON instead of Markdown:
 {
   "language": "...",
   "problem": "...",
