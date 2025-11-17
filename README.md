@@ -175,15 +175,37 @@ REACT_APP_API_URL=http://localhost:5000
 
 ## Production Deployment
 
-### Backend
-1. Set environment variables on your hosting platform
-2. Install production dependencies: `npm install --production`
-3. Start with: `NODE_ENV=production node server.js`
+This app is ready for deployment on Vercel with minimal configuration.
 
-### Frontend
-1. Build the production bundle: `npm run build`
-2. Serve the `build` folder with a static file server
-3. Configure environment variables if needed
+### Quick Deploy to Vercel
+
+1. **Prerequisites**:
+   - MongoDB Atlas account and connection string
+   - OpenAI API key
+   - Claude (Anthropic) API key
+   - Git repository (GitHub/GitLab/Bitbucket)
+
+2. **Deploy**:
+   - Push code to your Git repository
+   - Import project in Vercel dashboard
+   - Add environment variables (MONGODB_URI, OPENAI_API_KEY, CLAUDE_API_KEY)
+   - Click "Deploy"
+
+3. **Detailed Guides**:
+   - 📋 **Quick Start**: See [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)
+   - 📚 **Full Guide**: See [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)
+
+### Deploy Button
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yourusername/voice-notes-copy)
+
+### Other Platforms
+
+The app can also be deployed to:
+- **Netlify**: Use the same vercel.json configuration
+- **Railway**: Supports monorepo structure
+- **Render**: Deploy frontend and backend separately
+- **AWS/Google Cloud**: Use containerization with Docker
 
 ## Security Notes
 

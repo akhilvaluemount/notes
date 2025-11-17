@@ -1,0 +1,32 @@
+{
+  "name": "voice-notes-interview-app",
+  "version": "1.0.0",
+  "description": "Voice transcription and AI-powered interview assistant",
+  "private": true,
+  "scripts": {
+    "install-all": "npm install --prefix backend && npm install --prefix frontend",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm start",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "build": "cd frontend && npm install && npm run build && cd ../backend && npm install",
+    "start": "cd backend && npm start",
+    "vercel-build": "cd frontend && npm install && npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/voice-notes-copy.git"
+  },
+  "keywords": [
+    "voice",
+    "transcription",
+    "interview",
+    "ai",
+    "openai",
+    "claude"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}
