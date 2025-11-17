@@ -3,7 +3,9 @@
 const app = require('./_app');
 
 // Vercel serverless function handler
-module.exports = async (req, res) => {
+module.exports = (req, res) => {
+  console.log('Sessions endpoint called, original URL:', req.url);
+
   // When Vercel rewrites /api/sessions/123 to /api/sessions,
   // the original path is preserved in req.url
   // We need to rewrite it to match Express routes (without /api prefix)
@@ -16,6 +18,9 @@ module.exports = async (req, res) => {
     req.url = '/sessions' + (req.url === '/' ? '' : req.url);
   }
 
+  req.path = req.url.split('?')[0];
+  console.log('Rewritten URL:', req.url, 'Path:', req.path);
+
   // Let Express handle the request
-  return app(req, res);
+  app(req, res);
 };

@@ -1,8 +1,12 @@
 // /api/health endpoint handler
 const app = require('./_app');
 
-module.exports = async (req, res) => {
+module.exports = (req, res) => {
+  console.log('Health endpoint called, URL:', req.url);
   // Set the URL to match Express route
   req.url = '/health';
-  return app(req, res);
+  req.path = '/health';
+  console.log('Rewritten URL:', req.url);
+  // Call Express app
+  app(req, res);
 };
