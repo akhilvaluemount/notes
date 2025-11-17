@@ -119,21 +119,17 @@ app.use(async (req, res, next) => {
   }
 });
 
-// Routes
-app.use('/api/sessions', sessionsRouter);
-app.use('/api/keyword-answers', keywordAnswersRouter);
+// Routes - Note: Vercel strips /api prefix, so routes are relative
+app.use('/sessions', sessionsRouter);
+app.use('/keyword-answers', keywordAnswersRouter);
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Server is running' });
-});
-
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
 
 // Ask AI endpoint (non-streaming)
-app.post('/api/ask-ai', async (req, res) => {
+app.post('/ask-ai', async (req, res) => {
   try {
     const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
     const rateLimitCheck = rateLimit.isAllowed(clientIP, 'ask-ai');
@@ -236,7 +232,7 @@ app.post('/api/ask-ai', async (req, res) => {
 });
 
 // Streaming AI endpoint using Server-Sent Events (SSE)
-app.post('/api/ask-ai-stream', async (req, res) => {
+app.post('/ask-ai-stream', async (req, res) => {
   try {
     const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
     const rateLimitCheck = rateLimit.isAllowed(clientIP, 'ask-ai-stream');
@@ -416,7 +412,7 @@ app.post('/api/ask-ai-stream', async (req, res) => {
 });
 
 // Vision AI endpoint for image + text analysis
-app.post('/api/ask-ai-vision', upload.single('image'), async (req, res) => {
+app.post('/ask-ai-vision', upload.single('image'), async (req, res) => {
   try {
     const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
     const rateLimitCheck = rateLimit.isAllowed(clientIP, 'ask-ai-vision');
@@ -513,7 +509,7 @@ app.post('/api/ask-ai-vision', upload.single('image'), async (req, res) => {
 });
 
 // Alternative vision endpoint that accepts JSON with base64 image
-app.post('/api/ask-ai-vision-json', async (req, res) => {
+app.post('/ask-ai-vision-json', async (req, res) => {
   try {
     const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
     const rateLimitCheck = rateLimit.isAllowed(clientIP, 'ask-ai-vision');
