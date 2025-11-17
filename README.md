@@ -1,220 +1,148 @@
-# Voice Transcription App
+# Voice Notes Interview App
 
-A full-stack MERN application that transcribes voice to text in real-time using OpenAI's Whisper API and provides AI-powered responses using ChatGPT.
+AI-powered voice transcription and interview assistant using AssemblyAI, OpenAI, and Claude.
 
 ## Features
 
-- 🎤 Real-time voice recording and transcription
-- 🔄 Automatic audio chunking (5-second intervals)
-- 📝 Live transcript display with timestamps
-- 🤖 AI-powered responses using OpenAI ChatGPT
-- 🎛️ Recording controls (Start/Stop/Clear)
-- 📜 Auto-scroll functionality
-- 💬 Simple, direct AI answers (no formatting or summaries)
+- 🎤 Real-time voice recording and transcription (AssemblyAI)
+- 🤖 AI-powered responses (OpenAI GPT-4, Claude)
+- 📝 Session management with MongoDB
+- 💬 Keyword-based answer tracking
+- 🎨 Clean React UI with dual-panel layout
+- ⚡ Serverless deployment on Vercel
 
 ## Tech Stack
 
 - **Frontend**: React 18, Axios
-- **Backend**: Node.js, Express
-- **APIs**: OpenAI Whisper (transcription), OpenAI Chat (GPT-3.5/GPT-4)
-- **Audio**: Web Audio API, MediaRecorder
+- **Backend**: Vercel Serverless Functions (Express)
+- **Database**: MongoDB Atlas
+- **APIs**: AssemblyAI, OpenAI, Anthropic Claude
 
 ## Project Structure
 
 ```
-voice-transcription-app/
-├── backend/
-│   ├── server.js           # Express server with API endpoints
-│   ├── package.json        # Backend dependencies
-│   ├── .env.example        # Environment variables template
-│   └── .gitignore
-├── frontend/
+voice-notes-copy/
+├── frontend/          # React SPA (static files)
 │   ├── public/
-│   │   └── index.html      # HTML template
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── AudioRecorder.js    # Recording controls
-│   │   │   ├── TranscriptPanel.js  # Left panel - transcripts
-│   │   │   └── ResponsePanel.js    # Right panel - AI responses
-│   │   ├── App.js          # Main application component
-│   │   ├── App.css         # Main styles
-│   │   └── index.js        # React entry point
-│   ├── package.json        # Frontend dependencies
-│   ├── .env.example        # Frontend environment template
-│   └── .gitignore
-└── README.md
+│   │   ├── App.js
+│   │   └── index.js
+│   └── package.json
+│
+├── api/              # Vercel serverless functions
+│   ├── _app.js       # Shared Express app
+│   ├── ask-ai.js     # AI endpoints
+│   ├── sessions.js   # Session CRUD
+│   └── package.json
+│
+└── backend/          # Local dev server (optional)
+    ├── server.js
+    ├── routes/
+    ├── models/
+    └── config/
 ```
 
-## Setup Instructions
+## Local Development
 
-### Prerequisites
+### 1. Environment Setup
 
-- Node.js (v14 or higher)
-- npm or yarn
-- OpenAI API key
-
-### 1. Clone or Create the Project
-
-```bash
-cd voice-transcription-app
-```
-
-### 2. Backend Setup
-
-```bash
-cd backend
-
-# Install dependencies
-npm install
-
-# Create .env file
-cp .env.example .env
-
-# Edit .env and add your OpenAI API key
-# OPENAI_API_KEY=sk-your-api-key-here
-# OPENAI_MODEL=gpt-3.5-turbo  # or gpt-4o
-# PORT=5000
-
-# Start the backend server
-npm start
-
-# Or use nodemon for development
-npm run dev
-```
-
-### 3. Frontend Setup
-
-Open a new terminal:
-
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Optional: Create .env file if using different backend URL
-cp .env.example .env
-
-# Start the React development server
-npm start
-```
-
-The app will open at http://localhost:3000
-
-## Usage
-
-1. **Start Recording**: Click the "Start Recording" button to begin voice capture
-2. **Automatic Transcription**: Audio is automatically sent for transcription every 5 seconds
-3. **View Transcripts**: Transcripts appear in the left panel with timestamps
-4. **Ask AI**: Click "Ask AI" on any transcript block to get an AI response
-5. **View Response**: The AI's answer appears in the right panel
-6. **Controls**:
-   - **Stop**: Stop recording
-   - **Clear All**: Clear all transcripts and responses
-   - **Auto-Scroll**: Toggle automatic scrolling of new transcripts
-
-## API Endpoints
-
-### Backend (http://localhost:5000)
-
-- `GET /health` - Health check
-- `POST /api/ask-ai` - Get AI response (JSON body with `prompt`)
-
-## Environment Variables
-
-### Backend (.env)
+Create `backend/.env`:
 
 ```env
-OPENAI_API_KEY=sk-your-openai-api-key
-OPENAI_MODEL=gpt-3.5-turbo
+MONGODB_URI=mongodb+srv://your-connection-string
+OPENAI_API_KEY=sk-...
+CLAUDE_API_KEY=sk-ant-...
+ASSEMBLYAI_API_KEY=...
 PORT=5000
 ```
 
-### Frontend (.env) - Optional
+### 2. Install & Run
 
-```env
-REACT_APP_API_URL=http://localhost:5000
+```bash
+# Install all dependencies
+npm run install-all
+
+# Run both frontend + backend
+npm run dev
+
+# Or separately:
+npm run dev:frontend  # http://localhost:3000
+npm run dev:backend   # http://localhost:5000
 ```
 
-## How It Works
+## Vercel Deployment
 
-1. **Audio Recording**: Uses the browser's MediaRecorder API to capture audio from the microphone
-2. **Chunking**: Audio is automatically chunked every 5 seconds for real-time transcription
-3. **Transcription**: Audio chunks are sent to the backend, which uses OpenAI's Whisper API
-4. **Display**: Transcripts are displayed in chronological order in the left panel
-5. **AI Interaction**: Clicking "Ask AI" sends the transcript text to ChatGPT for a response
-6. **Response**: The AI's plain-text answer is displayed in the right panel
+### Quick Deploy
 
-## Browser Compatibility
+1. **Push to GitHub**
+   ```bash
+   git add .
+   git commit -m "Ready for deployment"
+   git push origin main
+   ```
 
-- Chrome/Edge: Full support
-- Firefox: Full support
-- Safari: Requires HTTPS for microphone access
-- Mobile browsers: May have limited MediaRecorder support
+2. **Import to Vercel**
+   - Go to [vercel.com](https://vercel.com)
+   - Click "Import Project"
+   - Select your repository
+
+3. **Add Environment Variables**
+
+   In Vercel Dashboard → Settings → Environment Variables, add:
+   ```
+   MONGODB_URI
+   OPENAI_API_KEY
+   CLAUDE_API_KEY
+   ASSEMBLYAI_API_KEY
+   ```
+
+4. **Deploy**
+   - Vercel auto-detects configuration
+   - Click "Deploy"
+
+For detailed steps, see [DEPLOYMENT.md](./DEPLOYMENT.md)
+
+## API Endpoints
+
+All routes available at `/api/*`:
+
+- `GET /api/health` - Health check
+- `POST /api/ask-ai` - OpenAI chat
+- `POST /api/ask-ai-stream` - Streaming responses
+- `POST /api/ask-ai-vision` - Vision analysis
+- `GET /api/sessions` - List sessions
+- `POST /api/sessions` - Create session
+- `GET /api/keyword-answers` - List answers
+- `POST /api/keyword-answers` - Create answer
+
+## Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `MONGODB_URI` | MongoDB connection string | ✅ |
+| `OPENAI_API_KEY` | OpenAI API key | ✅ |
+| `CLAUDE_API_KEY` | Anthropic API key | ✅ |
+| `ASSEMBLYAI_API_KEY` | AssemblyAI key | ✅ |
 
 ## Troubleshooting
 
-### Microphone Access Denied
-- Check browser permissions for microphone access
-- Ensure the site is served over HTTPS in production
+### Build Fails
+- Ensure environment variables are set in Vercel
+- Check `api/package.json` dependencies
 
-### API Key Issues
-- Verify your OpenAI API key is valid
-- Check that the .env file is properly configured
-- Ensure you have sufficient API credits
+### API Routes 404
+- Verify `vercel.json` configuration
+- Ensure function files are in `api/` directory
 
-### Audio Not Recording
-- Check browser console for errors
-- Verify MediaRecorder is supported in your browser
-- Try a different audio format if issues persist
+### Database Connection Issues
+- Whitelist Vercel IPs in MongoDB Atlas (or use `0.0.0.0/0`)
+- Verify `MONGODB_URI` format
 
 ### CORS Errors
-- Ensure backend is running on port 5000
-- Check that the proxy setting in frontend/package.json is correct
-- Or update REACT_APP_API_URL in frontend .env
-
-## Production Deployment
-
-This app is ready for deployment on Vercel with minimal configuration.
-
-### Quick Deploy to Vercel
-
-1. **Prerequisites**:
-   - MongoDB Atlas account and connection string
-   - OpenAI API key
-   - Claude (Anthropic) API key
-   - Git repository (GitHub/GitLab/Bitbucket)
-
-2. **Deploy**:
-   - Push code to your Git repository
-   - Import project in Vercel dashboard
-   - Add environment variables (MONGODB_URI, OPENAI_API_KEY, CLAUDE_API_KEY)
-   - Click "Deploy"
-
-3. **Detailed Guides**:
-   - 📋 **Quick Start**: See [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)
-   - 📚 **Full Guide**: See [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)
-
-### Deploy Button
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yourusername/voice-notes-copy)
-
-### Other Platforms
-
-The app can also be deployed to:
-- **Netlify**: Use the same vercel.json configuration
-- **Railway**: Supports monorepo structure
-- **Render**: Deploy frontend and backend separately
-- **AWS/Google Cloud**: Use containerization with Docker
-
-## Security Notes
-
-- Never commit .env files to version control
-- Use environment variables for all sensitive data
-- Implement rate limiting in production
-- Add authentication if needed
-- Validate and sanitize all inputs
+- Check backend is running on port 5000 (local dev)
+- Verify API routes use `/api/*` prefix
 
 ## License
 
-MIT# Deployment Mon Nov 17 14:54:39 IST 2025
+MIT
