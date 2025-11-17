@@ -2,13 +2,6 @@
   "buildCommand": "npm run vercel-build",
   "outputDirectory": "frontend/build",
   "installCommand": "npm install && cd api && npm install",
-  "functions": {
-    "api/**/*.js": {
-      "runtime": "nodejs20.x",
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
   "rewrites": [
     { "source": "/api/sessions/:path*", "destination": "/api/sessions" },
     { "source": "/api/keyword-answers/:path*", "destination": "/api/keyword-answers" },
