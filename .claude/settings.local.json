@@ -21,7 +21,11 @@
       "Bash(npm run lint)",
       "Bash(npm install:*)",
       "Bash(sed:*)",
-      "Bash(xargs kill:*)"
+      "Bash(xargs kill:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(/Users/akhilgangavarapu/Documents/Projects/interview/voice-notes-copy/README.md)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
