@@ -4,30 +4,26 @@
   "outputDirectory": "frontend/build",
   "builds": [
     {
-      "src": "backend/server.js",
+      "src": "api/index.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "backend/server.js"
-    },
-    {
-      "src": "/health",
-      "dest": "backend/server.js"
+      "dest": "/api/index.js"
     },
     {
       "src": "/static/(.*)",
-      "dest": "frontend/build/static/$1"
+      "dest": "/static/$1"
     },
     {
-      "src": "/(.*\\.(?:ico|png|jpg|jpeg|svg|css|js))",
-      "dest": "frontend/build/$1"
+      "src": "/(.*\\.(ico|png|jpg|jpeg|svg|css|js|json))",
+      "dest": "/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "frontend/build/index.html"
+      "dest": "/index.html"
     }
   ]
 }

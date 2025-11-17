@@ -95,7 +95,9 @@ After deployment, you can add/update environment variables:
 | `OPENAI_API_KEY` | Your OpenAI API key | Production, Preview, Development |
 | `CLAUDE_API_KEY` | Your Anthropic Claude API key | Production, Preview, Development |
 
-**Important**: Make sure to select all environments (Production, Preview, Development) for each variable.
+**Important**:
+- Make sure to select all environments (Production, Preview, Development) for each variable.
+- After adding variables, redeploy your project for changes to take effect.
 
 ## Step 5: Verify Deployment
 
