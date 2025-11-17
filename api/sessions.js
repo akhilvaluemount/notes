@@ -4,10 +4,17 @@ const app = require('./_app');
 
 // Vercel serverless function handler
 module.exports = async (req, res) => {
-  // Rewrite the URL to match Express routes
-  // Vercel calls this with /api/sessions/123, we need to make Express see /sessions/123
-  const originalUrl = req.url;
-  req.url = originalUrl.replace(/^\/api\/sessions/, '/sessions');
+  // When Vercel rewrites /api/sessions/123 to /api/sessions,
+  // the original path is preserved in req.url
+  // We need to rewrite it to match Express routes (without /api prefix)
+
+  // Handle both /api/sessions and just /sessions
+  if (req.url.startsWith('/api/sessions')) {
+    req.url = req.url.replace('/api/sessions', '/sessions');
+  } else if (!req.url.startsWith('/sessions')) {
+    // If URL doesn't have /sessions, add it (base path)
+    req.url = '/sessions' + (req.url === '/' ? '' : req.url);
+  }
 
   // Let Express handle the request
   return app(req, res);
