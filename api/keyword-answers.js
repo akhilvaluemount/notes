@@ -1,13 +1,11 @@
-// /api/sessions endpoint handler
-// This handles /api/sessions and /api/sessions/* routes
+// /api/keyword-answers endpoint handler
 const app = require('./_app');
 
 // Vercel serverless function handler
 module.exports = async (req, res) => {
   // Rewrite the URL to match Express routes
-  // Vercel calls this with /api/sessions/123, we need to make Express see /sessions/123
   const originalUrl = req.url;
-  req.url = originalUrl.replace(/^\/api\/sessions/, '/sessions');
+  req.url = originalUrl.replace(/^\/api\/keyword-answers/, '/keyword-answers');
 
   // Let Express handle the request
   return app(req, res);
