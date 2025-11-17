@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './KeywordSuggestions.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+// Use relative URL for production (Vercel), localhost for development
+const API_BASE_URL = process.env.REACT_APP_API_URL || (
+  process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5001'
+);
 
 const KeywordSuggestions = ({ sessionId, messageText, onSuggestionClick }) => {
   const [suggestions, setSuggestions] = useState({});
