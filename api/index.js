@@ -605,5 +605,6 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// Export the Express app as a Vercel serverless function
+// Export handler for Vercel serverless functions
 module.exports = app;
+module.exports.default = app;
