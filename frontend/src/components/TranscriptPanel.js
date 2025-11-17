@@ -4,7 +4,7 @@ import './TranscriptPanel.css';
 import AudioRecorder from './AudioRecorder';
 import MicrophoneSelector from './MicrophoneSelector';
 import CameraSelector from './CameraSelector';
-import AIModelDropdown from './AIModelDropdown';
+// import AIModelDropdown from './AIModelDropdown'; // Commented out - always using ChatGPT
 import CameraCapture from './CameraCapture';
 import KeywordSuggestions from './KeywordSuggestions';
 import buttonConfig from '../config/buttonConfig';
@@ -913,10 +913,10 @@ const TranscriptPanel = ({
               showRefresh={true}
             />
 
-            {/* AI Model Selector */}
-            <AIModelDropdown
+            {/* AI Model Selector - Commented out, always using ChatGPT */}
+            {/* <AIModelDropdown
               disabled={isRecording}
-            />
+            /> */}
 
             {/* Role Selector */}
             <div className="settings-section">

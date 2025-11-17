@@ -135,7 +135,7 @@ const InterviewDashboard = () => {
     <div className="interview-dashboard">
       <header className="dashboard-header">
         <div className="header-content">
-          <h1>Interview Sessions</h1>
+          <h1>MOKITA AI</h1>
           <p className="header-subtitle">
             Manage and track your interview sessions
           </p>
