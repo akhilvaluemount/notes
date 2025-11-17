@@ -18,7 +18,7 @@ class AssemblyAIV3Proxy {
   startServer(port = 5002) {
     this.wss = new WebSocket.Server({ port });
     console.log(`🎤 AssemblyAI v3 Streaming Proxy started on ws://localhost:${port}`);
-    console.log(`📡 Using streaming.assemblyai.com endpoint`);
+    console.log(`📡 Using streaming.eu.assemblyai.com endpoint`);
 
     this.wss.on('connection', (clientWs) => {
       const clientId = Math.random().toString(36).substring(7);
@@ -30,8 +30,8 @@ class AssemblyAIV3Proxy {
 
   async handleClient(clientWs, clientId) {
     try {
-      // Connect to AssemblyAI v3 Universal Streaming endpoint
-      const assemblyWs = new WebSocket(`wss://streaming.assemblyai.com/v3/ws?token=${process.env.ASSEMBLYAI_API_KEY}`);
+      // Connect to AssemblyAI v3 Universal Streaming endpoint (EU region)
+      const assemblyWs = new WebSocket(`wss://streaming.eu.assemblyai.com/v3/ws?token=${process.env.ASSEMBLYAI_API_KEY}`);
 
       this.clients.set(clientId, { clientWs, assemblyWs });
 
@@ -45,7 +45,7 @@ class AssemblyAIV3Proxy {
           sample_rate: 16000,
           encoding: 'pcm_s16le',
           format_turns: true,
-          end_of_turn_confidence_threshold: 0.7
+          end_of_turn_confidence_threshold: 0.55  // Lowered from 0.7 to 0.55 for faster last-word detection
         };
         
         assemblyWs.send(JSON.stringify(config));
@@ -97,7 +97,7 @@ class AssemblyAIV3Proxy {
             case 'turn':
               const transcriptText = message.text || message.transcript || '';
               const isEndOfTurn = message.end_of_turn === true;
-              
+
               if (transcriptText && clientWs.readyState === WebSocket.OPEN) {
                 if (isEndOfTurn) {
                   // Send as final transcript when turn is complete

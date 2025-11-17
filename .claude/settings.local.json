@@ -20,7 +20,8 @@
       "Bash(open http://localhost:3000)",
       "Bash(npm run lint)",
       "Bash(npm install:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(xargs kill:*)"
     ],
     "deny": [],
     "ask": []

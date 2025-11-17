@@ -437,6 +437,198 @@ const TranscriptPanel = ({
     }
   }, [onCameraModalToggle]);
 
+  // Handle instant MCQ capture - captures immediately and processes with MCQ prompt
+  const handleInstantMCQCapture = useCallback(async () => {
+    if (!selectedCamera) {
+      alert('Please select a camera first');
+      return;
+    }
+
+    try {
+      // Get video stream
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          deviceId: selectedCamera ? { exact: selectedCamera } : undefined,
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      });
+
+      // Create hidden video element
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.play();
+
+      // Wait for video to be ready
+      await new Promise((resolve) => {
+        video.onloadedmetadata = () => {
+          resolve();
+        };
+      });
+
+      // Create canvas and capture photo
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+
+      // Stop the stream
+      stream.getTracks().forEach(track => track.stop());
+
+      // Convert to blob
+      canvas.toBlob(async (blob) => {
+        const url = URL.createObjectURL(blob);
+
+        // Get MCQ prompt from buttonConfig
+        const mcqButton = buttonConfig.find(btn => btn.id === 'mcq-extract');
+        const mcqPrompt = mcqButton ? replacePromptPlaceholders(mcqButton.prompt, '') : '';
+
+        // Send to AI for processing with MCQ prompt
+        if (onPhotoCapture) {
+          onPhotoCapture({
+            blob: blob,
+            url: url,
+            prompt: mcqPrompt, // Use MCQ-specific prompt
+            messageId: 'instant-mcq-capture'
+          });
+        }
+      }, 'image/jpeg', 0.95);
+
+    } catch (err) {
+      console.error('Error capturing photo:', err);
+      alert('Failed to capture photo. Please ensure camera permissions are granted.');
+    }
+  }, [selectedCamera, onPhotoCapture, replacePromptPlaceholders]);
+
+  // Handle instant MCQ detailed capture - captures and shows question, answer, explanation
+  const handleInstantMCQDetailedCapture = useCallback(async () => {
+    if (!selectedCamera) {
+      alert('Please select a camera first');
+      return;
+    }
+
+    try {
+      // Get video stream
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          deviceId: selectedCamera ? { exact: selectedCamera } : undefined,
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      });
+
+      // Create hidden video element
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.play();
+
+      // Wait for video to be ready
+      await new Promise((resolve) => {
+        video.onloadedmetadata = () => {
+          resolve();
+        };
+      });
+
+      // Create canvas and capture photo
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+
+      // Stop the stream
+      stream.getTracks().forEach(track => track.stop());
+
+      // Convert to blob
+      canvas.toBlob(async (blob) => {
+        const url = URL.createObjectURL(blob);
+
+        // Get MCQ detailed prompt from buttonConfig
+        const mcqButton = buttonConfig.find(btn => btn.id === 'mcq-detailed');
+        const mcqPrompt = mcqButton ? replacePromptPlaceholders(mcqButton.prompt, '') : '';
+
+        // Send to AI for processing with MCQ detailed prompt
+        if (onPhotoCapture) {
+          onPhotoCapture({
+            blob: blob,
+            url: url,
+            prompt: mcqPrompt, // Use MCQ detailed prompt
+            messageId: 'instant-mcq-detailed-capture'
+          });
+        }
+      }, 'image/jpeg', 0.95);
+
+    } catch (err) {
+      console.error('Error capturing photo:', err);
+      alert('Failed to capture photo. Please ensure camera permissions are granted.');
+    }
+  }, [selectedCamera, onPhotoCapture, replacePromptPlaceholders]);
+
+  // Handle instant HackerRank code capture - generates complete code solution
+  const handleInstantHackerRankCapture = useCallback(async () => {
+    if (!selectedCamera) {
+      alert('Please select a camera first');
+      return;
+    }
+
+    try {
+      // Get video stream
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          deviceId: selectedCamera ? { exact: selectedCamera } : undefined,
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      });
+
+      // Create hidden video element
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.play();
+
+      // Wait for video to be ready
+      await new Promise((resolve) => {
+        video.onloadedmetadata = () => {
+          resolve();
+        };
+      });
+
+      // Create canvas and capture photo
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+
+      // Stop the stream
+      stream.getTracks().forEach(track => track.stop());
+
+      // Convert to blob
+      canvas.toBlob(async (blob) => {
+        const url = URL.createObjectURL(blob);
+
+        // Get HackerRank code prompt from buttonConfig
+        const codeButton = buttonConfig.find(btn => btn.id === 'hackerrank-code');
+        const codePrompt = codeButton ? replacePromptPlaceholders(codeButton.prompt, '') : '';
+
+        // Send to AI for processing with HackerRank prompt
+        if (onPhotoCapture) {
+          onPhotoCapture({
+            blob: blob,
+            url: url,
+            prompt: codePrompt,
+            messageId: 'instant-hackerrank-capture'
+          });
+        }
+      }, 'image/jpeg', 0.95);
+
+    } catch (err) {
+      console.error('Error capturing photo:', err);
+      alert('Failed to capture photo. Please ensure camera permissions are granted.');
+    }
+  }, [selectedCamera, onPhotoCapture, replacePromptPlaceholders]);
+
   // Handle photo captured
   const handlePhotoCapture = useCallback((photoData) => {
     if (currentCaptureMessageId === 'text-input') {
@@ -824,7 +1016,7 @@ const TranscriptPanel = ({
             {/* Inline Action Buttons */}
             <div className="text-input-actions">
               {/* Camera capture button for text input - now attaches to input */}
-              <button 
+              <button
                 onClick={handleTextInputCameraCapture}
                 className="btn-icon-only btn-icon-camera"
                 disabled={isLoadingAI}
@@ -832,7 +1024,37 @@ const TranscriptPanel = ({
               >
                 📷
               </button>
-              
+
+              {/* Instant MCQ extraction button */}
+              <button
+                onClick={handleInstantMCQCapture}
+                className="btn-icon-only btn-icon-mcq"
+                disabled={isLoadingAI || !selectedCamera}
+                title="📋 Extract MCQ - Instantly capture and get direct answer only"
+              >
+                📋
+              </button>
+
+              {/* Instant MCQ detailed button */}
+              <button
+                onClick={handleInstantMCQDetailedCapture}
+                className="btn-icon-only btn-icon-mcq-detailed"
+                disabled={isLoadingAI || !selectedCamera}
+                title="📖 MCQ Detailed - Get question, answer, and explanation"
+              >
+                📖
+              </button>
+
+              {/* HackerRank code solution button */}
+              <button
+                onClick={handleInstantHackerRankCapture}
+                className="btn-icon-only btn-icon-code"
+                disabled={isLoadingAI || !selectedCamera}
+                title="💻 Write Code - Generate complete code solution for coding problems"
+              >
+                💻
+              </button>
+
               {!attachedImage ? (
                 // Regular text-only buttons
                 <>
@@ -1040,11 +1262,11 @@ const TranscriptPanel = ({
                                         {wordsToAnimate.length > 0 && (
                                           <span className="typing-indicator">
                                             {wordsToAnimate.map((word, idx) => (
-                                              <span 
+                                              <span
                                                 key={getStableWordKey(message.id, word, existingWords.length + idx, true)}
                                                 className="streaming-word"
                                                 style={{
-                                                  animationDelay: `${idx * 50}ms`
+                                                  animationDelay: `${idx * 35}ms`  // Reduced from 50ms to 35ms for faster word display
                                                 }}
                                               >
                                                 {word}{idx < wordsToAnimate.length - 1 ? ' ' : ''}
@@ -1157,11 +1379,11 @@ const TranscriptPanel = ({
                           
                           {/* New words (animated) */}
                           {wordsToAnimate.map((word, idx) => (
-                            <span 
+                            <span
                               key={`orphan-new-${existingWords.length + idx}-${word}`}
                               className="streaming-word"
                               style={{
-                                animationDelay: `${idx * 50}ms`
+                                animationDelay: `${idx * 35}ms`  // Reduced from 50ms to 35ms for faster word display
                               }}
                             >
                               {word}{idx < wordsToAnimate.length - 1 ? ' ' : ''}

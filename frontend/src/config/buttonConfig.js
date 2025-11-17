@@ -3,13 +3,11 @@ import {
   interviewCoachPrompt,
   structuredAnswerPrompt,
   conciseAnswerPrompt,
-  differenceComparisonPrompt,
-  explanationPrompt,
-  processExplanationPrompt,
-  shortAnswerPrompt,
-  typesListPrompt,
   codeOutputExplanationPrompt,
-  codeExecutionStepsPrompt
+  codeExecutionStepsPrompt,
+  mcqExtractionPrompt,
+  mcqDetailedPrompt,
+  hackerRankCodePrompt
 } from './prompts';
 
 // Button ID constants for consistency
@@ -17,13 +15,11 @@ const BUTTON_IDS = {
   INTERVIEW_100: "100",
   ASK_AI: "ask-ai",
   RAW: "raw",
-  DIFF_BETWEEN: "diff-between",
-  EXPLAIN_ABOUT: "explain-about",
-  PROCESS_OF: "process-of",
-  SHORT_ANSWER: "short-answer",
-  TYPES_OF: "types-of",
   CODE_OUTPUT: "code-output",
-  CODE_EXECUTION: "code-execution"
+  CODE_EXECUTION: "code-execution",
+  MCQ_EXTRACT: "mcq-extract",
+  MCQ_DETAILED: "mcq-detailed",
+  HACKERRANK_CODE: "hackerrank-code"
 };
 
 const buttonConfig = [
@@ -49,41 +45,6 @@ const buttonConfig = [
     description: "Get a brief, concise response"
   },
   {
-    id: BUTTON_IDS.DIFF_BETWEEN,
-    label: "Difference Between",
-    icon: "⚖️",
-    prompt: differenceComparisonPrompt,
-    description: "Side-by-side comparison table"
-  },
-  {
-    id: BUTTON_IDS.EXPLAIN_ABOUT,
-    label: "Explain About",
-    icon: "💬",
-    prompt: explanationPrompt,
-    description: "Concise explanation of a concept"
-  },
-  {
-    id: BUTTON_IDS.PROCESS_OF,
-    label: "Process Of",
-    icon: "🔄",
-    prompt: processExplanationPrompt,
-    description: "Step-by-step how-to explanation"
-  },
-  {
-    id: BUTTON_IDS.SHORT_ANSWER,
-    label: "Short 2-Line Answer",
-    icon: "≡",
-    prompt: shortAnswerPrompt,
-    description: "Super short, straight-to-point answer"
-  },
-  {
-    id: BUTTON_IDS.TYPES_OF,
-    label: "Types Of",
-    icon: "⊢",
-    prompt: typesListPrompt,
-    description: "List of types/categories"
-  },
-  {
     id: BUTTON_IDS.CODE_OUTPUT,
     label: "Code Output",
     icon: "🖥️",
@@ -96,6 +57,30 @@ const buttonConfig = [
     icon: "🔍",
     prompt: codeExecutionStepsPrompt,
     description: "Step-by-step code execution"
+  },
+  {
+    id: BUTTON_IDS.MCQ_EXTRACT,
+    label: "Extract MCQ",
+    icon: "📋",
+    prompt: mcqExtractionPrompt,
+    description: "Extract and solve multiple choice questions",
+    requiresCamera: true
+  },
+  {
+    id: BUTTON_IDS.MCQ_DETAILED,
+    label: "MCQ Detailed",
+    icon: "📖",
+    prompt: mcqDetailedPrompt,
+    description: "Get question, answer, and detailed explanation",
+    requiresCamera: true
+  },
+  {
+    id: BUTTON_IDS.HACKERRANK_CODE,
+    label: "Write Code",
+    icon: "💻",
+    prompt: hackerRankCodePrompt,
+    description: "Generate complete code solution for coding problems",
+    requiresCamera: true
   }
 ];
 

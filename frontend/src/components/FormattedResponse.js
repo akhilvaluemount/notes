@@ -70,6 +70,8 @@ const SECTION_ICONS = {
   'deep dive': '🔍',
   'conclusion': '📝',
   'summary': '📝',
+  'correct answer': '✅',
+  'options': '📋',
   'default': '💬'
 };
 

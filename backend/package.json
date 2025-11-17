@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "proxy": "node hybrid-proxy.js",
-    "proxy-dev": "nodemon hybrid-proxy.js"
+    "proxy": "node assemblyai-v3-proxy.js",
+    "proxy-dev": "nodemon assemblyai-v3-proxy.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.62.0",

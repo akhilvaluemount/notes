@@ -460,4 +460,28 @@
   .dynamic-example-header {}
   
   /* Keep your original inline-capable hooks working, while providing new utilities above. */
-  
+
+  /* ============================
+     17) MCQ-specific Styling
+     ============================ */
+  /* Highlight correct answer in green */
+  .formatted-response p:has(strong:first-child) {
+    position: relative;
+  }
+
+  .formatted-response p strong:first-child:contains("Correct Answer") {
+    color: #16a34a;
+  }
+
+  /* Style for MCQ sections with correct answer */
+  .formatted-response hr ~ p:first-of-type strong {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* MCQ Options list styling */
+  .formatted-response p:has(strong) + p {
+    line-height: 2;
+  }
