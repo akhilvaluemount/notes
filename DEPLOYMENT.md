@@ -1,6 +1,6 @@
-# Vercel Deployment Guide
+# Complete Deployment Guide
 
-Complete step-by-step guide to deploy the Voice Notes Interview App to Vercel.
+Step-by-step guide to deploy the Voice Notes Interview App using **Vercel** (frontend + API) and **Railway** (WebSocket server).
 
 ## Prerequisites
 
@@ -12,6 +12,7 @@ Before deploying, ensure you have:
 - ✅ AssemblyAI API key
 - ✅ GitHub/GitLab/Bitbucket account
 - ✅ Vercel account (free tier works)
+- ✅ Railway account (free tier works - $5 credit/month)
 
 ## Step 1: Prepare Your Repository
 
@@ -37,9 +38,10 @@ Your repository should look like this:
 
 ```
 voice-notes-copy/
-├── frontend/
-├── api/
-├── backend/
+├── frontend/           # React app (Vercel)
+├── api/               # API functions (Vercel)
+├── backend/           # Shared backend code (Vercel)
+├── websocket-server/  # WebSocket server (Railway)
 ├── vercel.json
 ├── package.json
 └── README.md
@@ -79,16 +81,58 @@ Example:
 mongodb+srv://myuser:mypassword123@cluster0.abc123.mongodb.net/voice-notes?retryWrites=true&w=majority
 ```
 
-## Step 3: Deploy to Vercel
+## Step 3: Deploy WebSocket Server to Railway
 
-### 3.1 Import Project
+**Why Railway?** Vercel doesn't support WebSocket servers. We need Railway for real-time transcription.
+
+### 3.1 Create Railway Project
+
+1. Go to [railway.app](https://railway.app) and sign in with GitHub
+2. Click "New Project" → "Deploy from GitHub repo"
+3. Select your repository
+4. Railway will detect the `websocket-server/` folder
+
+### 3.2 Configure Railway
+
+1. **Root Directory**: Set to `websocket-server`
+   - Settings → Service → Root Directory → `websocket-server`
+
+2. **Start Command**: Should auto-detect `node server.js`
+   - If not: Settings → Deploy → Start Command → `node server.js`
+
+3. **Add Environment Variables**:
+   - Settings → Variables → Add Variable
+   - Add: `ASSEMBLYAI_API_KEY` = `your_assemblyai_key`
+   - Railway automatically provides `PORT` variable
+
+### 3.3 Deploy
+
+1. Click "Deploy" or push to GitHub (auto-deploys)
+2. Wait 1-2 minutes for deployment
+3. Copy your Railway URL: `your-app.up.railway.app`
+4. **Important**: Note this URL - you'll need it for Vercel
+
+### 3.4 Get WebSocket URL
+
+Your WebSocket URL will be:
+```
+wss://your-app.up.railway.app
+```
+
+**Save this URL** - you'll add it to Vercel environment variables next.
+
+---
+
+## Step 4: Deploy to Vercel
+
+### 4.1 Import Project
 
 1. Go to [vercel.com](https://vercel.com) and sign in
 2. Click "Add New..." → "Project"
 3. Import your Git repository
 4. Vercel will auto-detect the configuration
 
-### 3.2 Configure Build Settings
+### 4.2 Configure Build Settings
 
 Vercel should automatically detect from `vercel.json`:
 
@@ -98,7 +142,7 @@ Vercel should automatically detect from `vercel.json`:
 
 If not, manually enter these settings.
 
-### 3.3 Add Environment Variables
+### 4.3 Add Environment Variables
 
 Click "Environment Variables" and add:
 
@@ -108,18 +152,21 @@ Click "Environment Variables" and add:
 | `OPENAI_API_KEY` | Your OpenAI API key | `sk-proj-...` |
 | `CLAUDE_API_KEY` | Your Anthropic API key | `sk-ant-...` |
 | `ASSEMBLYAI_API_KEY` | Your AssemblyAI API key | `...` |
+| `REACT_APP_WS_URL` | Your Railway WebSocket URL | `wss://your-app.up.railway.app` |
 
-**Important**: Set environment variables for all environments (Production, Preview, Development).
+**Important**:
+- Set environment variables for all environments (Production, Preview, Development)
+- Use the Railway URL from Step 3.4 for `REACT_APP_WS_URL`
 
-### 3.4 Deploy
+### 4.4 Deploy
 
 1. Click "Deploy"
 2. Wait 2-5 minutes for build to complete
 3. Your app will be live at `https://your-project.vercel.app`
 
-## Step 4: Verify Deployment
+## Step 5: Verify Deployment
 
-### 4.1 Test Health Endpoint
+### 5.1 Test Vercel API Health
 
 Visit: `https://your-project.vercel.app/api/health`
 
@@ -131,31 +178,53 @@ Should return:
 }
 ```
 
-### 4.2 Test Frontend
+### 5.2 Test Railway WebSocket
 
-1. Visit your Vercel URL
+Test your WebSocket connection:
+```bash
+# Using wscat (install: npm install -g wscat)
+wscat -c wss://your-app.up.railway.app
+
+# Should connect successfully
+```
+
+### 5.3 Test Frontend
+
+1. Visit your Vercel URL: `https://your-project.vercel.app`
 2. Check that the app loads
-3. Test recording functionality
+3. Test recording functionality (should connect to Railway WebSocket)
 4. Test AI responses
+5. Verify real-time transcription works
 
-### 4.3 Check Logs
+### 5.4 Check Logs
 
-If something fails:
+**Vercel Logs:**
 1. Vercel Dashboard → Your Project → Deployments
 2. Click on the deployment
 3. View "Function Logs" for errors
 
-## Step 5: Configure Custom Domain (Optional)
+**Railway Logs:**
+1. Railway Dashboard → Your Project
+2. Click "Deployments" tab
+3. View logs for WebSocket server errors
 
-### 5.1 Add Domain
+## Step 6: Configure Custom Domain (Optional)
+
+### 6.1 Vercel Domain
 
 1. Vercel Dashboard → Your Project → Settings → Domains
 2. Add your custom domain
 3. Update DNS records as instructed
 
-### 5.2 SSL Certificate
+### 6.2 Railway Domain (Optional)
 
-Vercel automatically provisions SSL certificates for all domains.
+1. Railway Dashboard → Your Project → Settings
+2. Generate Domain or add custom domain
+3. Update frontend `REACT_APP_WS_URL` if you change the domain
+
+### 6.3 SSL Certificates
+
+Both Vercel and Railway automatically provision SSL certificates.
 
 ## Troubleshooting
 
@@ -195,6 +264,18 @@ Vercel automatically provisions SSL certificates for all domains.
 - **Fix**: Check `api/_app.js` has CORS middleware configured
 - Verify API routes are accessed via `/api/*`
 
+### WebSocket Connection Fails
+
+**Error**: "WebSocket connection to 'ws://localhost:5002' failed"
+- **Fix**: Ensure `REACT_APP_WS_URL` is set in Vercel to Railway URL
+- Should be `wss://your-app.up.railway.app` (not `ws://`)
+- Redeploy Vercel after adding variable
+
+**Error**: "WebSocket closed unexpectedly"
+- **Fix**: Check Railway logs for errors
+- Verify `ASSEMBLYAI_API_KEY` is set in Railway
+- Ensure Railway service is running (not crashed)
+
 ## Updating Your Deployment
 
 ### Push Changes
@@ -206,7 +287,9 @@ git commit -m "Update feature X"
 git push origin main
 ```
 
-Vercel automatically redeploys on every push to main.
+**Auto-Deploy:**
+- Vercel: Automatically redeploys on every push to `main`
+- Railway: Automatically redeploys on every push to `main`
 
 ### Rollback
 

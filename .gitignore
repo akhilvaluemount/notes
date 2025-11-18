@@ -19,6 +19,7 @@ backend/build
 .env.production.local
 backend/.env
 frontend/.env
+websocket-server/.env
 
 # Logs
 npm-debug.log*

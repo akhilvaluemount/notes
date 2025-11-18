@@ -45,7 +45,8 @@ const useRealtimeTranscription = () => {
   }, [messageHistory]);
 
   // WebSocket URL - connects to our proxy server
-  const WEBSOCKET_URL = 'ws://localhost:5002';
+  // Use environment variable in production, fallback to localhost for development
+  const WEBSOCKET_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:5002';
 
   // Generate unique message ID
   const generateMessageId = () => {

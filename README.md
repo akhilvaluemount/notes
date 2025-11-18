@@ -9,7 +9,7 @@ AI-powered voice transcription and interview assistant using AssemblyAI, OpenAI,
 - 📝 Session management with MongoDB
 - 💬 Keyword-based answer tracking
 - 🎨 Clean React UI with dual-panel layout
-- ⚡ Serverless deployment on Vercel
+- ⚡ Hybrid deployment: Vercel + Railway
 
 ## Tech Stack
 
@@ -22,25 +22,25 @@ AI-powered voice transcription and interview assistant using AssemblyAI, OpenAI,
 
 ```
 voice-notes-copy/
-├── frontend/          # React SPA (static files)
+├── frontend/          # React SPA → Vercel
 │   ├── public/
 │   ├── src/
-│   │   ├── components/
-│   │   ├── App.js
-│   │   └── index.js
 │   └── package.json
 │
-├── api/              # Vercel serverless functions
-│   ├── _app.js       # Shared Express app
-│   ├── ask-ai.js     # AI endpoints
-│   ├── sessions.js   # Session CRUD
-│   └── package.json
+├── api/              # Serverless functions → Vercel
+│   ├── _app.js
+│   ├── ask-ai.js
+│   └── sessions.js
 │
-└── backend/          # Local dev server (optional)
+├── backend/          # Shared backend code → Vercel
+│   ├── routes/
+│   ├── models/
+│   └── config/
+│
+└── websocket-server/ # WebSocket server → Railway
     ├── server.js
-    ├── routes/
-    ├── models/
-    └── config/
+    ├── package.json
+    └── railway.json
 ```
 
 ## Local Development
@@ -71,37 +71,45 @@ npm run dev:frontend  # http://localhost:3000
 npm run dev:backend   # http://localhost:5000
 ```
 
-## Vercel Deployment
+## Deployment
 
-### Quick Deploy
+This app uses **hybrid deployment**:
+- **Vercel**: Frontend + API functions
+- **Railway**: WebSocket server (real-time transcription)
 
-1. **Push to GitHub**
+### Quick Start
+
+1. **Deploy WebSocket Server to Railway** (required first!)
+   - See [websocket-server/README.md](./websocket-server/README.md)
+   - Get your Railway URL: `wss://your-app.up.railway.app`
+
+2. **Deploy to Vercel**
    ```bash
-   git add .
-   git commit -m "Ready for deployment"
    git push origin main
    ```
+   - Import project in Vercel
+   - Add environment variables (including Railway WebSocket URL)
+   - Deploy
 
-2. **Import to Vercel**
-   - Go to [vercel.com](https://vercel.com)
-   - Click "Import Project"
-   - Select your repository
+### Environment Variables
 
-3. **Add Environment Variables**
+**Vercel** needs:
+```
+MONGODB_URI
+OPENAI_API_KEY
+CLAUDE_API_KEY
+ASSEMBLYAI_API_KEY
+REACT_APP_WS_URL=wss://your-app.up.railway.app
+```
 
-   In Vercel Dashboard → Settings → Environment Variables, add:
-   ```
-   MONGODB_URI
-   OPENAI_API_KEY
-   CLAUDE_API_KEY
-   ASSEMBLYAI_API_KEY
-   ```
+**Railway** needs:
+```
+ASSEMBLYAI_API_KEY
+```
 
-4. **Deploy**
-   - Vercel auto-detects configuration
-   - Click "Deploy"
+### Full Guide
 
-For detailed steps, see [DEPLOYMENT.md](./DEPLOYMENT.md)
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete step-by-step instructions.
 
 ## API Endpoints
 
