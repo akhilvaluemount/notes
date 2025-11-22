@@ -75,12 +75,43 @@ const SECTION_ICONS = {
   'default': '💬'
 };
 
-const FormattedResponse = ({ response, language = null, topic = null }) => {
+const FormattedResponse = ({ response, language = null, topic = null, isLoading = false }) => {
+  const [elapsedSeconds, setElapsedSeconds] = React.useState(0);
+
   console.log('FormattedResponse received response:', response);
   console.log('Response type:', typeof response);
   console.log('Response length:', response?.length);
   console.log('Metadata props:', { language, topic });
-  
+  console.log('Loading state:', isLoading);
+
+  // Timer for loading state
+  React.useEffect(() => {
+    if (isLoading) {
+      setElapsedSeconds(0);
+      const timer = setInterval(() => {
+        setElapsedSeconds(prev => prev + 1);
+      }, 1300);
+
+      return () => clearInterval(timer);
+    }
+  }, [isLoading]);
+
+  // Show loading state if isLoading is true
+  if (isLoading) {
+    return (
+      <div className="formatted-response ai-response-content">
+        <div className="loading-container-simple">
+          <div className="loading-text-simple">
+            Analyzing your question... <span className="loading-timer">{elapsedSeconds}s</span>
+          </div>
+          <div className="loading-bar-simple">
+            <div className="loading-bar-fill-simple"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Simple fallback if response is empty or just whitespace
   if (!response || !response.trim()) {
     console.log('Response is empty or just whitespace');
@@ -470,9 +501,54 @@ const FormattedResponse = ({ response, language = null, topic = null }) => {
         </div>
       );
     } else if (item.type === 'code') {
+      // Parse code content to highlight comments
+      const highlightComments = (code) => {
+        const lines = code.split('\n');
+        return lines.map((line, lineIndex) => {
+          // Detect different comment styles
+          const singleLineCommentMatch = line.match(/^(\s*)(\/\/|#)(.*)$/);
+          const multiLineCommentMatch = line.match(/^(\s*)(\/\*|\*|""")(.*?)(\*\/)?$/);
+
+          if (singleLineCommentMatch) {
+            // Single-line comments (//, #)
+            return (
+              <div key={lineIndex}>
+                <span>{singleLineCommentMatch[1]}</span>
+                <span className="code-comment">{singleLineCommentMatch[2]}{singleLineCommentMatch[3]}</span>
+                {'\n'}
+              </div>
+            );
+          } else if (multiLineCommentMatch) {
+            // Multi-line comments (/* */, """)
+            return (
+              <div key={lineIndex}>
+                <span>{multiLineCommentMatch[1]}</span>
+                <span className="code-comment">{multiLineCommentMatch[2]}{multiLineCommentMatch[3]}{multiLineCommentMatch[4] || ''}</span>
+                {'\n'}
+              </div>
+            );
+          } else {
+            // Check for inline comments
+            const inlineCommentMatch = line.match(/^(.*?)(\/\/|#)(.*)$/);
+            if (inlineCommentMatch) {
+              return (
+                <div key={lineIndex}>
+                  <span>{inlineCommentMatch[1]}</span>
+                  <span className="code-comment">{inlineCommentMatch[2]}{inlineCommentMatch[3]}</span>
+                  {'\n'}
+                </div>
+              );
+            }
+            return <div key={lineIndex}>{line}{'\n'}</div>;
+          }
+        });
+      };
+
       return (
         <pre key={index} className="code-block">
-          <code className={`language-${item.language}`}>{item.content}</code>
+          <code className={`language-${item.language}`}>
+            {highlightComments(item.content)}
+          </code>
         </pre>
       );
     } else if (item.type === 'table') {
@@ -653,9 +729,54 @@ const FormattedResponse = ({ response, language = null, topic = null }) => {
           i++;
         }
         if (codeLines.length > 0) {
+          const codeContent = codeLines.join('\n');
+
+          // Parse code content to highlight comments
+          const highlightComments = (code) => {
+            const codeLinesList = code.split('\n');
+            return codeLinesList.map((line, lineIndex) => {
+              // Detect different comment styles
+              const singleLineCommentMatch = line.match(/^(\s*)(\/\/|#)(.*)$/);
+              const multiLineCommentMatch = line.match(/^(\s*)(\/\*|\*|""")(.*?)(\*\/)?$/);
+
+              if (singleLineCommentMatch) {
+                // Single-line comments (//, #)
+                return (
+                  <div key={lineIndex}>
+                    <span>{singleLineCommentMatch[1]}</span>
+                    <span className="code-comment">{singleLineCommentMatch[2]}{singleLineCommentMatch[3]}</span>
+                    {'\n'}
+                  </div>
+                );
+              } else if (multiLineCommentMatch) {
+                // Multi-line comments (/* */, """)
+                return (
+                  <div key={lineIndex}>
+                    <span>{multiLineCommentMatch[1]}</span>
+                    <span className="code-comment">{multiLineCommentMatch[2]}{multiLineCommentMatch[3]}{multiLineCommentMatch[4] || ''}</span>
+                    {'\n'}
+                  </div>
+                );
+              } else {
+                // Check for inline comments
+                const inlineCommentMatch = line.match(/^(.*?)(\/\/|#)(.*)$/);
+                if (inlineCommentMatch) {
+                  return (
+                    <div key={lineIndex}>
+                      <span>{inlineCommentMatch[1]}</span>
+                      <span className="code-comment">{inlineCommentMatch[2]}{inlineCommentMatch[3]}</span>
+                      {'\n'}
+                    </div>
+                  );
+                }
+                return <div key={lineIndex}>{line}{'\n'}</div>;
+              }
+            });
+          };
+
           elements.push(
             <pre key={`code-${elements.length}`} className="code-block">
-              <code>{codeLines.join('\n')}</code>
+              <code>{highlightComments(codeContent)}</code>
             </pre>
           );
         }

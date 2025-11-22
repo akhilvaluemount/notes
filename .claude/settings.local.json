@@ -25,7 +25,9 @@
       "Bash(git ls-tree:*)",
       "Bash(/Users/akhilgangavarapu/Documents/Projects/interview/voice-notes-copy/README.md)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(npx cap:*)",
+      "Bash(gradle wrapper:*)"
     ],
     "deny": [],
     "ask": []

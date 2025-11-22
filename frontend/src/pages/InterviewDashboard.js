@@ -16,6 +16,7 @@ const InterviewDashboard = () => {
     sortOrder: 'desc'
   });
   const [isSessionSetupOpen, setIsSessionSetupOpen] = useState(false);
+  const [isExamSetupOpen, setIsExamSetupOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState({});
 
   const {
@@ -92,6 +93,18 @@ const InterviewDashboard = () => {
     }
   };
 
+  const handleCreateExam = async (examData) => {
+    try {
+      // For now, navigate to exam interface with data in state
+      // Later we can create a proper exam session in the database
+      setIsExamSetupOpen(false);
+      navigate('/exam/new', { state: examData });
+    } catch (error) {
+      console.error('Failed to create exam:', error);
+      throw error;
+    }
+  };
+
   const handleResumeSession = (session) => {
     navigate(`/interview/${session._id}`);
   };
@@ -141,13 +154,25 @@ const InterviewDashboard = () => {
           </p>
         </div>
         <div className="header-actions">
-          <button 
+          <button
             className="global-keywords-btn"
             onClick={() => navigate('/keywords')}
           >
             📚 Global Keywords
           </button>
-          <button 
+          <button
+            className="new-exam-btn"
+            onClick={() => setIsExamSetupOpen(true)}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            New Exam
+          </button>
+          <button
             className="new-interview-btn"
             onClick={() => setIsSessionSetupOpen(true)}
           >
@@ -230,6 +255,77 @@ const InterviewDashboard = () => {
           onCreateSession={handleCreateSession}
         />
       </ErrorBoundary>
+
+      {/* Exam Setup Modal */}
+      {isExamSetupOpen && (
+        <div className="modal-overlay" onClick={() => setIsExamSetupOpen(false)}>
+          <div className="modal-content exam-setup-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>New Exam Session</h2>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target);
+              handleCreateExam({
+                examName: formData.get('examName'),
+                studentName: formData.get('studentName'),
+                duration: formData.get('duration'),
+                subject: formData.get('subject')
+              });
+            }}>
+              <div className="form-group">
+                <label htmlFor="examName">Exam Name *</label>
+                <input
+                  type="text"
+                  id="examName"
+                  name="examName"
+                  placeholder="e.g., Midterm Exam, Final Exam"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="studentName">Student Name *</label>
+                <input
+                  type="text"
+                  id="studentName"
+                  name="studentName"
+                  placeholder="Enter student name"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="subject">Subject</label>
+                <input
+                  type="text"
+                  id="subject"
+                  name="subject"
+                  placeholder="e.g., Mathematics, Computer Science"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="duration">Duration (minutes)</label>
+                <input
+                  type="number"
+                  id="duration"
+                  name="duration"
+                  placeholder="60"
+                  min="1"
+                />
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" className="cancel-btn" onClick={() => setIsExamSetupOpen(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="create-btn">
+                  Start Exam
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
