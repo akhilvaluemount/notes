@@ -483,7 +483,7 @@ app.post('/api/ask-ai-vision', upload.single('image'), async (req, res) => {
     }
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4.1",
       messages: [
         {
           role: "user",
@@ -503,11 +503,14 @@ app.post('/api/ask-ai-vision', upload.single('image'), async (req, res) => {
         }
       ],
       max_tokens: 1000,
-      temperature: 0.7,
+      temperature: 0,
+      top_p: 1,
+      frequency_penalty: 0,
+      presence_penalty: 0,
     });
 
     const answer = response.choices[0].message.content;
-    
+
     console.log('✅ Vision AI Response generated:', {
       length: answer.length,
       tokensUsed: response.usage?.total_tokens || 'unknown'
@@ -573,7 +576,7 @@ app.post('/api/ask-ai-vision-json', async (req, res) => {
     }
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4.1",
       messages: [
         {
           role: "user",
@@ -593,11 +596,14 @@ app.post('/api/ask-ai-vision-json', async (req, res) => {
         }
       ],
       max_tokens: 1000,
-      temperature: 0.7,
+      temperature: 0,
+      top_p: 1,
+      frequency_penalty: 0,
+      presence_penalty: 0,
     });
 
     const answer = response.choices[0].message.content;
-    
+
     console.log('✅ Vision AI JSON Response generated:', {
       length: answer.length,
       tokensUsed: response.usage?.total_tokens || 'unknown'

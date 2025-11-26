@@ -900,9 +900,50 @@ const FormattedResponse = ({ response, language = null, topic = null, isLoading 
               </div>
               
               <div className="section-content" style={{ paddingLeft: '0.5rem' }}>
-                {section.content.map((item, itemIndex) => 
-                  renderSectionItem(item, itemIndex, colorData)
-                )}
+                {/* Check if this is an Answer section and extract the letter for circle badge */}
+                {section.title.toLowerCase().startsWith('answer') && section.content.length > 0 && (() => {
+                  const firstContent = section.content[0]?.content || '';
+                  const letterMatch = firstContent.match(/^([A-Za-z])\s*[-–—:]/);
+                  if (letterMatch) {
+                    const letter = letterMatch[1].toUpperCase();
+                    const remainingText = firstContent.replace(/^[A-Za-z]\s*[-–—:]\s*/, '').trim();
+                    return (
+                      <div className="answer-with-badge" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '0.5rem' }}>
+                        <span className="answer-letter-badge" style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '24px',
+                          height: '24px',
+                          minWidth: '24px',
+                          background: '#10b981',
+                          color: 'white',
+                          fontWeight: '700',
+                          fontSize: '0.8rem',
+                          borderRadius: '50%',
+                          flexShrink: 0,
+                          boxShadow: '0 1px 3px rgba(16, 185, 129, 0.3)'
+                        }}>
+                          {letter}
+                        </span>
+                        <span style={{ fontWeight: 600, color: '#2d3748', fontSize: '0.9rem' }}>
+                          {parseFormattedText(remainingText)}
+                        </span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+                {section.content.map((item, itemIndex) => {
+                  // Skip the first item if it was rendered as badge above
+                  if (itemIndex === 0 && section.title.toLowerCase().startsWith('answer')) {
+                    const firstContent = item?.content || '';
+                    if (firstContent.match(/^[A-Za-z]\s*[-–—:]/)) {
+                      return null;
+                    }
+                  }
+                  return renderSectionItem(item, itemIndex, colorData);
+                })}
               </div>
             </div>
           );

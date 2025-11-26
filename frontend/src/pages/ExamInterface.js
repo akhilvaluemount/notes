@@ -23,12 +23,20 @@ function ExamInterface() {
   const [testingMode, setTestingMode] = useState(false);
   const [testingStreamUrl, setTestingStreamUrl] = useState('');
   const [selectedTestStream, setSelectedTestStream] = useState('mcq'); // 'mcq' or 'code'
-  const [detailedAnswer, setDetailedAnswer] = useState(false); // Checkbox for detailed answers
+  // Removed detailedAnswer state - always use detailed MCQ
   const [languageInput, setLanguageInput] = useState('Python'); // Language input value
   const [showLanguageSuggestions, setShowLanguageSuggestions] = useState(false);
   const [panelTheme, setPanelTheme] = useState('light'); // 'light', 'dark', or 'transparent'
   const [showSettings, setShowSettings] = useState(false); // Settings panel visibility
   const [showExamMenu, setShowExamMenu] = useState(false); // Exam details menu visibility
+  const [waitingForUsbCamera, setWaitingForUsbCamera] = useState(false); // Waiting for USB camera to be connected
+  const [captureMode, setCaptureMode] = useState(null); // null (black screen), 'window', 'tab', 'screen', or 'camera'
+  const [availableCameras, setAvailableCameras] = useState([]); // List of video input devices
+  const [selectedCameraId, setSelectedCameraId] = useState(''); // Currently selected camera deviceId
+  const [showCameraDropdown, setShowCameraDropdown] = useState(false); // Toggle camera selector
+
+  // Refs for USB camera polling
+  const usbCameraCheckIntervalRef = useRef(null);
 
   // Comprehensive programming languages list for various exams and certifications
   const programmingLanguages = [
@@ -76,7 +84,7 @@ function ExamInterface() {
   const [dockedSide, setDockedSide] = useState(null); // 'left', 'right', 'top', 'bottom', or null
 
   // Panel resize state
-  const [panelSize, setPanelSize] = useState({ width: 400, height: 300 });
+  const [panelSize, setPanelSize] = useState({ width: 480, height: 500 });
   const [isResizing, setIsResizing] = useState(false);
   const resizeStartRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
 
@@ -90,13 +98,24 @@ function ExamInterface() {
     ['unified-mcq', 'hackerrank-code', 'advanced-analysis'].includes(btn.id)
   );
 
-  // Auto-start camera when component mounts
+  // Enumerate available cameras on mount
   useEffect(() => {
-    startCamera();
+    enumerateCameras();
+    // Listen for device changes (camera plugged/unplugged)
+    navigator.mediaDevices.addEventListener('devicechange', enumerateCameras);
+    return () => {
+      navigator.mediaDevices.removeEventListener('devicechange', enumerateCameras);
+    };
+  }, []);
+
+  // Cleanup on unmount (no auto-start - show black screen initially)
+  useEffect(() => {
+    // Don't auto-start any capture - show black screen initially
 
     // Cleanup on unmount
     return () => {
       stopCamera();
+      stopUsbCameraPolling();
     };
   }, []);
 
@@ -134,42 +153,77 @@ function ExamInterface() {
     };
   }, [showLanguageSuggestions]);
 
+  // Close camera dropdown when clicking outside (separate handler with click event)
+  useEffect(() => {
+    const handleCameraDropdownClose = (event) => {
+      // Don't close if clicking inside the camera dropdown or camera option
+      if (event.target.closest('.camera-dropdown-menu') ||
+          event.target.closest('.camera-option-item') ||
+          event.target.closest('.camera-dropdown-btn')) {
+        return;
+      }
+      if (showCameraDropdown && !event.target.closest('.camera-option')) {
+        setShowCameraDropdown(false);
+      }
+    };
 
-  const startCamera = async () => {
+    // Use click event (fires after mousedown) so dropdown items can be clicked
+    document.addEventListener('click', handleCameraDropdownClose);
+    return () => {
+      document.removeEventListener('click', handleCameraDropdownClose);
+    };
+  }, [showCameraDropdown]);
+
+
+  // Enumerate all available cameras
+  const enumerateCameras = async () => {
     try {
-      // Get all available video input devices
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      const cameras = devices.filter(device => device.kind === 'videoinput');
+      setAvailableCameras(cameras);
 
-      let selectedDeviceId = null;
+      // Auto-select first camera if none selected
+      if (!selectedCameraId && cameras.length > 0) {
+        setSelectedCameraId(cameras[0].deviceId);
+      }
+      console.log('Available cameras:', cameras.map(c => c.label || 'Unnamed Camera'));
+    } catch (err) {
+      console.error('Error enumerating cameras:', err);
+    }
+  };
 
-      // Prioritize USB/External cameras over built-in cameras
-      if (videoDevices.length > 0) {
-        // Look for USB or external cameras (typically don't have "Built-in" or "FaceTime" in label)
-        const usbCamera = videoDevices.find(device => {
-          const label = device.label.toLowerCase();
-          return !label.includes('built-in') &&
-                 !label.includes('facetime') &&
-                 !label.includes('integrated');
-        });
+  // Start camera with optional specific deviceId
+  const startCamera = async (deviceId = null) => {
+    try {
+      // Use provided deviceId, or selectedCameraId, or find any available camera
+      let targetDeviceId = deviceId || selectedCameraId;
 
-        // If USB camera found, use it; otherwise use first available camera
-        selectedDeviceId = usbCamera ? usbCamera.deviceId : videoDevices[0].deviceId;
+      // If no deviceId specified, enumerate and pick first available
+      if (!targetDeviceId) {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cameras = devices.filter(device => device.kind === 'videoinput');
+        if (cameras.length > 0) {
+          targetDeviceId = cameras[0].deviceId;
+          setSelectedCameraId(targetDeviceId);
+          setAvailableCameras(cameras);
+        }
+      }
+
+      if (!targetDeviceId) {
+        console.log('No camera available');
+        setWaitingForUsbCamera(true);
+        setCameraError('');
+        return;
       }
 
       const constraints = {
         video: {
+          deviceId: { exact: targetDeviceId },
           width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          facingMode: 'user'
+          height: { ideal: 1080 }
         },
         audio: false
       };
-
-      // Add deviceId constraint if a specific camera was selected
-      if (selectedDeviceId) {
-        constraints.video.deviceId = { exact: selectedDeviceId };
-      }
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
@@ -178,17 +232,135 @@ function ExamInterface() {
         streamRef.current = stream;
       }
 
+      // Add listener for stream disconnection
+      stream.getTracks().forEach(track => {
+        track.addEventListener('ended', () => {
+          console.log('Camera stream disconnected');
+          setWaitingForUsbCamera(true);
+          setCameraError('');
+          if (videoRef.current) {
+            videoRef.current.srcObject = null;
+          }
+          streamRef.current = null;
+        });
+      });
+
+      // Clear waiting state and error
+      setWaitingForUsbCamera(false);
       setCameraError('');
+      stopUsbCameraPolling();
+
+      // Find camera label for logging
+      const camera = availableCameras.find(c => c.deviceId === targetDeviceId);
+      console.log('Camera started successfully:', camera?.label || 'Unknown Camera');
     } catch (err) {
       console.error('Error accessing camera:', err);
-      setCameraError('Neural visual system initialization failed. Please verify access permissions.');
+      setCameraError('Camera initialization failed. Please verify access permissions.');
+      setWaitingForUsbCamera(false);
     }
+  };
+
+  // Select and switch to a different camera
+  const selectCamera = async (deviceId) => {
+    console.log('Selecting camera with deviceId:', deviceId);
+    setSelectedCameraId(deviceId);
+    setShowCameraDropdown(false);
+    setCaptureMode('camera'); // Ensure we're in camera mode
+    stopCamera();
+    await startCamera(deviceId);
+    console.log('Camera switched successfully');
   };
 
   const stopCamera = () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
+    }
+  };
+
+  // Start polling for USB camera detection
+  const startUsbCameraPolling = () => {
+    // Clear any existing interval first
+    stopUsbCameraPolling();
+
+    console.log('Starting USB camera polling...');
+
+    // Check for USB camera every 2 seconds
+    usbCameraCheckIntervalRef.current = setInterval(async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+
+        // Look for USB camera
+        const usbCamera = videoDevices.find(device => {
+          const label = device.label.toLowerCase();
+          return !label.includes('built-in') &&
+                 !label.includes('facetime') &&
+                 !label.includes('integrated');
+        });
+
+        // If USB camera detected, start it
+        if (usbCamera) {
+          console.log('USB camera detected during polling:', usbCamera.label);
+          stopUsbCameraPolling();
+          startCamera(); // This will handle starting the camera
+        }
+      } catch (err) {
+        console.error('Error checking for USB camera:', err);
+      }
+    }, 2000); // Check every 2 seconds
+  };
+
+  // Stop polling for USB camera
+  const stopUsbCameraPolling = () => {
+    if (usbCameraCheckIntervalRef.current) {
+      clearInterval(usbCameraCheckIntervalRef.current);
+      usbCameraCheckIntervalRef.current = null;
+      console.log('USB camera polling stopped');
+    }
+  };
+
+  // Start screen capture with surface type preference
+  // surfaceType: 'browser' (tab), 'window', or 'monitor' (entire screen)
+  const startScreenCapture = async (surfaceType = 'monitor') => {
+    try {
+      console.log(`Starting screen capture with preference: ${surfaceType}...`);
+
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          displaySurface: surfaceType, // Preference hint: 'browser', 'window', or 'monitor'
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30 }
+        },
+        audio: false,
+        selfBrowserSurface: 'exclude', // Don't show current tab as option
+        surfaceSwitching: 'exclude'    // Don't allow switching during capture
+      });
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        streamRef.current = stream;
+      }
+
+      // Add listener for when user stops screen sharing
+      stream.getVideoTracks()[0].addEventListener('ended', () => {
+        console.log('Screen sharing stopped by user');
+        // Switch back to camera mode
+        setCaptureMode('camera');
+        startCamera();
+      });
+
+      // Clear any errors and waiting states
+      setWaitingForUsbCamera(false);
+      setCameraError('');
+      stopUsbCameraPolling(); // Stop USB camera polling if running
+
+      console.log('Screen capture started successfully');
+    } catch (err) {
+      console.error('Error starting screen capture:', err);
+      // Silently switch back to camera mode on error (no popup)
+      setCaptureMode('camera');
     }
   };
 
@@ -252,9 +424,9 @@ function ExamInterface() {
     try {
       console.log(`📸 ${testingMode ? 'Using sample stream' : 'Capturing frame'} for button:`, buttonId);
 
-      // Determine which button to use based on detailedAnswer checkbox
+      // Always use detailed MCQ prompt
       let effectiveButtonId = buttonId;
-      if (detailedAnswer && buttonId === 'unified-mcq') {
+      if (buttonId === 'unified-mcq') {
         effectiveButtonId = 'unified-mcq-detailed';
       }
 
@@ -500,6 +672,16 @@ function ExamInterface() {
         />
       )}
 
+      {/* Capture Mode Indicator Badge */}
+      {!testingMode && (
+        <div className="capture-mode-badge">
+          {captureMode === 'camera' && '📷 Camera'}
+          {captureMode === 'tab' && '🌐 Tab Capture'}
+          {captureMode === 'window' && '🪟 Window Capture'}
+          {captureMode === 'screen' && '🖥️ Entire Screen'}
+        </div>
+      )}
+
       {/* Camera error overlay */}
       {cameraError && (
         <div className="camera-error-overlay">
@@ -509,6 +691,18 @@ function ExamInterface() {
             <button onClick={startCamera} className="retry-btn">
               Retry Camera
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* USB Stream Waiting Overlay */}
+      {waitingForUsbCamera && !cameraError && (
+        <div className="camera-waiting-overlay">
+          <div className="waiting-message">
+            <div className="waiting-spinner"></div>
+            <h2>Initializing External Visual Stream</h2>
+            <p>Connect your external stream source to activate neural processing</p>
+            <p className="waiting-hint">AI detection engine scanning for stream input...</p>
           </div>
         </div>
       )}
@@ -526,126 +720,263 @@ function ExamInterface() {
           cursor: !dockedSide && !isResizing ? 'move' : undefined,
         }}
       >
-        {/* Unified Top Controls Bar */}
-        <div className="unified-controls-bar">
-          {/* Theme Controls Section */}
-          <div className="controls-section theme-section">
+        {/* Mokita Brand Header */}
+        <div className="mokita-brand-header">
+          <span className="mokita-logo">Mokita ai</span>
+        </div>
+
+        {/* Tab-style Controls Bar */}
+        <div className="panel-tabs-bar">
+          {/* Theme Tabs */}
+          <div className="panel-tab-group">
             <button
-              className={`control-icon-btn ${panelTheme === 'light' ? 'active' : ''}`}
+              className={`panel-tab ${panelTheme === 'light' ? 'active' : ''}`}
               onClick={() => setPanelTheme('light')}
               title="Light theme"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="5"/>
                 <line x1="12" y1="1" x2="12" y2="3"/>
                 <line x1="12" y1="21" x2="12" y2="23"/>
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                <line x1="1" y1="12" x2="3" y2="12"/>
-                <line x1="21" y1="12" x2="23" y2="12"/>
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
               </svg>
+              <span>Light</span>
             </button>
             <button
-              className={`control-icon-btn ${panelTheme === 'dark' ? 'active' : ''}`}
+              className={`panel-tab ${panelTheme === 'dark' ? 'active' : ''}`}
               onClick={() => setPanelTheme('dark')}
               title="Dark theme"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
               </svg>
+              <span>Dark</span>
             </button>
             <button
-              className={`control-icon-btn ${panelTheme === 'transparent' ? 'active' : ''}`}
+              className={`panel-tab ${panelTheme === 'transparent' ? 'active' : ''}`}
               onClick={() => setPanelTheme('transparent')}
               title="Transparent theme"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="18" height="18" rx="2"/>
-                <line x1="3" y1="9" x2="21" y2="9"/>
-                <line x1="9" y1="21" x2="9" y2="9"/>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" strokeDasharray="4 2"/>
               </svg>
+              <span>Glass</span>
             </button>
           </div>
 
-          {/* Visual Separator */}
-          <div className="controls-separator"></div>
-
-          {/* Dock Controls Section */}
-          <div className="controls-section dock-section">
+          {/* Dock Tabs */}
+          <div className="panel-tab-group">
             {dockedSide && (
               <button
-                className="control-icon-btn undock-btn"
+                className="panel-tab"
                 onClick={() => setDockedSide(null)}
                 title="Float panel"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="5" y="5" width="14" height="14" rx="2" />
-                  <path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" strokeLinecap="round"/>
                 </svg>
+                <span>Float</span>
               </button>
             )}
             <button
-              className={`control-icon-btn ${dockedSide === 'left' ? 'active' : ''}`}
+              className={`panel-tab ${dockedSide === 'left' ? 'active' : ''}`}
               onClick={() => movePanel('left')}
               title="Dock to left"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="3" y="3" width="18" height="18" rx="2" />
                 <line x1="9" y1="3" x2="9" y2="21" />
               </svg>
             </button>
             <button
-              className={`control-icon-btn ${dockedSide === 'bottom' ? 'active' : ''}`}
+              className={`panel-tab ${dockedSide === 'bottom' ? 'active' : ''}`}
               onClick={() => movePanel('down')}
               title="Dock to bottom"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="3" y="3" width="18" height="18" rx="2" />
                 <line x1="3" y1="15" x2="21" y2="15" />
               </svg>
             </button>
             <button
-              className={`control-icon-btn ${dockedSide === 'right' ? 'active' : ''}`}
+              className={`panel-tab ${dockedSide === 'right' ? 'active' : ''}`}
               onClick={() => movePanel('right')}
               title="Dock to right"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="3" y="3" width="18" height="18" rx="2" />
                 <line x1="15" y1="3" x2="15" y2="21" />
               </svg>
             </button>
             <button
-              className={`control-icon-btn ${dockedSide === 'top' ? 'active' : ''}`}
+              className={`panel-tab ${dockedSide === 'top' ? 'active' : ''}`}
               onClick={() => movePanel('up')}
               title="Dock to top"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="3" y="3" width="18" height="18" rx="2" />
                 <line x1="3" y1="9" x2="21" y2="9" />
               </svg>
             </button>
           </div>
 
-          {/* Visual Separator */}
-          <div className="controls-separator"></div>
-
-          {/* Settings Section */}
-          <div className="controls-section settings-section">
+          {/* Settings Tab */}
+          <div className="panel-tab-group">
             <button
-              className={`control-icon-btn ${showSettings ? 'active' : ''}`}
+              className={`panel-tab ${showSettings ? 'active' : ''}`}
               onClick={() => setShowSettings(!showSettings)}
               title="Settings"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="3"/>
-                <path d="M12 1v6m0 6v6m5.5-13.5l-4.24 4.24M10.74 13.26L6.5 17.5m11-11l-4.24 4.24M13.26 13.26l4.24 4.24"/>
-                <path d="M1 12h6m6 0h6"/>
+                <path d="M12 1v4m0 14v4m-7.07-15.07l2.83 2.83m8.48 8.48l2.83 2.83M1 12h4m14 0h4m-15.07 7.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
               </svg>
+              <span>Settings</span>
             </button>
           </div>
         </div>
+
+        {/* Capture Mode Selector Bar */}
+        {!testingMode && (
+          <div className="capture-mode-bar">
+            {/* Window option */}
+            <label className="capture-mode-option">
+              <input
+                type="radio"
+                name="captureMode"
+                value="window"
+                checked={captureMode === 'window'}
+                onChange={() => {
+                  setCaptureMode('window');
+                  stopCamera();
+                  startScreenCapture('window');
+                }}
+              />
+              <span className="capture-mode-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  <line x1="3" y1="9" x2="21" y2="9"/>
+                  <line x1="9" y1="21" x2="9" y2="9"/>
+                </svg>
+                Window
+              </span>
+            </label>
+
+            {/* Tab option */}
+            <label className="capture-mode-option">
+              <input
+                type="radio"
+                name="captureMode"
+                value="tab"
+                checked={captureMode === 'tab'}
+                onChange={() => {
+                  setCaptureMode('tab');
+                  stopCamera();
+                  startScreenCapture('browser');
+                }}
+              />
+              <span className="capture-mode-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="2" y="4" width="20" height="16" rx="2"/>
+                  <path d="M2 8h20"/>
+                  <circle cx="5" cy="6" r="1" fill="currentColor"/>
+                  <circle cx="8" cy="6" r="1" fill="currentColor"/>
+                </svg>
+                Tab
+              </span>
+            </label>
+
+            {/* Entire Screen option */}
+            <label className="capture-mode-option">
+              <input
+                type="radio"
+                name="captureMode"
+                value="screen"
+                checked={captureMode === 'screen'}
+                onChange={() => {
+                  setCaptureMode('screen');
+                  stopCamera();
+                  startScreenCapture('monitor');
+                }}
+              />
+              <span className="capture-mode-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                  <line x1="8" y1="21" x2="16" y2="21"/>
+                  <line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+                Screen
+              </span>
+            </label>
+
+            {/* Camera option with dropdown */}
+            <div className={`capture-mode-option camera-option ${captureMode === 'camera' ? 'selected' : ''}`}>
+              <input
+                type="radio"
+                name="captureMode"
+                value="camera"
+                checked={captureMode === 'camera'}
+                onChange={() => {
+                  setCaptureMode('camera');
+                  stopCamera();
+                  startCamera();
+                }}
+              />
+              <span className="capture-mode-label" onClick={() => {
+                if (captureMode !== 'camera') {
+                  setCaptureMode('camera');
+                  stopCamera();
+                  startCamera();
+                }
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+                Camera
+              </span>
+              <button
+                className="camera-dropdown-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowCameraDropdown(!showCameraDropdown);
+                }}
+                title="Select camera"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </button>
+              {/* Camera dropdown menu */}
+              {showCameraDropdown && (
+                <div className="camera-dropdown-menu" onClick={(e) => e.stopPropagation()}>
+                  {availableCameras.length > 0 ? (
+                    availableCameras.map((camera, index) => (
+                      <div
+                        key={camera.deviceId}
+                        className={`camera-option-item ${selectedCameraId === camera.deviceId ? 'selected' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          console.log('Camera item clicked:', camera.label, camera.deviceId);
+                          selectCamera(camera.deviceId);
+                        }}
+                      >
+                        {selectedCameraId === camera.deviceId && (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        )}
+                        <span>{camera.label || `Camera ${index + 1}`}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="camera-option-item disabled">No cameras found</div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Panel Content */}
         <div className="panel-content">
@@ -665,7 +996,7 @@ function ExamInterface() {
                     <span className="toggle-slider"></span>
                   </label>
                   <span className="toggle-label">
-                    {testingMode ? '🧪 Testing Mode (Sample Streams)' : '📷 Live Stream Mode'}
+                    {testingMode ? '🧪 Testing Mode (Sample Streams)' : '📷 Live Mode'}
                   </span>
                 </div>
 
@@ -710,27 +1041,16 @@ function ExamInterface() {
               </div>
             )}
 
-            {/* Detailed Answer Checkbox and Language Selector - Always Visible */}
-            <div className="exam-options-row">
-              <div className="detailed-answer-checkbox">
-                <label className="checkbox-option">
-                  <input
-                    type="checkbox"
-                    checked={detailedAnswer}
-                    onChange={(e) => setDetailedAnswer(e.target.checked)}
-                  />
-                  <span className="checkbox-label">Detailed</span>
-                </label>
-              </div>
-
+            {/* Language Selector - Inline Bar */}
+            <div className="exam-options-bar">
               {/* Programming Language Selector with Autocomplete */}
-              <div className="language-selector">
-                <label className="language-label">💻</label>
-                <div className="language-autocomplete">
+              <div className="language-selector-inline">
+                <span className="language-label-inline">Lang:</span>
+                <div className="language-autocomplete-inline">
                   <input
                     type="text"
-                    className="language-input"
-                    placeholder="Type or select language..."
+                    className="language-input-inline"
+                    placeholder="Python"
                     value={languageInput}
                     onChange={(e) => {
                       setLanguageInput(e.target.value);
@@ -776,7 +1096,6 @@ function ExamInterface() {
                   disabled={isLoadingAI}
                   title={button.description}
                 >
-                  <span className="btn-icon">{button.icon}</span>
                   <span className="btn-label">{button.label}</span>
                 </button>
               ))}

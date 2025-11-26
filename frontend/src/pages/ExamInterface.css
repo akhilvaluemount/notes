@@ -4,14 +4,78 @@
   left: 0;
   width: 100vw;
   height: 100vh;
+  /* padding: 5px; */
   background: #000;
   overflow: hidden;
+  /* AI-styled gradient border */
+  border: 7px solid transparent;
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 0 0 6px rgba(102, 126, 234, 0.95),
+    inset 0 0 30px rgba(102, 126, 234, 0.7),
+    inset 0 0 50px rgba(102, 126, 234, 0.4),
+    0 0 40px rgba(102, 126, 234, 0.8),
+    0 0 60px rgba(102, 126, 234, 0.6),
+    0 0 80px rgba(102, 126, 234, 0.4);
+  animation: borderPulse 3s ease-in-out infinite;
+}
+
+@keyframes borderPulse {
+  0%, 100% {
+    box-shadow:
+      inset 0 0 0 6px rgba(102, 126, 234, 0.95),
+      inset 0 0 30px rgba(102, 126, 234, 0.7),
+      inset 0 0 50px rgba(102, 126, 234, 0.4),
+      0 0 40px rgba(102, 126, 234, 0.8),
+      0 0 60px rgba(102, 126, 234, 0.6),
+      0 0 80px rgba(102, 126, 234, 0.4);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 6px rgba(118, 75, 162, 1),
+      inset 0 0 35px rgba(118, 75, 162, 0.8),
+      inset 0 0 60px rgba(118, 75, 162, 0.5),
+      0 0 50px rgba(118, 75, 162, 0.9),
+      0 0 70px rgba(118, 75, 162, 0.7),
+      0 0 90px rgba(118, 75, 162, 0.5);
+  }
 }
 
 .exam-camera-feed {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* Capture Mode Badge */
+.capture-mode-badge {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  backdrop-filter: blur(10px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  animation: badgeFadeIn 0.3s ease-out;
+}
+
+@keyframes badgeFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .camera-error-overlay {
@@ -59,6 +123,79 @@
 .retry-btn:hover {
   background: #3182ce;
   transform: translateY(-1px);
+}
+
+/* USB Camera Waiting Overlay */
+.camera-waiting-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.camera-waiting-overlay .waiting-message {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 3rem 2.5rem;
+  border-radius: 16px;
+  text-align: center;
+  max-width: 450px;
+  box-shadow: 0 20px 60px rgba(102, 126, 234, 0.4);
+  animation: fadeInScale 0.4s ease-out;
+  pointer-events: auto;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.camera-waiting-overlay h2 {
+  color: #ffffff;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.camera-waiting-overlay p {
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+}
+
+.camera-waiting-overlay .waiting-hint {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.875rem;
+  margin-bottom: 0;
+  font-style: italic;
+}
+
+.waiting-spinner {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 1.5rem;
+  border: 4px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Control Panel */
@@ -271,98 +408,141 @@
   user-select: none;
 }
 
-/* Exam Options Row - Contains checkbox and language selector */
-.exam-options-row {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-  flex-wrap: wrap;
-}
-
-/* Detailed Answer Checkbox */
-.detailed-answer-checkbox {
-  display: flex;
-  flex: 1;
-  min-width: 150px;
-  padding: 0.75rem;
-  background: #f7fafc;
-  border-radius: 8px;
-  border: 2px solid #e2e8f0;
-}
-
-.checkbox-option {
+/* Exam Options Bar - Inline compact style like capture mode bar */
+.exam-options-bar {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
+  justify-content: center;
+  gap: 4px;
+  background: rgba(247, 250, 252, 0.95);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-.checkbox-option input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+/* Option Tab (Detailed checkbox) */
+.option-tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.option-tab:hover {
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.option-tab input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
   cursor: pointer;
   accent-color: #667eea;
 }
 
-.checkbox-label {
-  font-size: 0.9rem;
+.option-tab-label {
+  font-size: 0.7rem;
   font-weight: 600;
-  color: #2d3748;
+  color: #4a5568;
   user-select: none;
-  line-height: 1;
-  display: flex;
-  align-items: center;
 }
 
-/* Language Selector */
-.language-selector {
-  flex: 1;
-  min-width: 150px;
-  padding: 0.75rem;
-  background: #f7fafc;
-  border-radius: 8px;
-  border: 2px solid #e2e8f0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.option-tab:has(input:checked) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
-.language-label {
-  font-size: 0.85rem;
+.option-tab:has(input:checked) .option-tab-label {
+  color: white;
+}
+
+/* Option Separator */
+.option-separator {
+  width: 1px;
+  height: 16px;
+  background: rgba(226, 232, 240, 0.8);
+  margin: 0 4px;
+}
+
+/* Language Selector Inline */
+.language-selector-inline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.language-label-inline {
+  font-size: 0.7rem;
   font-weight: 600;
   color: #4a5568;
   white-space: nowrap;
 }
 
-/* Language Autocomplete */
-.language-autocomplete {
+/* Language Autocomplete Inline */
+.language-autocomplete-inline {
   position: relative;
-  flex: 1;
-  min-width: 120px;
 }
 
-.language-input {
-  width: 100%;
-  padding: 0.4rem 0.6rem;
+.language-input-inline {
+  width: 70px;
+  padding: 4px 6px;
   background: white;
-  border: 2px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 0.85rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 0.7rem;
   font-weight: 500;
   color: #2d3748;
   outline: none;
   transition: all 0.2s;
 }
 
-.language-input:focus {
+.language-input-inline:focus {
   border-color: #667eea;
   background: #f8faff;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+  width: 100px;
 }
 
-.language-input::placeholder {
+.language-input-inline::placeholder {
   color: #a0aec0;
   font-weight: 400;
+}
+
+/* Dark theme for exam options bar */
+.control-panel.panel-theme-dark .exam-options-bar {
+  background: rgba(45, 55, 72, 0.95);
+  border-color: rgba(74, 85, 104, 0.4);
+}
+
+.control-panel.panel-theme-dark .option-tab-label,
+.control-panel.panel-theme-dark .language-label-inline {
+  color: #a0aec0;
+}
+
+.control-panel.panel-theme-dark .option-separator {
+  background: rgba(74, 85, 104, 0.6);
+}
+
+.control-panel.panel-theme-dark .language-input-inline {
+  background: rgba(45, 55, 72, 0.8);
+  border-color: rgba(74, 85, 104, 0.6);
+  color: #e2e8f0;
+}
+
+/* Transparent theme for exam options bar */
+.control-panel.panel-theme-transparent .exam-options-bar {
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+  border-color: rgba(226, 232, 240, 0.3);
+}
+
+.control-panel.panel-theme-transparent .option-separator {
+  background: rgba(226, 232, 240, 0.5);
 }
 
 /* Suggestions Menu */
@@ -449,33 +629,32 @@
 /* Exam Action Buttons */
 .exam-action-buttons {
   display: flex;
-  gap: 0.4rem;
+  gap: 4px;
   flex-wrap: wrap;
-  padding: 0.5rem 0;
+  padding: 0.4rem 0;
 }
 
 .exam-action-btn {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.5rem 0.75rem;
+  justify-content: center;
+  padding: 4px 10px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
-  border-radius: 6px;
-  font-size: 0.75rem;
+  border-radius: 5px;
+  font-size: 0.7rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 1px 4px rgba(102, 126, 234, 0.3);
   flex: 1;
-  min-width: 90px;
-  justify-content: center;
+  min-width: 70px;
 }
 
 .exam-action-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
 }
 
 .exam-action-btn:active:not(:disabled) {
@@ -487,22 +666,187 @@
   cursor: not-allowed;
 }
 
-.exam-action-btn .btn-icon {
-  font-size: 1rem;
-}
-
 .exam-action-btn .btn-label {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
 }
 
 /* AI Response Wrapper */
 .exam-ai-response-wrapper {
-  background: white;
-  border-radius: 12px;
+  background: rgba(247, 250, 252, 0.95);
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  max-height: 500px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  max-height: 300px;
   overflow-y: auto;
+  margin-top: 4px;
+}
+
+/* Compact styling for FormattedResponse inside exam panel */
+.exam-ai-response-wrapper .formatted-response {
+  padding: 8px;
+}
+
+.exam-ai-response-wrapper .response-section {
+  margin-bottom: 6px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  box-shadow: none;
+  border: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+.exam-ai-response-wrapper .section-header {
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+  gap: 6px;
+}
+
+.exam-ai-response-wrapper .section-header h3 {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.exam-ai-response-wrapper .section-icon {
+  font-size: 0.9rem;
+}
+
+.exam-ai-response-wrapper .section-icon svg {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+}
+
+.exam-ai-response-wrapper .section-content {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.exam-ai-response-wrapper .section-content p {
+  margin: 4px 0;
+  font-size: 0.75rem;
+}
+
+.exam-ai-response-wrapper .fr-list {
+  margin: 4px 0;
+  padding-left: 16px;
+}
+
+.exam-ai-response-wrapper .fr-list li {
+  margin: 2px 0;
+  font-size: 0.75rem;
+}
+
+/* Clean, minimal answer display - hide icons and use neutral colors */
+.exam-ai-response-wrapper .section-icon {
+  display: none !important;
+}
+
+.exam-ai-response-wrapper .response-section {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.5) !important;
+  border-radius: 0 !important;
+  padding: 6px 8px !important;
+  margin-bottom: 4px !important;
+}
+
+/* Highlight the ANSWER section (first section) - text highlight style */
+.exam-ai-response-wrapper .response-section:first-child .section-header h3 {
+  color: #667eea !important;
+  font-weight: 700 !important;
+}
+
+.exam-ai-response-wrapper .response-section:first-child .section-content {
+  color: #2d3748 !important;
+  font-size: 0.85rem !important;
+}
+
+/* Answer with circle badge styling */
+.exam-ai-response-wrapper .answer-with-badge {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.exam-ai-response-wrapper .answer-letter-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  background: #10b981 !important;
+  color: white !important;
+  font-weight: 700 !important;
+  font-size: 0.8rem !important;
+  border-radius: 50% !important;
+  flex-shrink: 0 !important;
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.3) !important;
+}
+
+.exam-ai-response-wrapper .response-section:last-child {
+  border-bottom: none !important;
+}
+
+.exam-ai-response-wrapper .section-header {
+  border-bottom: none !important;
+}
+
+.exam-ai-response-wrapper .section-header h3 {
+  color: #4a5568 !important;
+  font-size: 0.7rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.exam-ai-response-wrapper .section-content {
+  color: #2d3748 !important;
+}
+
+/* Dark theme clean display */
+.control-panel.panel-theme-dark .exam-ai-response-wrapper .section-header h3 {
+  color: #a0aec0 !important;
+}
+
+.control-panel.panel-theme-dark .exam-ai-response-wrapper .section-content {
+  color: #e2e8f0 !important;
+}
+
+.control-panel.panel-theme-dark .exam-ai-response-wrapper .response-section {
+  border-bottom-color: rgba(74, 85, 104, 0.4) !important;
+}
+
+/* Dark theme - highlighted answer text */
+.control-panel.panel-theme-dark .exam-ai-response-wrapper .response-section:first-child .section-header h3 {
+  color: #a3bffa !important;
+}
+
+.control-panel.panel-theme-dark .exam-ai-response-wrapper .response-section:first-child .section-content {
+  color: #a3bffa !important;
+}
+
+/* Dark theme adjustments */
+.control-panel.panel-theme-dark .exam-ai-response-wrapper {
+  background: rgba(45, 55, 72, 0.95);
+  border-color: rgba(74, 85, 104, 0.4);
+}
+
+.control-panel.panel-theme-dark .exam-ai-response-wrapper .response-section {
+  background: rgba(30, 41, 59, 0.8);
+  border-color: rgba(74, 85, 104, 0.4);
+}
+
+/* Transparent theme adjustments */
+.control-panel.panel-theme-transparent .exam-ai-response-wrapper {
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+  border-color: rgba(226, 232, 240, 0.3);
+}
+
+.control-panel.panel-theme-transparent .exam-ai-response-wrapper .response-section {
+  background: rgba(255, 255, 255, 0.4);
+  border-color: rgba(226, 232, 240, 0.4);
 }
 
 .exam-ai-response-wrapper::-webkit-scrollbar {
@@ -1523,9 +1867,392 @@
   }
 }
 
-/* Unified Top Controls Bar */
-.unified-controls-bar {
+/* Capture Mode Selector Bar */
+.capture-mode-bar {
   display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: rgba(247, 250, 252, 0.95);
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  padding: 6px 8px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+
+.capture-mode-option {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  justify-content: center;
+}
+
+.capture-mode-option input[type="radio"] {
+  display: none;
+}
+
+.capture-mode-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #4a5568;
+  background: transparent;
+  transition: all 0.2s ease;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.capture-mode-option input[type="radio"]:checked + .capture-mode-label {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.capture-mode-option:hover .capture-mode-label {
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.capture-mode-option input[type="radio"]:checked + .capture-mode-label:hover {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.capture-mode-label svg {
+  flex-shrink: 0;
+}
+
+/* Camera option with dropdown */
+.capture-mode-option.camera-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.capture-mode-option.camera-option .capture-mode-label {
+  border-radius: 6px 0 0 6px;
+  padding-right: 6px;
+}
+
+.capture-mode-option.camera-option.selected .capture-mode-label {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.camera-dropdown-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 6px;
+  background: rgba(102, 126, 234, 0.1);
+  border: none;
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+  color: #4a5568;
+  transition: all 0.2s ease;
+  height: 100%;
+}
+
+.capture-mode-option.camera-option.selected .camera-dropdown-btn {
+  background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+  color: white;
+}
+
+.camera-dropdown-btn:hover {
+  background: rgba(102, 126, 234, 0.2);
+}
+
+.capture-mode-option.camera-option.selected .camera-dropdown-btn:hover {
+  background: linear-gradient(135deg, #4f5fc4 0%, #5a3780 100%);
+}
+
+/* Camera dropdown menu */
+.camera-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 100%;
+  width: max-content;
+  background: white;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  animation: dropdownSlideIn 0.15s ease-out;
+  overflow: hidden;
+  pointer-events: auto !important;
+}
+
+@keyframes dropdownSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.camera-option-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  color: #2d3748;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+  user-select: none;
+  position: relative;
+  z-index: 10000;
+  pointer-events: auto !important;
+}
+
+.camera-option-item:last-child {
+  border-bottom: none;
+}
+
+.camera-option-item:hover {
+  background: rgba(102, 126, 234, 0.08);
+}
+
+.camera-option-item.selected {
+  background: rgba(102, 126, 234, 0.12);
+  color: #667eea;
+  font-weight: 500;
+}
+
+.camera-option-item.selected svg {
+  color: #667eea;
+}
+
+.camera-option-item.disabled {
+  color: #a0aec0;
+  cursor: not-allowed;
+  font-style: italic;
+}
+
+.camera-option-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Dark theme for camera dropdown */
+.control-panel.panel-theme-dark .camera-dropdown-btn {
+  background: rgba(102, 126, 234, 0.2);
+  color: #cbd5e0;
+}
+
+.control-panel.panel-theme-dark .camera-dropdown-menu {
+  background: rgba(45, 55, 72, 0.98);
+  border-color: rgba(74, 85, 104, 0.4);
+}
+
+.control-panel.panel-theme-dark .camera-option-item {
+  color: #e2e8f0;
+  border-bottom-color: rgba(74, 85, 104, 0.3);
+}
+
+.control-panel.panel-theme-dark .camera-option-item:hover {
+  background: rgba(102, 126, 234, 0.15);
+}
+
+.control-panel.panel-theme-dark .camera-option-item.selected {
+  background: rgba(102, 126, 234, 0.25);
+  color: #a3bffa;
+}
+
+/* Transparent theme for camera dropdown */
+.control-panel.panel-theme-transparent .camera-dropdown-menu {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(15px);
+}
+
+/* Dark theme for capture mode bar */
+.control-panel.panel-theme-dark .capture-mode-bar {
+  background: rgba(45, 55, 72, 0.95);
+  border-color: rgba(74, 85, 104, 0.4);
+}
+
+.control-panel.panel-theme-dark .capture-mode-label {
+  color: #cbd5e0;
+}
+
+.control-panel.panel-theme-dark .capture-mode-option:hover .capture-mode-label {
+  background: rgba(102, 126, 234, 0.2);
+}
+
+/* Transparent theme for capture mode bar */
+.control-panel.panel-theme-transparent .capture-mode-bar {
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+  border-color: rgba(226, 232, 240, 0.3);
+}
+
+/* Responsive adjustments for capture mode bar */
+@media (max-width: 480px) {
+  .capture-mode-bar {
+    gap: 4px;
+    padding: 6px 8px;
+  }
+
+  .capture-mode-label {
+    padding: 5px 8px;
+    font-size: 0.7rem;
+    gap: 4px;
+  }
+
+  .capture-mode-label svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* Mokita Brand Header */
+.mokita-brand-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.mokita-logo {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* Dark theme Mokita header */
+.control-panel.panel-theme-dark .mokita-brand-header {
+  background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+}
+
+/* Transparent theme Mokita header */
+.control-panel.panel-theme-transparent .mokita-brand-header {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.8) 0%, rgba(118, 75, 162, 0.8) 100%);
+  backdrop-filter: blur(10px);
+}
+
+/* Panel Tabs Bar - Similar to Capture Mode Bar */
+.panel-tabs-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: rgba(247, 250, 252, 0.95);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  padding: 4px 6px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+  flex-wrap: wrap;
+}
+
+.panel-tab-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px;
+  border-right: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+.panel-tab-group:last-child {
+  border-right: none;
+}
+
+.panel-tab {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: #4a5568;
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.panel-tab:hover {
+  background: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+}
+
+.panel-tab.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+}
+
+.panel-tab svg {
+  flex-shrink: 0;
+}
+
+.panel-tab span {
+  display: none;
+}
+
+/* Show text labels when panel is wider */
+@media (min-width: 350px) {
+  .panel-tab span {
+    display: inline;
+  }
+}
+
+/* Dark theme Panel Tabs */
+.control-panel.panel-theme-dark .panel-tabs-bar {
+  background: rgba(45, 55, 72, 0.95);
+  border-color: rgba(74, 85, 104, 0.4);
+}
+
+.control-panel.panel-theme-dark .panel-tab-group {
+  border-color: rgba(74, 85, 104, 0.4);
+}
+
+.control-panel.panel-theme-dark .panel-tab {
+  color: #a0aec0;
+}
+
+.control-panel.panel-theme-dark .panel-tab:hover {
+  background: rgba(102, 126, 234, 0.2);
+  color: #90cdf4;
+}
+
+/* Transparent theme Panel Tabs */
+.control-panel.panel-theme-transparent .panel-tabs-bar {
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+  border-color: rgba(226, 232, 240, 0.3);
+}
+
+.control-panel.panel-theme-transparent .panel-tab-group {
+  border-color: rgba(226, 232, 240, 0.3);
+}
+
+/* Unified Top Controls Bar - HIDDEN (replaced by panel-tabs-bar) */
+.unified-controls-bar {
+  display: none;
   align-items: stretch; /* Changed from center to stretch for full height */
   justify-content: center;
   gap: 0;

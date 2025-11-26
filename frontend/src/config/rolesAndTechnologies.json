@@ -1,6 +1,11 @@
 {
   "roles": [
     {
+      "id": "fresher",
+      "name": "Fresher (B.Tech Graduate)",
+      "technologies": "Data Structures, Algorithms, SQL, HTML, CSS, JavaScript, Git"
+    },
+    {
       "id": "ui/frontend developer",
       "name": "ui/frontend developer",
       "technologies": "HTML, CSS, SCSS, Bootstrap, JavaScript, TypeScript, Angular"
