@@ -9,6 +9,8 @@ const multer = require('multer');
 const connectDB = require('./config/database');
 const sessionsRouter = require('./routes/sessions');
 const keywordAnswersRouter = require('./routes/keywordAnswers');
+const authRouter = require('./routes/auth');
+const usersRouter = require('./routes/users');
 require('dotenv').config();
 
 const app = express();
@@ -119,6 +121,8 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' })); // Increase JSON limit for base64 images
 
 // Routes
+app.use('/api/auth', authRouter);
+app.use('/api/users', usersRouter);
 app.use('/api/sessions', sessionsRouter);
 app.use('/api/keyword-answers', keywordAnswersRouter);
 

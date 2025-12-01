@@ -154,3 +154,14 @@ All routes available at `/api/*`:
 ## License
 
 MIT
+
+
+
+| Role    | Email               | Password   |
+|---------|---------------------|------------|
+| Admin   | admin@example.com   | admin123   |
+| Premium | premium@example.com | premium123 |
+| Free    | free@example.com    | free123    |
+
+Email: exam@example.com  Password: exam123  Role: exam
+

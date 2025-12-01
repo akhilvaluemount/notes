@@ -1,8 +1,14 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import InterviewDashboard from './pages/InterviewDashboard';
 import InterviewInterface from './pages/InterviewInterface';
 import ExamInterface from './pages/ExamInterface';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import AdminDashboard from './pages/AdminDashboard';
+import ExamDashboard from './pages/ExamDashboard';
 import NotesView from './components/NotesView';
 import KeywordManager from './components/KeywordManager';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -11,30 +17,70 @@ import './App.css';
 function App() {
   return (
     <ErrorBoundary>
-      <Router>
-        <div className="App">
-          <Routes>
-            {/* Dashboard route - shows all sessions */}
-            <Route path="/" element={<InterviewDashboard />} />
+      <AuthProvider>
+        <Router>
+          <div className="App">
+            <Routes>
+              {/* Auth routes - public */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
 
-            {/* Interview interface route - handles specific session */}
-            <Route path="/interview/:sessionId" element={<InterviewInterface />} />
+              {/* Dashboard route - protected */}
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <InterviewDashboard />
+                </ProtectedRoute>
+              } />
 
-            {/* Exam interface route - handles exam sessions */}
-            <Route path="/exam/:examId" element={<ExamInterface />} />
+              {/* Interview interface route - protected */}
+              <Route path="/interview/:sessionId" element={
+                <ProtectedRoute>
+                  <InterviewInterface />
+                </ProtectedRoute>
+              } />
 
-            {/* Notes view route - for formatted AI responses in new tab */}
-            <Route path="/notes" element={<NotesView />} />
+              {/* Exam interface route - protected, requires exam access */}
+              <Route path="/exam/:examId" element={
+                <ProtectedRoute requireExamAccess allowExamOnly>
+                  <ExamInterface />
+                </ProtectedRoute>
+              } />
 
-            {/* Keyword Manager routes */}
-            <Route path="/keywords" element={<KeywordManager />} />
-            <Route path="/keywords/:sessionId" element={<KeywordManager />} />
+              {/* Exam Dashboard for exam-only users */}
+              <Route path="/exam-dashboard" element={
+                <ProtectedRoute allowExamOnly>
+                  <ExamDashboard />
+                </ProtectedRoute>
+              } />
 
-            {/* Redirect any unknown routes to dashboard */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </div>
-      </Router>
+              {/* Admin Dashboard - admin only */}
+              <Route path="/admin" element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } />
+
+              {/* Notes view route - for formatted AI responses in new tab */}
+              <Route path="/notes" element={<NotesView />} />
+
+              {/* Keyword Manager routes - protected */}
+              <Route path="/keywords" element={
+                <ProtectedRoute>
+                  <KeywordManager />
+                </ProtectedRoute>
+              } />
+              <Route path="/keywords/:sessionId" element={
+                <ProtectedRoute>
+                  <KeywordManager />
+                </ProtectedRoute>
+              } />
+
+              {/* Redirect any unknown routes to dashboard */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </div>
+        </Router>
+      </AuthProvider>
     </ErrorBoundary>
   );
 }

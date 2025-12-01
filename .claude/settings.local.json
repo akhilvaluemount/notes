@@ -32,7 +32,8 @@
       "Bash(npm run electron-dev:*)",
       "Bash(pgrep:*)",
       "Bash(pkill:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(BROWSER=none npm start)"
     ],
     "deny": [],
     "ask": []

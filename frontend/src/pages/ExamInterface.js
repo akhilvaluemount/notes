@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import buttonConfig from '../config/buttonConfig';
 import FormattedResponse from '../components/FormattedResponse';
+import { useAuth } from '../context/AuthContext';
 import './ExamInterface.css';
 
 // API base URL - same as interview interface
@@ -12,11 +13,14 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || (
 function ExamInterface() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { examId } = useParams();
+  const { user, isExamOnlyUser } = useAuth();
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const panelRef = useRef(null);
 
   const examData = location.state || {};
+  const [mcqCount, setMcqCount] = useState(examData.mcqCount || 0);
   const [cameraError, setCameraError] = useState('');
   const [aiResponse, setAiResponse] = useState('');
   const [isLoadingAI, setIsLoadingAI] = useState(false);
@@ -97,10 +101,15 @@ function ExamInterface() {
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0, panelX: 0, panelY: 0 });
 
-  // Filter buttons for MCQ and Code - only show base buttons, we'll switch prompts based on checkbox
-  const examButtons = buttonConfig.filter(btn =>
-    ['unified-mcq', 'hackerrank-code', 'advanced-analysis'].includes(btn.id)
-  );
+  // Filter buttons - exam role users only see MCQ button
+  const examButtons = buttonConfig.filter(btn => {
+    if (isExamOnlyUser) {
+      // Exam-only users only see MCQ button
+      return btn.id === 'unified-mcq';
+    }
+    // Other users see all exam buttons
+    return ['unified-mcq', 'hackerrank-code', 'advanced-analysis'].includes(btn.id);
+  });
 
   // Enumerate available cameras on mount
   useEffect(() => {
@@ -439,10 +448,32 @@ function ExamInterface() {
     });
   };
 
+  // Helper function to update MCQ count in localStorage
+  const updateMcqCount = (newCount) => {
+    setMcqCount(newCount);
+    // Update in localStorage
+    const stored = localStorage.getItem(`examSessions_${user?.id}`);
+    if (stored) {
+      const sessions = JSON.parse(stored);
+      const updatedSessions = sessions.map(session => {
+        if (session.id === examId) {
+          return { ...session, mcqCount: newCount };
+        }
+        return session;
+      });
+      localStorage.setItem(`examSessions_${user?.id}`, JSON.stringify(updatedSessions));
+    }
+  };
+
   // Handle button click - capture camera and process with AI
   const handleButtonClick = async (buttonId) => {
     setIsLoadingAI(true);
     setAiResponse('');
+
+    // Track MCQ button usage
+    if (buttonId === 'unified-mcq') {
+      updateMcqCount(mcqCount + 1);
+    }
 
     try {
       console.log(`📸 ${testingMode ? 'Using sample stream' : 'Capturing frame'} for button:`, buttonId);
@@ -1105,43 +1136,45 @@ function ExamInterface() {
                 </span>
               </div>
             </div>
-            {/* Language Selector */}
-            <div className="exam-options-bar">
-              <div className="language-selector-inline">
-                <span className="language-label-inline">Lang:</span>
-                <div className="language-autocomplete-inline">
-                  <input
-                    type="text"
-                    className="language-input-inline"
-                    placeholder="Python"
-                    value={languageInput}
-                    onChange={(e) => {
-                      setLanguageInput(e.target.value);
-                      setShowLanguageSuggestions(true);
-                    }}
-                    onFocus={() => setShowLanguageSuggestions(true)}
-                  />
-                  {showLanguageSuggestions && languageInput && filteredLanguages.length > 0 && (
-                    <div className="suggestions-menu">
-                      <div className="suggestions-list">
-                        {filteredLanguages.slice(0, 8).map((lang) => (
-                          <div
-                            key={lang}
-                            className="suggestion-item"
-                            onClick={() => {
-                              setLanguageInput(lang);
-                              setShowLanguageSuggestions(false);
-                            }}
-                          >
-                            <span>{lang}</span>
-                          </div>
-                        ))}
+            {/* Language Selector - Only show when Write Code button is available */}
+            {examButtons.some(btn => btn.id === 'hackerrank-code') && (
+              <div className="exam-options-bar">
+                <div className="language-selector-inline">
+                  <span className="language-label-inline">Lang:</span>
+                  <div className="language-autocomplete-inline">
+                    <input
+                      type="text"
+                      className="language-input-inline"
+                      placeholder="Python"
+                      value={languageInput}
+                      onChange={(e) => {
+                        setLanguageInput(e.target.value);
+                        setShowLanguageSuggestions(true);
+                      }}
+                      onFocus={() => setShowLanguageSuggestions(true)}
+                    />
+                    {showLanguageSuggestions && languageInput && filteredLanguages.length > 0 && (
+                      <div className="suggestions-menu">
+                        <div className="suggestions-list">
+                          {filteredLanguages.slice(0, 8).map((lang) => (
+                            <div
+                              key={lang}
+                              className="suggestion-item"
+                              onClick={() => {
+                                setLanguageInput(lang);
+                                setShowLanguageSuggestions(false);
+                              }}
+                            >
+                              <span>{lang}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
@@ -1352,7 +1385,8 @@ function ExamInterface() {
             )}
 
             {/* Language Selector - Inline Bar - Hidden in Electron (shown in electron-controls-row instead) */}
-            {!isElectron() && (
+            {/* Only show when Write Code button is available */}
+            {!isElectron() && examButtons.some(btn => btn.id === 'hackerrank-code') && (
             <div className="exam-options-bar">
               {/* Programming Language Selector with Autocomplete */}
               <div className="language-selector-inline">
@@ -1411,8 +1445,8 @@ function ExamInterface() {
                   <span className="btn-label">{button.label}</span>
                 </button>
               ))}
-              {/* Type Code Button - Only visible when there's code in response */}
-              {isElectron() && aiResponse && extractCodeFromResponse(aiResponse) && (
+              {/* Type Code Button - Only visible when there's code in response, hidden for exam-only users */}
+              {!isExamOnlyUser && isElectron() && aiResponse && extractCodeFromResponse(aiResponse) && (
                 <button
                   onClick={handleTypeCode}
                   className="exam-action-btn type-code-btn"
@@ -1438,26 +1472,6 @@ function ExamInterface() {
             </div>
           )}
 
-          {/* Captured Image Preview - For Testing */}
-          {capturedImagePreview && (
-            <div className="captured-image-preview">
-              <div className="preview-header">
-                <span>Captured Screenshot</span>
-                <button
-                  className="close-preview-btn"
-                  onClick={() => setCapturedImagePreview(null)}
-                  title="Close preview"
-                >
-                  ✕
-                </button>
-              </div>
-              <img
-                src={capturedImagePreview}
-                alt="Captured screenshot"
-                className="preview-image"
-              />
-            </div>
-          )}
         </div>
 
         {/* Footer with Menu and MOKITA AI */}
