@@ -770,17 +770,7 @@
   margin: 1.5rem 0;
 }
 
-/* Bold section headers - Numbered sections ①②③ */
-.formatted-response p > strong:only-child {
-  display: block;
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #6366f1 !important;
-  margin: 1.25rem 0 0.75rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid #6366f1;
-  letter-spacing: 0.5px;
-}
+/* Bold section headers - Removed special styling to keep consistent look */
 
 /* ============================
    21) Test Results Styling
@@ -859,10 +849,6 @@
     background: #1e1e3f;
   }
 
-  .formatted-response p > strong:only-child {
-    color: #818cf8 !important;
-    border-bottom-color: #818cf8;
-  }
 
   .formatted-response p:has(strong:contains("Time")),
   .formatted-response p:has(strong:contains("Space")),
@@ -889,51 +875,7 @@
    24) Numbered Section Headers (①②③)
    ============================ */
 
-.formatted-response h2 {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #6366f1;
-  margin: 1.5rem 0 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid #e5e7eb;
-  letter-spacing: 0.5px;
-}
-
-/* Circled numbers styling */
-.formatted-response h2:first-letter {
-  font-size: 1.4rem;
-  margin-right: 0.25rem;
-}
-
-/* Section-specific accent colors (optional) */
-.formatted-response h2:has(PROBLEM),
-.formatted-response h2:contains("PROBLEM") {
-  color: #6366f1;
-  border-bottom-color: #6366f1;
-}
-
-.formatted-response h2:has(TEST),
-.formatted-response h2:contains("TEST") {
-  color: #6366f1;
-  border-bottom-color: #6366f1;
-}
-
-.formatted-response h2:has(CODE),
-.formatted-response h2:contains("CODE") {
-  color: #6366f1;
-  border-bottom-color: #6366f1;
-}
-
-/* Dark mode numbered headers */
-@media (prefers-color-scheme: dark) {
-  .formatted-response h2 {
-    color: #818cf8;
-    border-bottom-color: #4b5563;
-  }
-}
+/* Removed special h2 styling - keep default styling from section 2 */
 
 /* ============================
    25) Input/Output List Styling

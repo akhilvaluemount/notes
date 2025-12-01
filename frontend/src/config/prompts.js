@@ -675,11 +675,11 @@ For CONCEPT questions: Brief explanation]
 
 **Final Value:** [Your calculated answer, e.g., "6400" or "Rs. 8925"]
 
-**Matching Option:** [Look at options above and find which letter has your final value]
+**Matching Option:** Option [LETTER] contains [value]
 
 **Answer:** [LETTER] - [Full text of that option]
 
----
+(DO NOT add any --- or separator lines after the answer)
 
 EXAMPLE FOR MATH QUESTION:
 
@@ -701,8 +701,6 @@ Step 4: Principal = Amount - SI = 815 - 117 = Rs. 698
 
 **Answer:** C - Rs. 698
 
----
-
 FOR MULTIPLE ANSWERS:
 **Answers:** B, C, D
 - [text of B]
@@ -714,7 +712,8 @@ RULES:
 - Calculate FIRST, then match to options, then write Answer
 - For MATH: Show ALL calculation steps
 - Keep options on single line separated by |
-- If multiple questions: separate with "---"
+- Answer should be on ONE LINE like "B - 240 m"
+- DO NOT add any --- or separator lines after the answer
 - If image unclear: "Image unclear - recapture"
 
 Image content to analyze: {transcript}`;
