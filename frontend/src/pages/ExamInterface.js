@@ -27,6 +27,7 @@ function ExamInterface() {
   const [languageInput, setLanguageInput] = useState('Python'); // Language input value
   const [showLanguageSuggestions, setShowLanguageSuggestions] = useState(false);
   const [panelTheme, setPanelTheme] = useState('light'); // 'light', 'dark', or 'transparent'
+  const [fontSize, setFontSize] = useState('s'); // 'xxs', 'xs', 's', 'n' (normal)
   const [showSettings, setShowSettings] = useState(false); // Settings panel visibility
   const [showExamMenu, setShowExamMenu] = useState(false); // Exam details menu visibility
   const [waitingForUsbCamera, setWaitingForUsbCamera] = useState(false); // Waiting for USB camera to be connected
@@ -34,6 +35,9 @@ function ExamInterface() {
   const [availableCameras, setAvailableCameras] = useState([]); // List of video input devices
   const [selectedCameraId, setSelectedCameraId] = useState(''); // Currently selected camera deviceId
   const [showCameraDropdown, setShowCameraDropdown] = useState(false); // Toggle camera selector
+  const [capturedImagePreview, setCapturedImagePreview] = useState(null); // For testing - shows captured image
+  const [isTypingCode, setIsTypingCode] = useState(false); // Typing code state
+  const [typingCountdown, setTypingCountdown] = useState(0); // Countdown before typing starts
 
   // Refs for USB camera polling
   const usbCameraCheckIntervalRef = useRef(null);
@@ -108,15 +112,28 @@ function ExamInterface() {
     };
   }, []);
 
-  // Cleanup on unmount (no auto-start - show black screen initially)
+  // Auto-start screen capture in Electron mode, cleanup on unmount
   useEffect(() => {
-    // Don't auto-start any capture - show black screen initially
+    // In Electron mode, auto-start screen capture for entire screen
+    if (isElectron()) {
+      setCaptureMode('screen');
+      // Small delay to ensure component is fully mounted
+      const timer = setTimeout(() => {
+        startScreenCapture('monitor');
+      }, 500);
+      return () => {
+        clearTimeout(timer);
+        stopCamera();
+        stopUsbCameraPolling();
+      };
+    }
 
     // Cleanup on unmount
     return () => {
       stopCamera();
       stopUsbCameraPolling();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handle testing mode toggle - show default testing stream
@@ -320,12 +337,20 @@ function ExamInterface() {
     }
   };
 
+  // Check if running in Electron
+  const isElectron = () => {
+    return window.electronAPI && window.electronAPI.isElectron;
+  };
+
   // Start screen capture with surface type preference
   // surfaceType: 'browser' (tab), 'window', or 'monitor' (entire screen)
   const startScreenCapture = async (surfaceType = 'monitor') => {
     try {
       console.log(`Starting screen capture with preference: ${surfaceType}...`);
+      console.log('Running in Electron:', isElectron());
 
+      // Use standard getDisplayMedia - works in both browser and Electron
+      // In Electron, we've set up setDisplayMediaRequestHandler to handle this
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: {
           displaySurface: surfaceType, // Preference hint: 'browser', 'window', or 'monitor'
@@ -333,9 +358,7 @@ function ExamInterface() {
           height: { ideal: 1080 },
           frameRate: { ideal: 30 }
         },
-        audio: false,
-        selfBrowserSurface: 'exclude', // Don't show current tab as option
-        surfaceSwitching: 'exclude'    // Don't allow switching during capture
+        audio: false
       });
 
       if (videoRef.current) {
@@ -447,16 +470,22 @@ function ExamInterface() {
       }
 
       // Convert blob to base64
-      const base64 = await new Promise((resolve, reject) => {
+      const base64Data = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => {
           const result = reader.result;
-          const base64String = result.split(',')[1];
-          resolve(base64String);
+          resolve(result); // Keep full data URL for preview
         };
         reader.onerror = reject;
         reader.readAsDataURL(frameBlob);
       });
+
+      // Store preview image for testing
+      setCapturedImagePreview(base64Data);
+      console.log('📷 Captured image stored for preview');
+
+      // Extract base64 string without data URL prefix for API
+      const base64 = base64Data.split(',')[1];
 
       console.log('🤖 Sending to AI API with prompt:', button.description);
 
@@ -498,6 +527,88 @@ function ExamInterface() {
       setAiResponse(`Error: ${error.message}`);
     } finally {
       setIsLoadingAI(false);
+    }
+  };
+
+  // Extract solution code from AI response (finds the actual solution, not input/output examples)
+  const extractCodeFromResponse = (response) => {
+    if (!response) return null;
+
+    // Programming language specifiers that indicate actual solution code
+    const langSpecifiers = ['python', 'java', 'javascript', 'js', 'cpp', 'c\\+\\+', 'c', 'ruby', 'go', 'rust', 'swift', 'kotlin', 'scala', 'php', 'typescript', 'ts'];
+
+    // First, try to find a code block with a language specifier (most likely the solution)
+    const langRegex = new RegExp('```(' + langSpecifiers.join('|') + ')\\n([\\s\\S]*?)```', 'gi');
+    const langMatches = [...response.matchAll(langRegex)];
+
+    if (langMatches.length > 0) {
+      // Return the code from the first language-specified block
+      return langMatches[0][2].trim();
+    }
+
+    // Fallback: Match all code blocks and find the longest one (likely the solution)
+    const codeBlockRegex = /```(?:\w+)?\n?([\s\S]*?)```/g;
+    const matches = [...response.matchAll(codeBlockRegex)];
+
+    if (matches.length > 0) {
+      // Find the longest code block (most likely the solution, not input/output)
+      let longestCode = '';
+      for (const match of matches) {
+        const code = match[1].trim();
+        // Solution code typically has keywords like 'def', 'function', 'class', 'import', 'int main', etc.
+        const hasProgrammingKeywords = /\b(def |function |class |import |from |int |void |public |private |return |for |while |if |print|input|sys\.stdin)\b/.test(code);
+        if (code.length > longestCode.length && hasProgrammingKeywords) {
+          longestCode = code;
+        }
+      }
+      // If we found code with programming keywords, return it
+      if (longestCode) {
+        return longestCode;
+      }
+      // Otherwise return the longest code block
+      return matches.reduce((longest, match) =>
+        match[1].trim().length > longest.length ? match[1].trim() : longest, '');
+    }
+
+    return null;
+  };
+
+  // Handle Type Code button click
+  const handleTypeCode = async () => {
+    const code = extractCodeFromResponse(aiResponse);
+
+    if (!code) {
+      alert('No code found in the response. Generate code first using "Write Code" button.');
+      return;
+    }
+
+    if (!isElectron()) {
+      alert('Type Code feature is only available in the desktop app.');
+      return;
+    }
+
+    // Start countdown
+    setIsTypingCode(true);
+    setTypingCountdown(3);
+
+    // Countdown from 3 to 0
+    for (let i = 3; i > 0; i--) {
+      setTypingCountdown(i);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    setTypingCountdown(0);
+
+    try {
+      // Call the Electron API to type the code
+      await window.electronAPI.typeCode(code, 15); // 15ms delay between characters
+      console.log('Code typed successfully');
+    } catch (error) {
+      console.error('Error typing code:', error);
+      // Show window if there was an error
+      await window.electronAPI.cancelTyping();
+    } finally {
+      setIsTypingCode(false);
     }
   };
 
@@ -654,7 +765,7 @@ function ExamInterface() {
   }, [isResizing, dockedSide]);
 
   return (
-    <div className="exam-interface">
+    <div className={`exam-interface ${isElectron() ? 'electron-mode' : ''}`}>
       {/* Full viewport camera or testing stream */}
       {testingMode && testingStreamUrl ? (
         <img
@@ -672,8 +783,8 @@ function ExamInterface() {
         />
       )}
 
-      {/* Capture Mode Indicator Badge */}
-      {!testingMode && (
+      {/* Capture Mode Indicator Badge - hidden in Electron mode */}
+      {!testingMode && !isElectron() && (
         <div className="capture-mode-badge">
           {captureMode === 'camera' && '📷 Camera'}
           {captureMode === 'tab' && '🌐 Tab Capture'}
@@ -710,9 +821,9 @@ function ExamInterface() {
       {/* Moveable Control Panel */}
       <div
         ref={panelRef}
-        className={`control-panel ${dockedSide ? `docked-${dockedSide}` : ''} ${isResizing ? 'resizing' : ''} ${isDragging ? 'dragging' : ''} panel-theme-${panelTheme}`}
+        className={`control-panel ${dockedSide ? `docked-${dockedSide}` : ''} ${isResizing ? 'resizing' : ''} ${isDragging ? 'dragging' : ''} panel-theme-${panelTheme} font-size-${fontSize}`}
         onMouseDown={handleDragStart}
-        style={{
+        style={isElectron() ? {} : {
           width: dockedSide === 'left' || dockedSide === 'right' ? `${panelSize.width}px` : (!dockedSide ? `${panelSize.width}px` : undefined),
           height: dockedSide === 'top' || dockedSide === 'bottom' ? `${panelSize.height}px` : (!dockedSide ? `${panelSize.height}px` : undefined),
           left: !dockedSide ? `${panelPosition.x}px` : undefined,
@@ -721,11 +832,80 @@ function ExamInterface() {
         }}
       >
         {/* Mokita Brand Header */}
-        <div className="mokita-brand-header">
+        <div className={`mokita-brand-header ${isElectron() ? 'electron-header' : ''}`}>
           <span className="mokita-logo">Mokita ai</span>
+          {/* Theme and Font controls in header for Electron mode */}
+          {isElectron() && (
+            <div className="electron-header-controls">
+              {/* Theme buttons */}
+              <div className="header-theme-group">
+                <button
+                  className={`header-theme-btn ${panelTheme === 'light' ? 'active' : ''}`}
+                  onClick={() => setPanelTheme('light')}
+                  title="Light theme"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="5"/>
+                    <line x1="12" y1="1" x2="12" y2="3"/>
+                    <line x1="12" y1="21" x2="12" y2="23"/>
+                  </svg>
+                </button>
+                <button
+                  className={`header-theme-btn ${panelTheme === 'dark' ? 'active' : ''}`}
+                  onClick={() => setPanelTheme('dark')}
+                  title="Dark theme"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                  </svg>
+                </button>
+                <button
+                  className={`header-theme-btn ${panelTheme === 'transparent' ? 'active' : ''}`}
+                  onClick={() => setPanelTheme('transparent')}
+                  title="Glass theme"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" strokeDasharray="4 2"/>
+                  </svg>
+                </button>
+              </div>
+              {/* Font size buttons */}
+              <div className="header-font-group">
+                <button
+                  className={`header-font-btn ${fontSize === 'xxs' ? 'active' : ''}`}
+                  onClick={() => setFontSize('xxs')}
+                  title="Extra extra small"
+                >
+                  <span style={{ fontSize: '8px' }}>A</span>
+                </button>
+                <button
+                  className={`header-font-btn ${fontSize === 'xs' ? 'active' : ''}`}
+                  onClick={() => setFontSize('xs')}
+                  title="Extra small"
+                >
+                  <span style={{ fontSize: '9px' }}>A</span>
+                </button>
+                <button
+                  className={`header-font-btn ${fontSize === 's' ? 'active' : ''}`}
+                  onClick={() => setFontSize('s')}
+                  title="Small"
+                >
+                  <span style={{ fontSize: '10px' }}>A</span>
+                </button>
+                <button
+                  className={`header-font-btn ${fontSize === 'n' ? 'active' : ''}`}
+                  onClick={() => setFontSize('n')}
+                  title="Normal"
+                >
+                  <span style={{ fontSize: '12px' }}>A</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Tab-style Controls Bar */}
+        {/* Tab-style Controls Bar - Hidden in Electron mode */}
+        {!isElectron() && (
         <div className="panel-tabs-bar">
           {/* Theme Tabs */}
           <div className="panel-tab-group">
@@ -763,103 +943,233 @@ function ExamInterface() {
             </button>
           </div>
 
-          {/* Dock Tabs */}
-          <div className="panel-tab-group">
-            {dockedSide && (
+          {/* Font Size Tabs */}
+          <div className="panel-tab-group font-size-group">
+            <button
+              className={`panel-tab font-tab ${fontSize === 'xxs' ? 'active' : ''}`}
+              onClick={() => setFontSize('xxs')}
+              title="Extra extra small font"
+            >
+              <span style={{ fontSize: '9px' }}>A</span>
+            </button>
+            <button
+              className={`panel-tab font-tab ${fontSize === 'xs' ? 'active' : ''}`}
+              onClick={() => setFontSize('xs')}
+              title="Extra small font"
+            >
+              <span style={{ fontSize: '10px' }}>A</span>
+            </button>
+            <button
+              className={`panel-tab font-tab ${fontSize === 's' ? 'active' : ''}`}
+              onClick={() => setFontSize('s')}
+              title="Small font"
+            >
+              <span style={{ fontSize: '11px' }}>A</span>
+            </button>
+            <button
+              className={`panel-tab font-tab ${fontSize === 'n' ? 'active' : ''}`}
+              onClick={() => setFontSize('n')}
+              title="Normal font"
+            >
+              <span style={{ fontSize: '13px' }}>A</span>
+            </button>
+          </div>
+
+          {/* Dock Tabs - Hidden in Electron mode */}
+          {!isElectron() && (
+            <div className="panel-tab-group">
+              {dockedSide && (
+                <button
+                  className="panel-tab"
+                  onClick={() => setDockedSide(null)}
+                  title="Float panel"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="5" y="5" width="14" height="14" rx="2" />
+                  </svg>
+                  <span>Float</span>
+                </button>
+              )}
               <button
-                className="panel-tab"
-                onClick={() => setDockedSide(null)}
-                title="Float panel"
+                className={`panel-tab ${dockedSide === 'left' ? 'active' : ''}`}
+                onClick={() => movePanel('left')}
+                title="Dock to left"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="5" y="5" width="14" height="14" rx="2" />
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <line x1="9" y1="3" x2="9" y2="21" />
                 </svg>
-                <span>Float</span>
               </button>
-            )}
-            <button
-              className={`panel-tab ${dockedSide === 'left' ? 'active' : ''}`}
-              onClick={() => movePanel('left')}
-              title="Dock to left"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <line x1="9" y1="3" x2="9" y2="21" />
-              </svg>
-            </button>
-            <button
-              className={`panel-tab ${dockedSide === 'bottom' ? 'active' : ''}`}
-              onClick={() => movePanel('down')}
-              title="Dock to bottom"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <line x1="3" y1="15" x2="21" y2="15" />
-              </svg>
-            </button>
-            <button
-              className={`panel-tab ${dockedSide === 'right' ? 'active' : ''}`}
-              onClick={() => movePanel('right')}
-              title="Dock to right"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <line x1="15" y1="3" x2="15" y2="21" />
-              </svg>
-            </button>
-            <button
-              className={`panel-tab ${dockedSide === 'top' ? 'active' : ''}`}
-              onClick={() => movePanel('up')}
-              title="Dock to top"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <line x1="3" y1="9" x2="21" y2="9" />
-              </svg>
-            </button>
-          </div>
+              <button
+                className={`panel-tab ${dockedSide === 'bottom' ? 'active' : ''}`}
+                onClick={() => movePanel('down')}
+                title="Dock to bottom"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <line x1="3" y1="15" x2="21" y2="15" />
+                </svg>
+              </button>
+              <button
+                className={`panel-tab ${dockedSide === 'right' ? 'active' : ''}`}
+                onClick={() => movePanel('right')}
+                title="Dock to right"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <line x1="15" y1="3" x2="15" y2="21" />
+                </svg>
+              </button>
+              <button
+                className={`panel-tab ${dockedSide === 'top' ? 'active' : ''}`}
+                onClick={() => movePanel('up')}
+                title="Dock to top"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <line x1="3" y1="9" x2="21" y2="9" />
+                </svg>
+              </button>
+            </div>
+          )}
 
-          {/* Settings Tab */}
-          <div className="panel-tab-group">
-            <button
-              className={`panel-tab ${showSettings ? 'active' : ''}`}
-              onClick={() => setShowSettings(!showSettings)}
-              title="Settings"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M12 1v4m0 14v4m-7.07-15.07l2.83 2.83m8.48 8.48l2.83 2.83M1 12h4m14 0h4m-15.07 7.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
-              </svg>
-              <span>Settings</span>
-            </button>
-          </div>
+          {/* Settings Tab - Hidden in Electron mode */}
+          {!isElectron() && (
+            <div className="panel-tab-group">
+              <button
+                className={`panel-tab ${showSettings ? 'active' : ''}`}
+                onClick={() => setShowSettings(!showSettings)}
+                title="Settings"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M12 1v4m0 14v4m-7.07-15.07l2.83 2.83m8.48 8.48l2.83 2.83M1 12h4m14 0h4m-15.07 7.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+                </svg>
+                <span>Settings</span>
+              </button>
+            </div>
+          )}
         </div>
+        )}
 
-        {/* Capture Mode Selector Bar */}
-        {!testingMode && (
+        {/* Electron Controls Row - Side by side layout */}
+        {isElectron() && !testingMode && (
+          <div className="electron-controls-row">
+            {/* Capture Mode */}
+            <div className="capture-mode-bar">
+              <label className="capture-mode-option">
+                <input
+                  type="radio"
+                  name="captureMode"
+                  value="screen"
+                  checked={captureMode === 'screen'}
+                  onChange={() => {
+                    setCaptureMode('screen');
+                    stopCamera();
+                    startScreenCapture('monitor');
+                  }}
+                />
+                <span className="capture-mode-label">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21"/>
+                    <line x1="12" y1="17" x2="12" y2="21"/>
+                  </svg>
+                  Screen
+                </span>
+              </label>
+              <div className={`capture-mode-option camera-option ${captureMode === 'camera' ? 'selected' : ''}`}>
+                <input
+                  type="radio"
+                  name="captureMode"
+                  value="camera"
+                  checked={captureMode === 'camera'}
+                  onChange={() => {
+                    setCaptureMode('camera');
+                    stopCamera();
+                    startCamera();
+                  }}
+                />
+                <span className="capture-mode-label" onClick={() => {
+                  if (captureMode !== 'camera') {
+                    setCaptureMode('camera');
+                    stopCamera();
+                    startCamera();
+                  }
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                  Camera
+                </span>
+              </div>
+            </div>
+            {/* Language Selector */}
+            <div className="exam-options-bar">
+              <div className="language-selector-inline">
+                <span className="language-label-inline">Lang:</span>
+                <div className="language-autocomplete-inline">
+                  <input
+                    type="text"
+                    className="language-input-inline"
+                    placeholder="Python"
+                    value={languageInput}
+                    onChange={(e) => {
+                      setLanguageInput(e.target.value);
+                      setShowLanguageSuggestions(true);
+                    }}
+                    onFocus={() => setShowLanguageSuggestions(true)}
+                  />
+                  {showLanguageSuggestions && languageInput && filteredLanguages.length > 0 && (
+                    <div className="suggestions-menu">
+                      <div className="suggestions-list">
+                        {filteredLanguages.slice(0, 8).map((lang) => (
+                          <div
+                            key={lang}
+                            className="suggestion-item"
+                            onClick={() => {
+                              setLanguageInput(lang);
+                              setShowLanguageSuggestions(false);
+                            }}
+                          >
+                            <span>{lang}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Capture Mode Selector Bar - Non-Electron */}
+        {!testingMode && !isElectron() && (
           <div className="capture-mode-bar">
             {/* Window option */}
             <label className="capture-mode-option">
-              <input
-                type="radio"
-                name="captureMode"
-                value="window"
-                checked={captureMode === 'window'}
-                onChange={() => {
-                  setCaptureMode('window');
-                  stopCamera();
-                  startScreenCapture('window');
-                }}
-              />
-              <span className="capture-mode-label">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2"/>
-                  <line x1="3" y1="9" x2="21" y2="9"/>
-                  <line x1="9" y1="21" x2="9" y2="9"/>
-                </svg>
-                Window
-              </span>
-            </label>
+                <input
+                  type="radio"
+                  name="captureMode"
+                  value="window"
+                  checked={captureMode === 'window'}
+                  onChange={() => {
+                    setCaptureMode('window');
+                    stopCamera();
+                    startScreenCapture('window');
+                  }}
+                />
+                <span className="capture-mode-label">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <line x1="3" y1="9" x2="21" y2="9"/>
+                    <line x1="9" y1="21" x2="9" y2="9"/>
+                  </svg>
+                  Window
+                </span>
+              </label>
 
             {/* Tab option */}
             <label className="capture-mode-option">
@@ -1041,7 +1351,8 @@ function ExamInterface() {
               </div>
             )}
 
-            {/* Language Selector - Inline Bar */}
+            {/* Language Selector - Inline Bar - Hidden in Electron (shown in electron-controls-row instead) */}
+            {!isElectron() && (
             <div className="exam-options-bar">
               {/* Programming Language Selector with Autocomplete */}
               <div className="language-selector-inline">
@@ -1085,6 +1396,7 @@ function ExamInterface() {
                 </div>
               </div>
             </div>
+            )}
 
             {/* Action Buttons - Always Visible */}
             <div className="exam-action-buttons">
@@ -1093,12 +1405,25 @@ function ExamInterface() {
                   key={button.id}
                   onClick={() => handleButtonClick(button.id)}
                   className="exam-action-btn"
-                  disabled={isLoadingAI}
+                  disabled={isLoadingAI || isTypingCode}
                   title={button.description}
                 >
                   <span className="btn-label">{button.label}</span>
                 </button>
               ))}
+              {/* Type Code Button - Only visible when there's code in response */}
+              {isElectron() && aiResponse && extractCodeFromResponse(aiResponse) && (
+                <button
+                  onClick={handleTypeCode}
+                  className="exam-action-btn type-code-btn"
+                  disabled={isLoadingAI || isTypingCode}
+                  title="Type the code letter by letter at cursor position (3 sec delay)"
+                >
+                  <span className="btn-label">
+                    {isTypingCode ? (typingCountdown > 0 ? `${typingCountdown}...` : '⌨️') : 'Type Code'}
+                  </span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -1109,6 +1434,27 @@ function ExamInterface() {
                 response={aiResponse}
                 isLoading={isLoadingAI}
                 isStreaming={false}
+              />
+            </div>
+          )}
+
+          {/* Captured Image Preview - For Testing */}
+          {capturedImagePreview && (
+            <div className="captured-image-preview">
+              <div className="preview-header">
+                <span>Captured Screenshot</span>
+                <button
+                  className="close-preview-btn"
+                  onClick={() => setCapturedImagePreview(null)}
+                  title="Close preview"
+                >
+                  ✕
+                </button>
+              </div>
+              <img
+                src={capturedImagePreview}
+                alt="Captured screenshot"
+                className="preview-image"
               />
             </div>
           )}

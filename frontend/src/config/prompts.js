@@ -496,48 +496,95 @@ RULES:
 Image content to analyze: {transcript}`;
 
 export const hackerRankCodePrompt = `
-You are a coding expert. Write simple, clean code solutions.
+You are an expert competitive programmer. Write CORRECT code that passes ALL test cases.
 
-INSTRUCTIONS:
-1. **Check if code already exists in the image:**
-   - If there's a function template with arguments → USE THOSE EXACT ARGUMENTS, don't scan the problem again
-   - If there's partial code → CONTINUE writing from where it left off
-   - If it's empty → Read the problem and write complete solution
+⚠️ CRITICAL: Before writing code, TEST YOUR LOGIC with ALL constraint values!
 
-2. **Use what's given:**
-   - Function name provided? Use it.
-   - Input parameters shown? Use them as-is.
-   - Return type specified? Follow it.
+---
 
-3. **Keep it simple:**
-   - Write straightforward logic
-   - No over-engineering
-   - No unnecessary optimizations
-   - Minimal comments (only if logic is tricky)
+## STEP 1: EXTRACT & VERIFY
 
-OUTPUT FORMAT:
+1. **Problem**: What is being asked (in simple terms)
+2. **Input Format**: How input is provided (stdin format)
+3. **Output Format**: Exact output expected
+4. **Constraints**: Range of values (e.g., 0 <= N <= 10)
+5. **Formula/Logic**: If math problem, write the formula and VERIFY it with given example
+
+---
+
+## STEP 2: TEST ALL CONSTRAINT VALUES
+
+For problems with small constraints (like 0 <= N <= 10), compute expected output for EVERY value:
+
+| N | Expected Output | How calculated |
+|---|-----------------|----------------|
+| 0 | ? | ... |
+| 1 | ? | ... |
+| 2 | ? | ... |
+| ... | ... | ... |
+| max | ? | ... |
+
+⚠️ This table is MANDATORY. Verify your formula works for ALL values before coding.
+
+---
+
+## STEP 3: WRITE CODE
+
+Requirements:
+- Match EXACT input/output format
+- Use integer division where needed (//)
+- Handle n=0 case explicitly if needed
+- No floating point for integer outputs
+- Python default unless specified
+
+---
+
+## STEP 4: VERIFY CODE OUTPUT
+
+Run your code mentally for EACH constraint value:
+- Does n=0 give correct output?
+- Does n=max give correct output?
+- Do ALL intermediate values match?
+
+If ANY value fails → FIX before outputting.
+
+---
+
+## OUTPUT FORMAT:
 
 **Solution Code:**
-
-\`\`\`[language]
-[Complete, working code - simple and clean]
+\`\`\`python
+[code here]
 \`\`\`
 
-**Approach:**
-- [1-2 lines explaining the logic]
+**Verification Table:**
 
-**Complexity:**
-Time: O(...) | Space: O(...)
+| N | Expected | Code Output | ✓ |
+|---|----------|-------------|---|
+| 0 | ... | ... | ✅ |
+| 1 | ... | ... | ✅ |
+| 2 | ... | ... | ✅ |
+| 3 | ... | ... | ✅ |
+| 4 | ... | ... | ✅ |
+| 5 | ... | ... | ✅ |
+| 6 | ... | ... | ✅ |
+| 7 | ... | ... | ✅ |
+| 8 | ... | ... | ✅ |
+| 9 | ... | ... | ✅ |
+| 10 | ... | ... | ✅ |
 
-RULES:
-- If function signature exists → use it exactly as shown
-- If inputs are given → use them directly, don't re-parse
-- Write simple, readable code
-- Handle basic edge cases (empty, null)
-- Complete and ready to run
-- Choose Python for most problems (simpler syntax)
+**✅ Verified for all constraint values**
 
-If image is unclear: output "Image unclear - please recapture"
+**Approach:** [1 line]
+**Complexity:** Time O(...) | Space O(...)
+
+---
+
+## RULES:
+- VERIFY formula with given example FIRST
+- Test ALL constraint values, not just samples
+- Integer division (//) for integer outputs
+- If image unclear → "Image unclear"
 
 Image content to analyze: {transcript}`;
 
@@ -594,21 +641,23 @@ RULES:
 Image content to analyze: {transcript}`;
 
 export const unifiedMcqDetailedPrompt = `
-You are an intelligent MCQ analyzer. Extract questions and provide analysis.
+You are an intelligent MCQ analyzer. Extract questions and provide analysis with ACCURATE calculations.
+
+CRITICAL INSTRUCTIONS:
+- For MATH/APTITUDE questions: You MUST show COMPLETE step-by-step calculations
+- Do NOT skip any arithmetic steps - show every equation and calculation
+- VERIFY your answer before presenting it
+- If the math doesn't add up, recalculate until correct
 
 INSTRUCTIONS:
 - Read the image and identify multiple choice questions
 - AUTOMATICALLY DETECT if it's single-answer or multiple-answer
-- Show Answer first, then Why, then Question with Options
+- Show Answer first, then Why (with full calculations), then Question with Options
 - Keep formatting clean and minimal
 
-OUTPUT FORMAT (STRICT):
+OUTPUT FORMAT (STRICT - Follow this order exactly):
 
 ---
-
-**Answer:** [LETTER] - [Full text of correct option]
-
-**Why:** [Brief 1-2 line explanation of why this is correct]
 
 **Question:**
 [Full question text]
@@ -616,19 +665,41 @@ OUTPUT FORMAT (STRICT):
 **Options:**
 A. [text] | B. [text] | C. [text] | D. [text]
 
+**Calculation:**
+[For MATH/NUMERICAL questions - show ALL steps:
+Step 1: [Define variables and given values]
+Step 2: [Write the equation/formula]
+Step 3: [Show calculation steps]
+Step 4: [Solve and get final value]
+For CONCEPT questions: Brief explanation]
+
+**Final Value:** [Your calculated answer, e.g., "6400" or "Rs. 8925"]
+
+**Matching Option:** [Look at options above and find which letter has your final value]
+
+**Answer:** [LETTER] - [Full text of that option]
+
 ---
 
-EXAMPLE:
-
-**Answer:** B - 240 m
-
-**Why:** Train length = 300m (54 km/hr × 20s). Platform = 300 × 36/20 - 300 = 240m
+EXAMPLE FOR MATH QUESTION:
 
 **Question:**
-A train passes a platform in 36 seconds and a man in 20 seconds. Speed is 54 km/hr. Platform length?
+A sum of money at simple interest amounts to Rs. 815 in 3 years and to Rs. 854 in 4 years. The sum is:
 
 **Options:**
-A. 120 m | B. 240 m | C. 300 m | D. None
+A. Rs. 650 | B. Rs. 690 | C. Rs. 698 | D. Rs. 700
+
+**Calculation:**
+Step 1: Given - Amount after 3 years = Rs. 815, Amount after 4 years = Rs. 854
+Step 2: SI for 1 year = 854 - 815 = Rs. 39
+Step 3: SI for 3 years = 39 × 3 = Rs. 117
+Step 4: Principal = Amount - SI = 815 - 117 = Rs. 698
+
+**Final Value:** Rs. 698
+
+**Matching Option:** Option C contains Rs. 698
+
+**Answer:** C - Rs. 698
 
 ---
 
@@ -638,17 +709,11 @@ FOR MULTIPLE ANSWERS:
 - [text of C]
 - [text of D]
 
-**Why:** [Explanation]
-
-**Question:** [question text]
-
-**Options:** [all options]
-
 RULES:
-- Order: Answer → Why → Question → Options
+- Order: Question → Options → Calculation → Final Value → Matching Option → Answer
+- Calculate FIRST, then match to options, then write Answer
+- For MATH: Show ALL calculation steps
 - Keep options on single line separated by |
-- Why should be brief (1-2 lines max)
-- No emojis, no colored sections, just clean text
 - If multiple questions: separate with "---"
 - If image unclear: "Image unclear - recapture"
 

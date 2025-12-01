@@ -640,3 +640,341 @@
   font-family: 'Courier New', monospace;
   font-size: 0.9rem;
 }
+
+/* ============================
+   18) Enhanced Code Block Styling (HackerRank/Coding)
+   ============================ */
+
+/* Better code blocks with syntax highlighting feel */
+.formatted-response pre {
+  background: #1a1b26;
+  color: #a9b1d6;
+  padding: 1.25rem;
+  border-radius: 10px;
+  overflow-x: auto;
+  margin: 1rem 0;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Menlo', monospace;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  border: 1px solid #2a2b3d;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.formatted-response pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font-size: inherit;
+}
+
+/* Enhanced inline code */
+.formatted-response code:not(pre code) {
+  background: #f0f4f8;
+  color: #d63384;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.875em;
+  font-weight: 500;
+  border: 1px solid #e2e8f0;
+}
+
+/* Dark mode inline code */
+@media (prefers-color-scheme: dark) {
+  .formatted-response code:not(pre code) {
+    background: #1e2030;
+    color: #ff7bc8;
+    border-color: #2a2b3d;
+  }
+}
+
+/* ============================
+   19) Enhanced Table Styling (Test Cases)
+   ============================ */
+
+.formatted-response table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 1rem 0;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+}
+
+.formatted-response thead th {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 600;
+  padding: 0.875rem 1rem;
+  text-align: left;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: none;
+}
+
+.formatted-response thead th:first-child {
+  border-top-left-radius: 10px;
+}
+
+.formatted-response thead th:last-child {
+  border-top-right-radius: 10px;
+}
+
+.formatted-response tbody td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f0f0f0;
+  color: #374151;
+  font-size: 0.9rem;
+  vertical-align: middle;
+}
+
+.formatted-response tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.formatted-response tbody tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+.formatted-response tbody tr:hover {
+  background: #f0f4ff;
+}
+
+/* Status column styling */
+.formatted-response tbody td:last-child {
+  text-align: center;
+  font-size: 1.1rem;
+}
+
+/* ============================
+   20) Section Headers with Emojis
+   ============================ */
+
+/* Problem section */
+.formatted-response h2:has(+ *),
+.formatted-response strong:first-child {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Section card styling */
+.formatted-response hr {
+  border: none;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #e5e7eb, transparent);
+  margin: 1.5rem 0;
+}
+
+/* Bold section headers - Numbered sections ①②③ */
+.formatted-response p > strong:only-child {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #6366f1 !important;
+  margin: 1.25rem 0 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #6366f1;
+  letter-spacing: 0.5px;
+}
+
+/* ============================
+   21) Test Results Styling
+   ============================ */
+
+/* Pass/Fail indicators */
+.formatted-response td:contains("✅"),
+.formatted-response td:contains("Pass") {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.formatted-response td:contains("❌"),
+.formatted-response td:contains("Fail") {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+/* All tests passed message */
+.formatted-response p:has(strong:contains("All")) {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border-left: 4px solid #10b981;
+  margin: 1rem 0;
+}
+
+/* ============================
+   22) Complexity & Approach Cards
+   ============================ */
+
+.formatted-response p:has(strong:contains("Time")),
+.formatted-response p:has(strong:contains("Space")),
+.formatted-response p:has(strong:contains("Complexity")) {
+  background: #f8fafc;
+  padding: 0.625rem 1rem;
+  border-radius: 6px;
+  border-left: 3px solid #6366f1;
+  margin: 0.5rem 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9rem;
+}
+
+.formatted-response p:has(strong:contains("Approach")) {
+  background: #fef3c7;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border-left: 4px solid #f59e0b;
+  margin: 1rem 0;
+}
+
+/* ============================
+   23) Dark Mode Enhancements
+   ============================ */
+
+@media (prefers-color-scheme: dark) {
+  .formatted-response table {
+    background: #1e1e2e;
+    border-color: #313244;
+  }
+
+  .formatted-response thead th {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  }
+
+  .formatted-response tbody td {
+    color: #cdd6f4;
+    border-bottom-color: #313244;
+  }
+
+  .formatted-response tbody tr:nth-child(even) {
+    background: #181825;
+  }
+
+  .formatted-response tbody tr:hover {
+    background: #1e1e3f;
+  }
+
+  .formatted-response p > strong:only-child {
+    color: #818cf8 !important;
+    border-bottom-color: #818cf8;
+  }
+
+  .formatted-response p:has(strong:contains("Time")),
+  .formatted-response p:has(strong:contains("Space")),
+  .formatted-response p:has(strong:contains("Complexity")) {
+    background: #1e1e2e;
+    border-left-color: #6366f1;
+    color: #a9b1d6;
+  }
+
+  .formatted-response p:has(strong:contains("Approach")) {
+    background: #2d2a1e;
+    border-left-color: #f59e0b;
+    color: #fef3c7;
+  }
+
+  .formatted-response p:has(strong:contains("All")) {
+    background: #1a2e1a;
+    border-left-color: #10b981;
+    color: #a7f3d0;
+  }
+}
+
+/* ============================
+   24) Numbered Section Headers (①②③)
+   ============================ */
+
+.formatted-response h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #6366f1;
+  margin: 1.5rem 0 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e5e7eb;
+  letter-spacing: 0.5px;
+}
+
+/* Circled numbers styling */
+.formatted-response h2:first-letter {
+  font-size: 1.4rem;
+  margin-right: 0.25rem;
+}
+
+/* Section-specific accent colors (optional) */
+.formatted-response h2:has(PROBLEM),
+.formatted-response h2:contains("PROBLEM") {
+  color: #6366f1;
+  border-bottom-color: #6366f1;
+}
+
+.formatted-response h2:has(TEST),
+.formatted-response h2:contains("TEST") {
+  color: #6366f1;
+  border-bottom-color: #6366f1;
+}
+
+.formatted-response h2:has(CODE),
+.formatted-response h2:contains("CODE") {
+  color: #6366f1;
+  border-bottom-color: #6366f1;
+}
+
+/* Dark mode numbered headers */
+@media (prefers-color-scheme: dark) {
+  .formatted-response h2 {
+    color: #818cf8;
+    border-bottom-color: #4b5563;
+  }
+}
+
+/* ============================
+   25) Input/Output List Styling
+   ============================ */
+
+.formatted-response ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0.75rem 0;
+}
+
+.formatted-response li {
+  padding: 0.375rem 0;
+  padding-left: 1.25rem;
+  position: relative;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.formatted-response li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: #6366f1;
+  font-weight: 600;
+}
+
+/* Arrow styling for expected outputs */
+.formatted-response li code {
+  background: #f0f4f8;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+@media (prefers-color-scheme: dark) {
+  .formatted-response li {
+    color: #d1d5db;
+  }
+
+  .formatted-response li::before {
+    color: #818cf8;
+  }
+}

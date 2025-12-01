@@ -27,7 +27,12 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(npx cap:*)",
-      "Bash(gradle wrapper:*)"
+      "Bash(gradle wrapper:*)",
+      "Bash(ELECTRON_START_URL=http://localhost:3000 npx electron:*)",
+      "Bash(npm run electron-dev:*)",
+      "Bash(pgrep:*)",
+      "Bash(pkill:*)",
+      "Bash(npm run dev:*)"
     ],
     "deny": [],
     "ask": []
