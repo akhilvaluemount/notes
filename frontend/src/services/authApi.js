@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || (
-  process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5001'
+  process.env.NODE_ENV === 'production' ? 'https://notes-topaz-six.vercel.app' : 'http://localhost:5001'
 );
 
 // Create axios instance with auth interceptor

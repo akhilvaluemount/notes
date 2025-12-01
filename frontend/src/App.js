@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import InterviewDashboard from './pages/InterviewDashboard';
@@ -14,6 +14,7 @@ import KeywordManager from './components/KeywordManager';
 import ErrorBoundary from './components/ErrorBoundary';
 import './App.css';
 
+// Use HashRouter for Electron (file:// protocol compatibility)
 function App() {
   return (
     <ErrorBoundary>
