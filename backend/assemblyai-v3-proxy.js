@@ -31,25 +31,15 @@ class AssemblyAIV3Proxy {
   async handleClient(clientWs, clientId) {
     try {
       // Connect to AssemblyAI v3 Universal Streaming endpoint
-      const assemblyWs = new WebSocket(`wss://streaming.assemblyai.com/v3/ws?token=${process.env.ASSEMBLYAI_API_KEY}`);
+      // Configuration is passed via URL query params (not via message)
+      const assemblyUrl = `wss://streaming.assemblyai.com/v3/ws?token=${process.env.ASSEMBLYAI_API_KEY}&sample_rate=16000&encoding=pcm_s16le&format_turns=true&end_of_turn_confidence_threshold=0.7`;
+      const assemblyWs = new WebSocket(assemblyUrl);
 
       this.clients.set(clientId, { clientWs, assemblyWs });
 
       // Handle AssemblyAI connection events
       assemblyWs.on('open', () => {
         console.log(`✅ Connected to AssemblyAI v3 for client ${clientId}`);
-        
-        // Send initial configuration for v3 Universal Streaming API
-        const config = {
-          type: 'UpdateConfiguration',
-          sample_rate: 16000,
-          encoding: 'pcm_s16le',
-          format_turns: true,
-          end_of_turn_confidence_threshold: 0.7
-        };
-        
-        assemblyWs.send(JSON.stringify(config));
-        console.log(`⚙️ Sent configuration for client ${clientId}`);
         
         // Notify client of successful connection
         if (clientWs.readyState === WebSocket.OPEN) {
@@ -131,17 +121,18 @@ class AssemblyAIV3Proxy {
               break;
               
             case 'error':
-              console.error(`❌ AssemblyAI error:`, message.error);
+            case 'Error':
+              console.error(`❌ AssemblyAI error:`, JSON.stringify(message));
               if (clientWs.readyState === WebSocket.OPEN) {
                 clientWs.send(JSON.stringify({
                   type: 'error',
-                  error: message.error
+                  error: message.error || message.message || JSON.stringify(message)
                 }));
               }
               break;
               
             default:
-              console.log(`🔍 Unknown message type:`, message.type);
+              console.log(`🔍 Unknown message type:`, message.type, JSON.stringify(message));
           }
         } catch (e) {
           console.error(`❌ Error parsing AssemblyAI message:`, e);

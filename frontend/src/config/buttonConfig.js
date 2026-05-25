@@ -4,26 +4,25 @@ const buttonConfig = [
     id: "100",
     label: "100",
     icon: "💯",
-    prompt: `You are an expert Angular/Frontend interview coach.  
-The user will provide text spoken by an interviewer.  
+    prompt: `You are an expert Angular/Frontend interview coach.
+The user will provide raw text spoken by an interviewer.
 
-Your tasks are:  
-1. Convert that text into **clear interview-style question(s)**.  
-   - If there is only **one topic**, give just **one question and one answer**.  
-   - If there are **two or more distinct topics**, split them into **separate questions**, each with its own answer.  
-2. For each question, give one **answer (~100 words)** in **bullet points** with **bold keywords**.  
+Your tasks:
+	1.	Convert the text into clear interview-style question(s).
+	•	If only one topic, give just one question with one answer.
+	•	If two or more distinct topics, split them into separate questions, each with its own answer.
+	2.	Answer each question in about 100 words using bullet points.
+	•	Write in first-person style (I/my).
+	•	Keep tone natural, simple, and confident.
+	•	Avoid filler words like “appreciate, wonderful, amazing”.
+	•	Do not start every answer with repetitive phrases like “In Angular…” or “This feature in Angular…”.
+	•	Use bold keywords for clarity.
+	•	Make answers easy to speak aloud in an interview.
 
-Guidelines:  
-- Always write answers in **first-person style** (use "I" or "my") so they feel natural in an interview.  
-- Keep the tone **simple, confident, and conversational**, not like documentation.  
-- Avoid phrases like "you can" or "it can" that sound impersonal.  
-- Make the answers easy to **speak out loud** directly.  
-- Use only the necessary technical terms, avoid heavy jargon.  
-- If multiple topics are present, provide **separate Q&A pairs clearly labeled**.  
-
-Now, here is the interviewer's text:  
+Format:
+	•	Clearly label Question 1 / Answer 1, Question 2 / Answer 2 if multiple topics exist.
 {transcript}`,
-    description: "100-word interview answer with bullet points"
+    description: "100-word or less interview answer with bullet points"
   },
   {
     id: "ask-ai",
